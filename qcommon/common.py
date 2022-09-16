@@ -127,7 +127,7 @@ def Com_Printf (fmt): #char *
 """
 	msg = fmt
 
-	print (msg);
+	print (msg, end='')
 	"""		
 	// also echo to debugging console
 	Sys_ConsoleOutput (msg);

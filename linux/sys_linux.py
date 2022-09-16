@@ -177,6 +177,11 @@ def Key_Event(event):
 	if event.key == pygame.K_RETURN:
 		cmdsReady.append("".join(keyBuffer))
 		keyBuffer = []
+	elif event.key == pygame.K_SPACE:
+		keyBuffer.append(" ")
+	elif event.key == pygame.K_BACKSPACE:
+		if len(keyBuffer) > 0:
+			keyBuffer.pop(-1)
 	else:
 		keyBuffer.append(pygame.key.name(event.key))
 
