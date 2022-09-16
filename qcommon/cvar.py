@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,13 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-// cvar.c -- dynamic variable tracking
+cvar.c -- dynamic variable tracking
 
 #include "qcommon.h"
+"""
+from qcommon import cmd
 
-cvar_t	*cvar_vars;
+cvar_vars = []
 
+"""
 /*
 ============
 Cvar_InfoValidate
@@ -39,55 +41,46 @@ static qboolean Cvar_InfoValidate (char *s)
 	return true;
 }
 
-/*
+"""
+
+"""
 ============
 Cvar_FindVar
 ============
-*/
-static cvar_t *Cvar_FindVar (char *var_name)
-{
-	cvar_t	*var;
-	
-	for (var=cvar_vars ; var ; var=var->next)
-		if (!strcmp (var_name, var->name))
+"""
+def Cvar_FindVar (var_name): #char *
+
+	for var in cvar_vars:
+		if var_name == var.name:
 			return var;
 
-	return NULL;
-}
+	return None;
 
-/*
+"""
 ============
 Cvar_VariableValue
 ============
-*/
-float Cvar_VariableValue (char *var_name)
-{
-	cvar_t	*var;
-	
-	var = Cvar_FindVar (var_name);
-	if (!var)
-		return 0;
-	return atof (var->string);
-}
+"""
+def Cvar_VariableValue (var_name): #char *
 
+	var = Cvar_FindVar (var_name)
+	if var is None:
+		return 0.0
+	return float (var.string)
 
-/*
+"""
 ============
 Cvar_VariableString
 ============
-*/
-char *Cvar_VariableString (char *var_name)
-{
-	cvar_t *var;
-	
-	var = Cvar_FindVar (var_name);
-	if (!var)
-		return "";
-	return var->string;
-}
+"""
+def Cvar_VariableString (var_name): #char *
 
+	var = Cvar_FindVar (var_name)
+	if var is None:
+		return ""
+	return var.string
 
-/*
+"""
 ============
 Cvar_CompleteVariable
 ============
@@ -381,15 +374,17 @@ qboolean Cvar_Command (void)
 }
 
 
-/*
+"""
+"""
 ============
 Cvar_Set_f
 
 Allows setting and defining of arbitrary cvars from console
 ============
-*/
-void Cvar_Set_f (void)
-{
+"""
+def Cvar_Set_f ():
+	pass
+"""
 	int		c;
 	int		flags;
 
@@ -415,9 +410,9 @@ void Cvar_Set_f (void)
 	}
 	else
 		Cvar_Set (Cmd_Argv(1), Cmd_Argv(2));
-}
+"""
 
-
+"""
 /*
 ============
 Cvar_WriteVariables
@@ -444,14 +439,17 @@ void Cvar_WriteVariables (char *path)
 	fclose (f);
 }
 
-/*
+"""
+"""
 ============
 Cvar_List_f
 
 ============
-*/
-void Cvar_List_f (void)
-{
+"""
+
+def Cvar_List_f ():
+	pass
+"""
 	cvar_t	*var;
 	int		i;
 
@@ -479,8 +477,9 @@ void Cvar_List_f (void)
 		Com_Printf (" %s \"%s\"\n", var->name, var->string);
 	}
 	Com_Printf ("%i cvars\n", i);
-}
+"""
 
+"""
 
 qboolean userinfo_modified;
 
@@ -512,16 +511,17 @@ char	*Cvar_Serverinfo (void)
 	return Cvar_BitInfo (CVAR_SERVERINFO);
 }
 
-/*
+"""
+"""
 ============
 Cvar_Init
 
 Reads in all archived cvars
 ============
-*/
-void Cvar_Init (void)
-{
-	Cmd_AddCommand ("set", Cvar_Set_f);
-	Cmd_AddCommand ("cvarlist", Cvar_List_f);
+"""
+def Cvar_Init():
 
-}
+	cmd.Cmd_AddCommand ("set", Cvar_Set_f)
+	cmd.Cmd_AddCommand ("cvarlist", Cvar_List_f)
+
+

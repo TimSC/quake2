@@ -17,6 +17,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from qcommon import cvar, cmd
+from linux import sys_linux
+import pygame
+
+screen = None
+
 """
 // common.c -- misc functions used in client and server
 #include "qcommon.h"
@@ -91,16 +97,16 @@ void Com_EndRedirect (void)
 	rd_flush = NULL;
 }
 
-/*
 =============
 Com_Printf
 
 Both client and server can use this, and it will output
 to the apropriate place.
 =============
-*/
-void Com_Printf (char *fmt, ...)
-{
+"""
+def Com_Printf (fmt): #char *
+
+	"""
 	va_list		argptr;
 	char		msg[MAXPRINTMSG];
 
@@ -118,9 +124,11 @@ void Com_Printf (char *fmt, ...)
 		strcat (rd_buffer, msg);
 		return;
 	}
+"""
+	msg = fmt
 
-	Con_Print (msg);
-		
+	print (msg);
+	"""		
 	// also echo to debugging console
 	Sys_ConsoleOutput (msg);
 
@@ -142,8 +150,6 @@ void Com_Printf (char *fmt, ...)
 		if (logfile_active->value > 1)
 			fflush (logfile);		// force it to save every time
 	}
-}
-
 
 /*
 ================
@@ -404,7 +410,7 @@ void MSG_WriteDeltaUsercmd (sizebuf_t *buf, usercmd_t *from, usercmd_t *cmd)
 	if (cmd->impulse != from->impulse)
 		bits |= CM_IMPULSE;
 
-    MSG_WriteByte (buf, bits);
+	MSG_WriteByte (buf, bits);
 
 	if (bits & CM_ANGLE1)
 		MSG_WriteShort (buf, cmd->angles[0]);
@@ -423,9 +429,9 @@ void MSG_WriteDeltaUsercmd (sizebuf_t *buf, usercmd_t *from, usercmd_t *cmd)
  	if (bits & CM_BUTTONS)
 	  	MSG_WriteByte (buf, cmd->buttons);
  	if (bits & CM_IMPULSE)
-	    MSG_WriteByte (buf, cmd->impulse);
+		MSG_WriteByte (buf, cmd->impulse);
 
-    MSG_WriteByte (buf, cmd->msec);
+	MSG_WriteByte (buf, cmd->msec);
 	MSG_WriteByte (buf, cmd->lightlevel);
 }
 
@@ -1402,25 +1408,29 @@ Qcommon_Init
 
 def Qcommon_Init (): #int argc, char **argv
 
+	pygame.init()
+	global screen
+	screen = pygame.display.set_mode((1000,600), 0, 32)
+
 	#char	*s;
 
 	#if (setjmp (abortframe) )
 	#	Sys_Error ("Error during initialization");
 
-	#z_chain.next = z_chain.prev = &z_chain;
+	#z_chain.next = z_chain.prev = &z_chain
 
 	# prepare enough of the subsystems to handle
 	# cvar and command buffer management
 	#COM_InitArgv () #argc, argv
-"""
-	Swap_Init ();
-	Cbuf_Init ();
 
-	Cmd_Init ();
-	Cvar_Init ();
+	#Swap_Init ()
+	cmd.Cbuf_Init ()
 
-	Key_Init ();
+	cmd.Cmd_Init ()
+	cvar.Cvar_Init()
 
+	#Key_Init ()
+	"""
 	# we need to add the early commands twice, because
 	# a basedir or cddir needs to be set before execing
 	# config files, but we want other parms to override
@@ -1439,8 +1449,8 @@ def Qcommon_Init (): #int argc, char **argv
 	#
 	# init commands and vars
 	#
-    Cmd_AddCommand ("z_stats", Z_Stats_f);
-    Cmd_AddCommand ("error", Com_Error_f);
+	Cmd_AddCommand ("z_stats", Z_Stats_f);
+	Cmd_AddCommand ("error", Com_Error_f);
 
 	host_speeds = Cvar_Get ("host_speeds", "0", 0);
 	log_stats = Cvar_Get ("log_stats", "0", 0);
@@ -1484,19 +1494,26 @@ def Qcommon_Init (): #int argc, char **argv
 		# so drop the loading plaque
 		SCR_EndLoadingPlaque ();
 	}
-
-	Com_Printf ("====== Quake2 Initialized ======\n\n");	
 """
+	Com_Printf ("====== Quake2 Initialized ======\n\n")
+
 
 """
-
-/*
 =================
 Qcommon_Frame
 =================
-*/
-void Qcommon_Frame (int msec)
-{
+"""
+def Qcommon_Frame (msec): #int
+	
+	for event in pygame.event.get():
+		if event.type == pygame.QUIT:
+			pygame.quit()
+			exit(0)
+
+		if event.type == pygame.KEYDOWN:
+			sys_linux.Key_Event (event)
+
+	"""
 	char	*s;
 	int		time_before, time_between, time_after;
 
@@ -1546,15 +1563,17 @@ void Qcommon_Frame (int msec)
 		c_brush_traces = 0;
 		c_pointcontents = 0;
 	}
-
-	do
-	{
-		s = Sys_ConsoleInput ();
-		if (s)
-			Cbuf_AddText (va("%s\n",s));
-	} while (s);
-	Cbuf_Execute ();
-
+"""
+	firstLoop = True
+	s = None
+	while firstLoop or s is not None:
+		firstLoop = False
+		s = sys_linux.Sys_ConsoleInput ()
+		if s is not None:
+			cmd.Cbuf_AddText ("{}\n".format(s))
+	
+	cmd.Cbuf_Execute ()
+	"""
 	if (host_speeds->value)
 		time_before = Sys_Milliseconds ();
 
@@ -1583,8 +1602,10 @@ void Qcommon_Frame (int msec)
 		Com_Printf ("all:%3i sv:%3i gm:%3i cl:%3i rf:%3i\n",
 			all, sv, gm, cl, rf);
 	}	
-}
+"""
 
+
+"""
 /*
 =================
 Qcommon_Shutdown

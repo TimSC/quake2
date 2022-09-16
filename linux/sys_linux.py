@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import time
+import pygame
 from qcommon import common
 """
 #include <unistd.h>
@@ -158,9 +159,35 @@ void floating_point_exception_handler(int whatever)
 //	Sys_Warn("floating point exception\n");
 	signal(SIGFPE, floating_point_exception_handler);
 }
+"""
+keyBuffer = []
+cmdsReady = []
 
-char *Sys_ConsoleInput(void)
-{
+def Key_Event(event):
+
+	global keyBuffer, cmdsReady
+	"""
+	if (!dedicated || !dedicated->value)
+		return;
+
+	if (!stdin_active)
+		return;
+"""
+
+	if event.key == pygame.K_RETURN:
+		cmdsReady.append("".join(keyBuffer))
+		keyBuffer = []
+	else:
+		keyBuffer.append(pygame.key.name(event.key))
+
+def Sys_ConsoleInput():
+
+	if len(cmdsReady) > 0:
+		return cmdsReady.pop(0)
+
+	return None
+
+	"""
     static char text[256];
     int     len;
 	fd_set	fdset;
@@ -190,7 +217,9 @@ char *Sys_ConsoleInput(void)
 	text[len-1] = 0;    // rip off the /n and terminate
 
 	return text;
-}
+"""
+
+"""
 
 /*****************************************************************************/
 
@@ -324,7 +353,7 @@ def main (): #int argc, char **argv
 			if elapse_time < 1.0:
 				time.sleep((1.0 - elapse_time) / 1000.0)
 
-		#Qcommon_Frame (elapse_time)
+		common.Qcommon_Frame (elapse_time)
 		oldtime = newtime
 
 """
