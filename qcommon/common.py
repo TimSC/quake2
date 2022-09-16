@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // common.c -- misc functions used in client and server
 #include "qcommon.h"
 #include <setjmp.h>
@@ -1393,24 +1394,25 @@ void Com_Error_f (void)
 }
 
 
-/*
+
 =================
 Qcommon_Init
 =================
-*/
-void Qcommon_Init (int argc, char **argv)
-{
-	char	*s;
+"""
 
-	if (setjmp (abortframe) )
-		Sys_Error ("Error during initialization");
+def Qcommon_Init (): #int argc, char **argv
 
-	z_chain.next = z_chain.prev = &z_chain;
+	#char	*s;
 
-	// prepare enough of the subsystems to handle
-	// cvar and command buffer management
-	COM_InitArgv (argc, argv);
+	#if (setjmp (abortframe) )
+	#	Sys_Error ("Error during initialization");
 
+	#z_chain.next = z_chain.prev = &z_chain;
+
+	# prepare enough of the subsystems to handle
+	# cvar and command buffer management
+	#COM_InitArgv () #argc, argv
+"""
 	Swap_Init ();
 	Cbuf_Init ();
 
@@ -1419,10 +1421,10 @@ void Qcommon_Init (int argc, char **argv)
 
 	Key_Init ();
 
-	// we need to add the early commands twice, because
-	// a basedir or cddir needs to be set before execing
-	// config files, but we want other parms to override
-	// the settings of the config files
+	# we need to add the early commands twice, because
+	# a basedir or cddir needs to be set before execing
+	# config files, but we want other parms to override
+	# the settings of the config files
 	Cbuf_AddEarlyCommands (false);
 	Cbuf_Execute ();
 
@@ -1434,9 +1436,9 @@ void Qcommon_Init (int argc, char **argv)
 	Cbuf_AddEarlyCommands (true);
 	Cbuf_Execute ();
 
-	//
-	// init commands and vars
-	//
+	#
+	# init commands and vars
+	#
     Cmd_AddCommand ("z_stats", Z_Stats_f);
     Cmd_AddCommand ("error", Com_Error_f);
 
@@ -1447,11 +1449,11 @@ void Qcommon_Init (int argc, char **argv)
 	fixedtime = Cvar_Get ("fixedtime", "0", 0);
 	logfile_active = Cvar_Get ("logfile", "0", 0);
 	showtrace = Cvar_Get ("showtrace", "0", 0);
-#ifdef DEDICATED_ONLY
+##ifdef DEDICATED_ONLY
 	dedicated = Cvar_Get ("dedicated", "1", CVAR_NOSET);
-#else
+##else
 	dedicated = Cvar_Get ("dedicated", "0", CVAR_NOSET);
-#endif
+##endif
 
 	s = va("%4.2f %s %s %s", VERSION, CPUSTRING, __DATE__, BUILDSTRING);
 	Cvar_Get ("version", s, CVAR_SERVERINFO|CVAR_NOSET);
@@ -1468,9 +1470,9 @@ void Qcommon_Init (int argc, char **argv)
 	SV_Init ();
 	CL_Init ();
 
-	// add + commands from command line
+	# add + commands from command line
 	if (!Cbuf_AddLateCommands ())
-	{	// if the user didn't give any commands, run default action
+	{	# if the user didn't give any commands, run default action
 		if (!dedicated->value)
 			Cbuf_AddText ("d1\n");
 		else
@@ -1478,13 +1480,15 @@ void Qcommon_Init (int argc, char **argv)
 		Cbuf_Execute ();
 	}
 	else
-	{	// the user asked for something explicit
-		// so drop the loading plaque
+	{	# the user asked for something explicit
+		# so drop the loading plaque
 		SCR_EndLoadingPlaque ();
 	}
 
 	Com_Printf ("====== Quake2 Initialized ======\n\n");	
-}
+"""
+
+"""
 
 /*
 =================
@@ -1589,3 +1593,4 @@ Qcommon_Shutdown
 void Qcommon_Shutdown (void)
 {
 }
+"""

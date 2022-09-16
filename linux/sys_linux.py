@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+import time
+from qcommon import common
+"""
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -223,8 +226,10 @@ void *Sys_GetGameAPI (void *parms)
 	const char *gamename = "gamei386.so";
 #elif defined __alpha__
 	const char *gamename = "gameaxp.so";
+#elif defined __x86_64__
+	const char *gamename = "gamex64.so";
 #else
-#error Unknown arch
+#error "Unknown arch"
 #endif
 
 	setreuid(getuid(), getuid());
@@ -287,37 +292,42 @@ char *Sys_GetClipboardData(void)
 	return NULL;
 }
 
-int main (int argc, char **argv)
-{
-	int 	time, oldtime, newtime;
+"""
 
-	// go back to real user for config loads
-	saved_euid = geteuid();
-	seteuid(getuid());
+def main (): #int argc, char **argv
 
-	Qcommon_Init(argc, argv);
+	#int time, oldtime, newtime
 
-	fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY);
+	# go back to real user for config loads
+	#saved_euid = geteuid()
+	#seteuid(getuid())
 
-	nostdout = Cvar_Get("nostdout", "0", 0);
-	if (!nostdout->value) {
-		fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY);
-//		printf ("Linux Quake -- Version %0.3f\n", LINUX_VERSION);
-	}
+	common.Qcommon_Init() #argc, argv
 
-    oldtime = Sys_Milliseconds ();
-    while (1)
-    {
-// find time spent rendering last frame
-		do {
-			newtime = Sys_Milliseconds ();
-			time = newtime - oldtime;
-		} while (time < 1);
-        Qcommon_Frame (time);
-		oldtime = newtime;
-    }
+	#fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY)
 
-}
+	#nostdout = Cvar_Get("nostdout", "0", 0)
+	#if !nostdout->value:
+	#	fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY)
+	##	printf ("Linux Quake -- Version %0.3f\n", LINUX_VERSION)
+
+
+	oldtime = time.time() * 1000.0
+	while 1:
+
+		# find time spent rendering last frame
+		firstLoop = True
+		while firstLoop or elapse_time < 1.0:
+			newtime = time.time() * 1000.0
+			elapse_time = newtime - oldtime
+			firstLoop = False
+			if elapse_time < 1.0:
+				time.sleep((1.0 - elapse_time) / 1000.0)
+
+		#Qcommon_Frame (elapse_time)
+		oldtime = newtime
+
+"""
 
 void Sys_CopyProtect(void)
 {
@@ -396,3 +406,5 @@ void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length)
 }
 
 #endif
+
+"""
