@@ -168,18 +168,19 @@ unsigned short CRC_Block (byte *start, int count);
 
 
 
-/*
+"""
+"""
 ==============================================================
 
 PROTOCOL
 
 ==============================================================
-*/
+"""
 
-// protocol.h -- communications protocols
+# protocol.h -- communications protocols
 
-#define	PROTOCOL_VERSION	34
-
+PROTOCOL_VERSION	= 34
+"""
 //=========================================
 
 #define	PORT_MASTER	27900

@@ -21,6 +21,7 @@ import sys
 from qcommon import cvar, cmd, files, qcommon
 from linux import sys_linux
 from game import q_shared
+from server import sv_main
 import pygame
 
 screen = None
@@ -1484,13 +1485,12 @@ def Qcommon_Init (): #int argc, char **argv
 		cmd.Cmd_AddCommand ("quit", Com_Quit)
 
 	sys_linux.Sys_Init ()
-	"""
-	NET_Init ();
-	Netchan_Init ();
 
-	SV_Init ();
-	CL_Init ();
-	"""
+	#NET_Init ();
+	#Netchan_Init ();
+
+	sv_main.SV_Init ();
+	#CL_Init ();
 
 	# add + commands from command line
 	if not cmd.Cbuf_AddLateCommands ():

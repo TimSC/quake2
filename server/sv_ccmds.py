@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+from qcommon import cmd, common
+"""
 #include "server.h"
 
 /*
@@ -35,9 +36,11 @@ SV_SetMaster_f
 
 Specify a list of master servers
 ====================
-*/
-void SV_SetMaster_f (void)
-{
+"""
+def SV_SetMaster_f ():
+
+	pass
+	"""
 	int		i, slot;
 
 	// only dedicated servers send heartbeats
@@ -461,11 +464,11 @@ SV_DemoMap_f
 
 Puts the server in demo mode on a specific map/cinematic
 ==================
-*/
-void SV_DemoMap_f (void)
-{
+"""
+def SV_DemoMap_f ():
+	pass
+	"""
 	SV_Map (true, Cmd_Argv(1), false );
-}
 
 /*
 ==================
@@ -484,9 +487,11 @@ Example:
 Clears the archived maps, plays the inter.cin cinematic, then
 goes to map jail.bsp.
 ==================
-*/
-void SV_GameMap_f (void)
-{
+"""
+def SV_GameMap_f ():
+	pass
+	"""
+
 	char		*map;
 	int			i;
 	client_t	*cl;
@@ -553,9 +558,10 @@ SV_Map_f
 Goes directly to a given map without any savegame archiving.
 For development work
 ==================
-*/
-void SV_Map_f (void)
-{
+"""
+def SV_Map_f ():
+	pass
+	"""
 	char	*map;
 	char	expanded[MAX_QPATH];
 
@@ -574,7 +580,6 @@ void SV_Map_f (void)
 	sv.state = ss_dead;		// don't save current level when changing
 	SV_WipeSavegame("current");
 	SV_GameMap_f ();
-}
 
 /*
 =====================================================================
@@ -590,9 +595,10 @@ void SV_Map_f (void)
 SV_Loadgame_f
 
 ==============
-*/
-void SV_Loadgame_f (void)
-{
+"""
+def SV_Loadgame_f ():
+	pass
+	"""
 	char	name[MAX_OSPATH];
 	FILE	*f;
 	char	*dir;
@@ -628,18 +634,18 @@ void SV_Loadgame_f (void)
 	// go to the map
 	sv.state = ss_dead;		// don't save current level when changing
 	SV_Map (false, svs.mapcmd, true);
-}
 
 
 
-/*
 ==============
 SV_Savegame_f
 
 ==============
-*/
-void SV_Savegame_f (void)
-{
+"""
+def SV_Savegame_f ():
+
+	pass
+	"""
 	char	*dir;
 
 	if (sv.state != ss_game)
@@ -702,10 +708,12 @@ SV_Kick_f
 
 Kick a user off of the server
 ==================
-*/
-void SV_Kick_f (void)
-{
-	if (!svs.initialized)
+"""
+def SV_Kick_f ():
+
+	pass
+
+	""" if (!svs.initialized)
 	{
 		Com_Printf ("No server running.\n");
 		return;
@@ -726,17 +734,15 @@ void SV_Kick_f (void)
 	SV_ClientPrintf (sv_client, PRINT_HIGH, "You were kicked from the game\n");
 	SV_DropClient (sv_client);
 	sv_client->lastmessage = svs.realtime;	// min case there is a funny zombie
-}
 
-
-/*
 ================
 SV_Status_f
 ================
-*/
-void SV_Status_f (void)
-{
-	int			i, j, l;
+"""
+def SV_Status_f ():
+
+	pass
+	"""int			i, j, l;
 	client_t	*cl;
 	char		*s;
 	int			ping;
@@ -790,9 +796,11 @@ void SV_Status_f (void)
 ==================
 SV_ConSay_f
 ==================
-*/
-void SV_ConSay_f(void)
-{
+"""
+def SV_ConSay_f():
+
+	pass
+	"""
 	client_t *client;
 	int		j;
 	char	*p;
@@ -825,36 +833,36 @@ void SV_ConSay_f(void)
 ==================
 SV_Heartbeat_f
 ==================
-*/
-void SV_Heartbeat_f (void)
-{
-	svs.last_heartbeat = -9999999;
-}
+"""
+def SV_Heartbeat_f ():
 
+	pass
+	#svs.last_heartbeat = -9999999
 
-/*
+"""
 ===========
 SV_Serverinfo_f
 
   Examine or change the serverinfo string
 ===========
-*/
-void SV_Serverinfo_f (void)
-{
-	Com_Printf ("Server info settings:\n");
-	Info_Print (Cvar_Serverinfo());
-}
+"""
+def SV_Serverinfo_f ():
 
+	common.Com_Printf ("Server info settings:\n");
+	#Info_Print (Cvar_Serverinfo());
 
+"""
 /*
 ===========
 SV_DumpUser_f
 
 Examine all a users info strings
 ===========
-*/
-void SV_DumpUser_f (void)
-{
+"""
+def SV_DumpUser_f ():
+
+	pass
+	"""
 	if (Cmd_Argc() != 2)
 	{
 		Com_Printf ("Usage: info <userid>\n");
@@ -868,9 +876,6 @@ void SV_DumpUser_f (void)
 	Com_Printf ("--------\n");
 	Info_Print (sv_client->userinfo);
 
-}
-
-
 /*
 ==============
 SV_ServerRecord_f
@@ -878,9 +883,10 @@ SV_ServerRecord_f
 Begins server demo recording.  Every entity and every message will be
 recorded, but no playerinfo will be stored.  Primarily for demo merging.
 ==============
-*/
-void SV_ServerRecord_f (void)
-{
+"""
+def SV_ServerRecord_f ():
+
+	"""
 	char	name[MAX_OSPATH];
 	char	buf_data[32768];
 	sizebuf_t	buf;
@@ -957,7 +963,6 @@ void SV_ServerRecord_f (void)
 	fwrite (buf.data, buf.cursize, 1, svs.demofile);
 
 	// the rest of the demo file will be individual frames
-}
 
 
 /*
@@ -966,9 +971,11 @@ SV_ServerStop_f
 
 Ends server demo recording
 ==============
-*/
-void SV_ServerStop_f (void)
-{
+"""
+def SV_ServerStop_f ():
+
+	pass
+	"""
 	if (!svs.demofile)
 	{
 		Com_Printf ("Not doing a serverrecord.\n");
@@ -977,7 +984,6 @@ void SV_ServerStop_f (void)
 	fclose (svs.demofile);
 	svs.demofile = NULL;
 	Com_Printf ("Recording completed.\n");
-}
 
 
 /*
@@ -987,14 +993,15 @@ SV_KillServer_f
 Kick everyone off, possibly in preparation for a new game
 
 ===============
-*/
-void SV_KillServer_f (void)
-{
+"""
+def SV_KillServer_f ():
+
+	pass
+	"""
 	if (!svs.initialized)
 		return;
 	SV_Shutdown ("Server was killed.\n", false);
 	NET_Config ( false );	// close network sockets
-}
 
 /*
 ===============
@@ -1002,9 +1009,11 @@ SV_ServerCommand_f
 
 Let the game dll handle a command
 ===============
-*/
-void SV_ServerCommand_f (void)
-{
+"""
+def SV_ServerCommand_f ():
+
+	pass
+	"""
 	if (!ge)
 	{
 		Com_Printf ("No game loaded.\n");
@@ -1012,7 +1021,6 @@ void SV_ServerCommand_f (void)
 	}
 
 	ge->ServerCommand();
-}
 
 //===========================================================
 
@@ -1020,31 +1028,30 @@ void SV_ServerCommand_f (void)
 ==================
 SV_InitOperatorCommands
 ==================
-*/
-void SV_InitOperatorCommands (void)
-{
-	Cmd_AddCommand ("heartbeat", SV_Heartbeat_f);
-	Cmd_AddCommand ("kick", SV_Kick_f);
-	Cmd_AddCommand ("status", SV_Status_f);
-	Cmd_AddCommand ("serverinfo", SV_Serverinfo_f);
-	Cmd_AddCommand ("dumpuser", SV_DumpUser_f);
+"""
+def SV_InitOperatorCommands ():
 
-	Cmd_AddCommand ("map", SV_Map_f);
-	Cmd_AddCommand ("demomap", SV_DemoMap_f);
-	Cmd_AddCommand ("gamemap", SV_GameMap_f);
-	Cmd_AddCommand ("setmaster", SV_SetMaster_f);
+	cmd.Cmd_AddCommand ("heartbeat", SV_Heartbeat_f)
+	cmd.Cmd_AddCommand ("kick", SV_Kick_f)
+	cmd.Cmd_AddCommand ("status", SV_Status_f)
+	cmd.Cmd_AddCommand ("serverinfo", SV_Serverinfo_f)
+	cmd.Cmd_AddCommand ("dumpuser", SV_DumpUser_f)
 
-	if ( dedicated->value )
-		Cmd_AddCommand ("say", SV_ConSay_f);
+	cmd.Cmd_AddCommand ("map", SV_Map_f)
+	cmd.Cmd_AddCommand ("demomap", SV_DemoMap_f)
+	cmd.Cmd_AddCommand ("gamemap", SV_GameMap_f)
+	cmd.Cmd_AddCommand ("setmaster", SV_SetMaster_f)
 
-	Cmd_AddCommand ("serverrecord", SV_ServerRecord_f);
-	Cmd_AddCommand ("serverstop", SV_ServerStop_f);
+	if common.dedicated.value:
+		cmd.Cmd_AddCommand ("say", SV_ConSay_f)
 
-	Cmd_AddCommand ("save", SV_Savegame_f);
-	Cmd_AddCommand ("load", SV_Loadgame_f);
+	cmd.Cmd_AddCommand ("serverrecord", SV_ServerRecord_f)
+	cmd.Cmd_AddCommand ("serverstop", SV_ServerStop_f)
 
-	Cmd_AddCommand ("killserver", SV_KillServer_f);
+	cmd.Cmd_AddCommand ("save", SV_Savegame_f)
+	cmd.Cmd_AddCommand ("load", SV_Loadgame_f)
 
-	Cmd_AddCommand ("sv", SV_ServerCommand_f);
-}
+	cmd.Cmd_AddCommand ("killserver", SV_KillServer_f)
+
+	cmd.Cmd_AddCommand ("sv", SV_ServerCommand_f)
 

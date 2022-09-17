@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,44 +16,47 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+from server import sv_ccmds
+from qcommon import cvar, qcommon
+from game import q_shared
+"""
 #include "server.h"
 
 netadr_t	master_adr[MAX_MASTERS];	// address of group servers
 
 client_t	*sv_client;			// current client
+"""
+sv_paused = None # cvar_t	*
+sv_timedemo = None # cvar_t	*
 
-cvar_t	*sv_paused;
-cvar_t	*sv_timedemo;
+sv_enforcetime = None # cvar_t	*
 
-cvar_t	*sv_enforcetime;
+timeout = None # cvar_t	*, seconds without any message
+zombietime = None # cvar_t	*, seconds to sink messages after disconnect
 
-cvar_t	*timeout;				// seconds without any message
-cvar_t	*zombietime;			// seconds to sink messages after disconnect
+rcon_password = None #cvar_t	*, password for remote server commands
 
-cvar_t	*rcon_password;			// password for remote server commands
+allow_download = None # cvar_t	*;
+allow_download_players = None # cvar_t *;
+allow_download_models = None # cvar_t *;
+allow_download_sounds = None # cvar_t *;
+allow_download_maps = None # cvar_t *;
 
-cvar_t	*allow_download;
-cvar_t *allow_download_players;
-cvar_t *allow_download_models;
-cvar_t *allow_download_sounds;
-cvar_t *allow_download_maps;
+sv_airaccelerate = None # cvar_t *;
 
-cvar_t *sv_airaccelerate;
+sv_noreload = None # cvar_t	*, don't reload level state when reentering
 
-cvar_t	*sv_noreload;			// don't reload level state when reentering
+maxclients = None #cvar_t	*, FIXME: rename sv_maxclients
 
-cvar_t	*maxclients;			// FIXME: rename sv_maxclients
-cvar_t	*sv_showclamp;
+sv_showclamp = None # cvar_t	*
 
-cvar_t	*hostname;
-cvar_t	*public_server;			// should heartbeats be sent
+hostname = None # cvar_t	*
+public_server = None # cvar_t	*, should heartbeats be sent
 
-cvar_t	*sv_reconnect_limit;	// minimum seconds between connect messages
-
+sv_reconnect_limit = None # cvar_t	* minimum seconds between connect messages
+"""
 void Master_Shutdown (void);
-
 
 //============================================================================
 
@@ -944,46 +947,50 @@ SV_Init
 
 Only called at quake2.exe startup, not for each game
 ===============
-*/
-void SV_Init (void)
-{
-	SV_InitOperatorCommands	();
+"""
+def SV_Init ():
 
-	rcon_password = Cvar_Get ("rcon_password", "", 0);
-	Cvar_Get ("skill", "1", 0);
-	Cvar_Get ("deathmatch", "0", CVAR_LATCH);
-	Cvar_Get ("coop", "0", CVAR_LATCH);
-	Cvar_Get ("dmflags", va("%i", DF_INSTANT_ITEMS), CVAR_SERVERINFO);
-	Cvar_Get ("fraglimit", "0", CVAR_SERVERINFO);
-	Cvar_Get ("timelimit", "0", CVAR_SERVERINFO);
-	Cvar_Get ("cheats", "0", CVAR_SERVERINFO|CVAR_LATCH);
-	Cvar_Get ("protocol", va("%i", PROTOCOL_VERSION), CVAR_SERVERINFO|CVAR_NOSET);;
-	maxclients = Cvar_Get ("maxclients", "1", CVAR_SERVERINFO | CVAR_LATCH);
-	hostname = Cvar_Get ("hostname", "noname", CVAR_SERVERINFO | CVAR_ARCHIVE);
-	timeout = Cvar_Get ("timeout", "125", 0);
-	zombietime = Cvar_Get ("zombietime", "2", 0);
-	sv_showclamp = Cvar_Get ("showclamp", "0", 0);
-	sv_paused = Cvar_Get ("paused", "0", 0);
-	sv_timedemo = Cvar_Get ("timedemo", "0", 0);
-	sv_enforcetime = Cvar_Get ("sv_enforcetime", "0", 0);
-	allow_download = Cvar_Get ("allow_download", "1", CVAR_ARCHIVE);
-	allow_download_players  = Cvar_Get ("allow_download_players", "0", CVAR_ARCHIVE);
-	allow_download_models = Cvar_Get ("allow_download_models", "1", CVAR_ARCHIVE);
-	allow_download_sounds = Cvar_Get ("allow_download_sounds", "1", CVAR_ARCHIVE);
-	allow_download_maps	  = Cvar_Get ("allow_download_maps", "1", CVAR_ARCHIVE);
+	global rcon_password, maxclients, hostname, timeout, zombietime
+	global sv_showclamp, sv_paused, sv_timedemo, sv_enforcetime
+	global allow_download, allow_download_players, allow_download_models, allow_download_sounds, allow_download_maps
+	global sv_noreload, sv_airaccelerate, public_server, sv_reconnect_limit
 
-	sv_noreload = Cvar_Get ("sv_noreload", "0", 0);
+	sv_ccmds.SV_InitOperatorCommands()
+	
+	rcon_password = cvar.Cvar_Get ("rcon_password", "", 0)
+	cvar.Cvar_Get ("skill", "1", 0)
+	cvar.Cvar_Get ("deathmatch", "0", q_shared.CVAR_LATCH)
+	cvar.Cvar_Get ("coop", "0", q_shared.CVAR_LATCH)
+	cvar.Cvar_Get ("dmflags", "".format(q_shared.DF_INSTANT_ITEMS), q_shared.CVAR_SERVERINFO)
+	cvar.Cvar_Get ("fraglimit", "0", q_shared.CVAR_SERVERINFO)
+	cvar.Cvar_Get ("timelimit", "0", q_shared.CVAR_SERVERINFO)
+	cvar.Cvar_Get ("cheats", "0", q_shared.CVAR_SERVERINFO|q_shared.CVAR_LATCH)
+	cvar.Cvar_Get ("protocol", "{}".format(qcommon.PROTOCOL_VERSION), q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET)
+	maxclients = cvar.Cvar_Get ("maxclients", "1", q_shared.CVAR_SERVERINFO | q_shared.CVAR_LATCH)
+	hostname = cvar.Cvar_Get ("hostname", "noname", q_shared.CVAR_SERVERINFO | q_shared.CVAR_ARCHIVE)
+	timeout = cvar.Cvar_Get ("timeout", "125", 0)
+	zombietime = cvar.Cvar_Get ("zombietime", "2", 0)
+	sv_showclamp = cvar.Cvar_Get ("showclamp", "0", 0)
+	sv_paused = cvar.Cvar_Get ("paused", "0", 0)
+	sv_timedemo = cvar.Cvar_Get ("timedemo", "0", 0)
+	sv_enforcetime = cvar.Cvar_Get ("sv_enforcetime", "0", 0)
+	allow_download = cvar.Cvar_Get ("allow_download", "1", q_shared.CVAR_ARCHIVE)
+	allow_download_players  = cvar.Cvar_Get ("allow_download_players", "0", q_shared.CVAR_ARCHIVE)
+	allow_download_models = cvar.Cvar_Get ("allow_download_models", "1", q_shared.CVAR_ARCHIVE)
+	allow_download_sounds = cvar.Cvar_Get ("allow_download_sounds", "1", q_shared.CVAR_ARCHIVE)
+	allow_download_maps	  = cvar.Cvar_Get ("allow_download_maps", "1", q_shared.CVAR_ARCHIVE)
 
-	sv_airaccelerate = Cvar_Get("sv_airaccelerate", "0", CVAR_LATCH);
+	sv_noreload = cvar.Cvar_Get ("sv_noreload", "0", 0)
 
-	public_server = Cvar_Get ("public", "0", 0);
+	sv_airaccelerate = cvar.Cvar_Get("sv_airaccelerate", "0", q_shared.CVAR_LATCH)
 
-	sv_reconnect_limit = Cvar_Get ("sv_reconnect_limit", "3", CVAR_ARCHIVE);
+	public_server = cvar.Cvar_Get ("public", "0", 0)
 
-	SZ_Init (&net_message, net_message_buffer, sizeof(net_message_buffer));
-}
+	sv_reconnect_limit = cvar.Cvar_Get ("sv_reconnect_limit", "3", q_shared.CVAR_ARCHIVE)
 
-/*
+	net_message = ""
+
+"""
 ==================
 SV_FinalMessage
 
@@ -1055,4 +1062,4 @@ void SV_Shutdown (char *finalmsg, qboolean reconnect)
 		fclose (svs.demofile);
 	memset (&svs, 0, sizeof(svs));
 }
-
+"""
