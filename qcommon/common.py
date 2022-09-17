@@ -22,6 +22,7 @@ from qcommon import cvar, cmd, files, qcommon
 from linux import sys_linux
 from game import q_shared
 from server import sv_main
+from client import cl_main, cl_scrn
 import pygame
 
 screen = None
@@ -1490,7 +1491,7 @@ def Qcommon_Init (): #int argc, char **argv
 	#Netchan_Init ();
 
 	sv_main.SV_Init ();
-	#CL_Init ();
+	cl_main.CL_Init ();
 
 	# add + commands from command line
 	if not cmd.Cbuf_AddLateCommands ():
@@ -1504,9 +1505,7 @@ def Qcommon_Init (): #int argc, char **argv
 	else:
 		# the user asked for something explicit
 		# so drop the loading plaque
-		#SCR_EndLoadingPlaque ()
-		pass
-	
+		cl_scrn.SCR_EndLoadingPlaque ()
 
 	Com_Printf ("====== Quake2 Initialized ======\n\n")
 

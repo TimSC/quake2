@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+
+"""
 // snd_loc.h -- private sound functions
 
 // !!! if this is changed, the asm code must change !!!
@@ -59,18 +61,19 @@ typedef struct playsound_s
 	vec3_t		origin;
 	unsigned	begin;			// begin on this sample
 } playsound_t;
+"""
+class dma_t(object):
+	def __init__(self):
 
-typedef struct
-{
-	int			channels;
-	int			samples;				// mono samples in buffer
-	int			submission_chunk;		// don't mix less than this #
-	int			samplepos;				// in mono samples
-	int			samplebits;
-	int			speed;
-	byte		*buffer;
-} dma_t;
+		self.channels = None #int			
+		self.samples = None #int							 mono samples in buffer
+		self.submission_chunk = None #int					 don't mix less than this #
+		self.samplepos = None #int							 in mono samples
+		self.samplebits = None #int			
+		self.speed = None #int			
+		self.buffer = None #byte		*
 
+"""
 // !!! if this is changed, the asm code must change !!!
 typedef struct
 {
@@ -162,3 +165,4 @@ channel_t *S_PickChannel(int entnum, int entchannel);
 
 // spatializes a channel
 void S_Spatialize(channel_t *ch);
+"""

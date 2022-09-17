@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+
+"""
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -40,10 +42,11 @@ cvar_t *sndchannels;
 cvar_t *snddevice;
 
 static int tryrates[] = { 11025, 22051, 44100, 8000 };
+"""
+def SNDDMA_Init(): #(returns qboolean)
 
-qboolean SNDDMA_Init(void)
-{
-
+	return True
+	"""
 	int rc;
     int fmt;
 	int tmp;
@@ -232,7 +235,7 @@ qboolean SNDDMA_Init(void)
 	snd_inited = 1;
 	return 1;
 
-}
+
 
 int SNDDMA_GetDMAPos(void)
 {
@@ -282,4 +285,4 @@ void SNDDMA_Submit(void)
 void SNDDMA_BeginPainting (void)
 {
 }
-
+"""

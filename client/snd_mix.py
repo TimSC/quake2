@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+
+"""
 // snd_mix.c -- portable code to mix sounds for snd_dma.c
 
 #include "client.h"
@@ -346,9 +348,10 @@ void S_PaintChannels(int endtime)
 		paintedtime = end;
 	}
 }
-
-void S_InitScaletable (void)
-{
+"""
+def S_InitScaletable ():
+	pass
+	"""
 	int		i, j;
 	int		scale;
 
@@ -359,7 +362,7 @@ void S_InitScaletable (void)
 		for (j=0 ; j<256 ; j++)
 			snd_scaletable[i][j] = ((signed char)j) * scale;
 	}
-}
+
 
 
 #if !(defined __linux__ && defined __i386__)
@@ -496,4 +499,4 @@ void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count, int offset)
 
 	ch->pos += count;
 }
-
+"""

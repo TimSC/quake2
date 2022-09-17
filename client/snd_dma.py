@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import cmd, cvar, common
+from game import q_shared
+from linux import snd_linux
+from client import snd_mix, snd_loc
+"""
 // snd_dma.c -- main control for any streaming sound output device
 
 #include "client.h"
@@ -40,30 +45,31 @@ void S_StopAllSounds(void);
 int			s_registration_sequence;
 
 channel_t   channels[MAX_CHANNELS];
+"""
+snd_initialized = False #qboolean
+sound_started = 0 #int
 
-qboolean	snd_initialized = false;
-int			sound_started=0;
-
-dma_t		dma;
-
+dma = snd_loc.dma_t()
+"""
 vec3_t		listener_origin;
 vec3_t		listener_forward;
 vec3_t		listener_right;
 vec3_t		listener_up;
 
 qboolean	s_registering;
-
-int			soundtime;		// sample PAIRS
-int   		paintedtime; 	// sample PAIRS
-
+"""
+soundtime = None	# int, sample PAIRS
+paintedtime = None 	# int, sample PAIRS
+"""
 // during registration it is possible to have more sounds
 // than could actually be referenced during gameplay,
 // because we don't want to free anything until we are
 // sure we won't need it.
 #define		MAX_SFX		(MAX_SOUNDS*2)
 sfx_t		known_sfx[MAX_SFX];
-int			num_sfx;
-
+"""
+num_sfx = None #int			
+"""
 #define		MAX_PLAYSOUNDS	128
 playsound_t	s_playsounds[MAX_PLAYSOUNDS];
 playsound_t	s_freeplays;
@@ -71,14 +77,16 @@ playsound_t	s_pendingplays;
 
 int			s_beginofs;
 
-cvar_t		*s_volume;
-cvar_t		*s_testsound;
-cvar_t		*s_loadas8bit;
-cvar_t		*s_khz;
-cvar_t		*s_show;
-cvar_t		*s_mixahead;
-cvar_t		*s_primary;
+"""
+s_volume = None #cvar_t		*
+s_testsound = None #cvar_t		*
+s_loadas8bit = None #cvar_t		*
+s_khz = None #cvar_t		*
+s_show = None #cvar_t		*
+s_mixahead = None #cvar_t		*
+s_primary = None #cvar_t		*
 
+"""
 
 int		s_rawend;
 portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
@@ -88,9 +96,11 @@ portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
 // User-setable variables
 // ====================================================================
 
+"""
+def S_SoundInfo_f():
 
-void S_SoundInfo_f(void)
-{
+	pass
+	"""
 	if (!sound_started)
 	{
 		Com_Printf ("sound system not started\n");
@@ -104,59 +114,58 @@ void S_SoundInfo_f(void)
     Com_Printf("%5d submission_chunk\n", dma.submission_chunk);
     Com_Printf("%5d speed\n", dma.speed);
     Com_Printf("0x%x dma buffer\n", dma.buffer);
-}
-
-
 
 /*
 ================
 S_Init
 ================
-*/
-void S_Init (void)
-{
-	cvar_t	*cv;
+"""
+def S_Init ():
 
-	Com_Printf("\n------- sound initialization -------\n");
+	global s_volume, s_testsound, s_loadas8bit, s_khz, s_show, s_mixahead, s_primary
+	global sound_started, num_sfx, soundtime, paintedtime
 
-	cv = Cvar_Get ("s_initsound", "1", 0);
-	if (!cv->value)
-		Com_Printf ("not initializing.\n");
-	else
-	{
-		s_volume = Cvar_Get ("s_volume", "0.7", CVAR_ARCHIVE);
-		s_khz = Cvar_Get ("s_khz", "11", CVAR_ARCHIVE);
-		s_loadas8bit = Cvar_Get ("s_loadas8bit", "1", CVAR_ARCHIVE);
-		s_mixahead = Cvar_Get ("s_mixahead", "0.2", CVAR_ARCHIVE);
-		s_show = Cvar_Get ("s_show", "0", 0);
-		s_testsound = Cvar_Get ("s_testsound", "0", 0);
-		s_primary = Cvar_Get ("s_primary", "0", CVAR_ARCHIVE);	// win32 specific
+	#cvar_t	*cv;
 
-		Cmd_AddCommand("play", S_Play);
-		Cmd_AddCommand("stopsound", S_StopAllSounds);
-		Cmd_AddCommand("soundlist", S_SoundList);
-		Cmd_AddCommand("soundinfo", S_SoundInfo_f);
+	common.Com_Printf("\n------- sound initialization -------\n")
 
-		if (!SNDDMA_Init())
-			return;
+	cv = cvar.Cvar_Get ("s_initsound", "1", 0)
+	if not cv.value:
+		common.Com_Printf ("not initializing.\n")
+	else:
+	
+		s_volume = cvar.Cvar_Get ("s_volume", "0.7", q_shared.CVAR_ARCHIVE)
+		s_khz = cvar.Cvar_Get ("s_khz", "11", q_shared.CVAR_ARCHIVE)
+		s_loadas8bit = cvar.Cvar_Get ("s_loadas8bit", "1", q_shared.CVAR_ARCHIVE)
+		s_mixahead = cvar.Cvar_Get ("s_mixahead", "0.2", q_shared.CVAR_ARCHIVE)
+		s_show = cvar.Cvar_Get ("s_show", "0", 0)
+		s_testsound = cvar.Cvar_Get ("s_testsound", "0", 0)
+		s_primary = cvar.Cvar_Get ("s_primary", "0", q_shared.CVAR_ARCHIVE)	# win32 specific
 
-		S_InitScaletable ();
+		cmd.Cmd_AddCommand("play", S_Play)
+		cmd.Cmd_AddCommand("stopsound", S_StopAllSounds)
+		cmd.Cmd_AddCommand("soundlist", S_SoundList)
+		cmd.Cmd_AddCommand("soundinfo", S_SoundInfo_f)
+		
+		if not snd_linux.SNDDMA_Init():
+			return
 
-		sound_started = 1;
-		num_sfx = 0;
+		snd_mix.S_InitScaletable ()
 
-		soundtime = 0;
-		paintedtime = 0;
+		sound_started = 1
+		num_sfx = 0
 
-		Com_Printf ("sound sampling rate: %i\n", dma.speed);
+		soundtime = 0
+		paintedtime = 0
 
-		S_StopAllSounds ();
-	}
+		common.Com_Printf ("sound sampling rate: {}\n".format(dma.speed))
+		
+		S_StopAllSounds ()
+	
+	common.Com_Printf("------------------------------------\n")
 
-	Com_Printf("------------------------------------\n");
-}
 
-
+"""
 // =======================================================================
 // Shutdown sound engine
 // =======================================================================
@@ -781,9 +790,10 @@ void S_ClearBuffer (void)
 ==================
 S_StopAllSounds
 ==================
-*/
-void S_StopAllSounds(void)
-{
+"""
+def S_StopAllSounds():
+	pass
+	"""
 	int		i;
 
 	if (!sound_started)
@@ -1154,10 +1164,12 @@ void S_Update_(void)
 console functions
 
 ===============================================================================
-*/
+"""
 
-void S_Play(void)
-{
+def S_Play():
+
+	pass
+	"""
 	int 	i;
 	char name[256];
 	sfx_t	*sfx;
@@ -1176,10 +1188,12 @@ void S_Play(void)
 		S_StartSound(NULL, cl.playernum+1, 0, sfx, 1.0, 1.0, 0);
 		i++;
 	}
-}
 
-void S_SoundList(void)
-{
+"""
+
+def S_SoundList():
+	pass
+	"""
 	int		i;
 	sfx_t	*sfx;
 	sfxcache_t	*sc;
@@ -1211,4 +1225,4 @@ void S_SoundList(void)
 	}
 	Com_Printf ("Total resident: %i\n", total);
 }
-
+"""

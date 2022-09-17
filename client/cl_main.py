@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import cvar, common
+from game import q_shared
+from client import console, snd_dma
+
+"""
 // cl_main.c  -- client main loop
 
 #include "client.h"
@@ -1776,23 +1781,24 @@ void CL_Frame (int msec)
 ====================
 CL_Init
 ====================
-*/
-void CL_Init (void)
-{
-	if (dedicated->value)
-		return;		// nothing running on the client
+"""
+def CL_Init ():
 
-	// all archived variables will now be loaded
+	if common.dedicated.value:
+		return;		# nothing running on the client
 
-	Con_Init ();	
-#if defined __linux__ || defined __sgi
-	S_Init ();	
-	VID_Init ();
-#else
-	VID_Init ();
-	S_Init ();	// sound must be initialized after window is created
-#endif
-	
+	# all archived variables will now be loaded
+
+	console.Con_Init ();	
+
+	#if defined __linux__ || defined __sgi
+	snd_dma.S_Init ()
+	#VID_Init ()
+	#else
+	#VID_Init ();
+	#S_Init ();	// sound must be initialized after window is created
+	#endif
+"""	
 	V_Init ();
 	
 	net_message.data = net_message_buffer;
@@ -1807,14 +1813,13 @@ void CL_Init (void)
 	CL_InitLocal ();
 	IN_Init ();
 
-//	Cbuf_AddText ("exec autoexec.cfg\n");
+	## Cbuf_AddText ("exec autoexec.cfg\n");
 	FS_ExecAutoexec ();
 	Cbuf_Execute ();
+"""
 
-}
 
-
-/*
+"""
 ===============
 CL_Shutdown
 
@@ -1841,4 +1846,4 @@ void CL_Shutdown(void)
 	VID_Shutdown();
 }
 
-
+"""

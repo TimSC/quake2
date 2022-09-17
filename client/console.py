@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,15 +16,46 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import cmd, cvar, common
+"""
 // console.c
 
 #include "client.h"
 
-console_t	con;
+"""
 
-cvar_t		*con_notifytime;
+NUM_CON_TIMES = 4
 
+CON_TEXTSIZE = 32768
+
+class console_t(object):
+
+	def __init__(self):
+
+		initialized = False #qboolean
+
+		text = None #char	[CON_TEXTSIZE];
+		current = None #int, line where next message will be printed
+		x = None #int, offset in current line for next print
+		display = None #int, bottom of console displays this line
+
+		ormask = None #int, high bit mask for colored characters
+
+		linewidth = None #int, characters across screen
+		totallines = None #int, total lines in console scrollback
+
+		cursorspeed = None #float
+
+		vislines = None #int		
+
+		times = None #float	[NUM_CON_TIMES], cls.realtime time the line was generated
+									# for transparent notify lines
+
+con = console_t()
+
+con_notifytime = None #cvar_t		*
+"""
 
 #define		MAXCMDLINE	256
 extern	char	key_lines[32][MAXCMDLINE];
@@ -63,9 +94,11 @@ void Key_ClearTyping (void)
 ================
 Con_ToggleConsole_f
 ================
-*/
-void Con_ToggleConsole_f (void)
-{
+"""
+def Con_ToggleConsole_f ():
+
+	pass
+	"""
 	SCR_EndLoadingPlaque ();	// get rid of loading plaque
 
 	if (cl.attractloop)
@@ -103,9 +136,11 @@ void Con_ToggleConsole_f (void)
 ================
 Con_ToggleChat_f
 ================
-*/
-void Con_ToggleChat_f (void)
-{
+"""
+def Con_ToggleChat_f ():
+
+	pass
+	"""
 	Key_ClearTyping ();
 
 	if (cls.key_dest == key_console)
@@ -120,17 +155,18 @@ void Con_ToggleChat_f (void)
 		cls.key_dest = key_console;
 	
 	Con_ClearNotify ();
-}
 
 /*
 ================
 Con_Clear_f
 ================
-*/
-void Con_Clear_f (void)
-{
+"""
+def Con_Clear_f ():
+
+	pass
+	"""
 	memset (con.text, ' ', CON_TEXTSIZE);
-}
+
 
 						
 /*
@@ -139,9 +175,10 @@ Con_Dump_f
 
 Save the console contents out to a file
 ================
-*/
-void Con_Dump_f (void)
-{
+"""
+def Con_Dump_f ():
+	pass
+	"""
 	int		l, x;
 	char	*line;
 	FILE	*f;
@@ -217,23 +254,27 @@ void Con_ClearNotify (void)
 ================
 Con_MessageMode_f
 ================
-*/
-void Con_MessageMode_f (void)
-{
+"""
+def Con_MessageMode_f ():
+
+	pass
+	"""
 	chat_team = false;
 	cls.key_dest = key_message;
-}
+
 
 /*
 ================
 Con_MessageMode2_f
 ================
-*/
-void Con_MessageMode2_f (void)
-{
+"""
+def Con_MessageMode2_f ():
+
+	pass
+	"""
 	chat_team = true;
 	cls.key_dest = key_message;
-}
+
 
 /*
 ================
@@ -241,9 +282,10 @@ Con_CheckResize
 
 If the line width has changed, reformat the buffer.
 ================
-*/
-void Con_CheckResize (void)
-{
+"""
+def Con_CheckResize ():
+	pass
+	"""
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	char	tbuf[CON_TEXTSIZE];
 
@@ -300,31 +342,31 @@ void Con_CheckResize (void)
 ================
 Con_Init
 ================
-*/
-void Con_Init (void)
-{
-	con.linewidth = -1;
+"""
+def Con_Init ():
 
-	Con_CheckResize ();
+	global con_notifytime
+
+	con.linewidth = -1
+
+	Con_CheckResize ()
 	
-	Com_Printf ("Console initialized.\n");
+	common.Com_Printf ("Console initialized.\n")
 
-//
-// register our commands
-//
-	con_notifytime = Cvar_Get ("con_notifytime", "3", 0);
+	#
+	# register our commands
+	#
+	con_notifytime = cvar.Cvar_Get ("con_notifytime", "3", 0);
 
-	Cmd_AddCommand ("toggleconsole", Con_ToggleConsole_f);
-	Cmd_AddCommand ("togglechat", Con_ToggleChat_f);
-	Cmd_AddCommand ("messagemode", Con_MessageMode_f);
-	Cmd_AddCommand ("messagemode2", Con_MessageMode2_f);
-	Cmd_AddCommand ("clear", Con_Clear_f);
-	Cmd_AddCommand ("condump", Con_Dump_f);
-	con.initialized = true;
-}
+	cmd.Cmd_AddCommand ("toggleconsole", Con_ToggleConsole_f)
+	cmd.Cmd_AddCommand ("togglechat", Con_ToggleChat_f)
+	cmd.Cmd_AddCommand ("messagemode", Con_MessageMode_f)
+	cmd.Cmd_AddCommand ("messagemode2", Con_MessageMode2_f)
+	cmd.Cmd_AddCommand ("clear", Con_Clear_f)
+	cmd.Cmd_AddCommand ("condump", Con_Dump_f)
+	con.initialized = True
 
-
-/*
+"""
 ===============
 Con_Linefeed
 ===============
@@ -679,4 +721,4 @@ void Con_DrawConsole (float frac)
 	Con_DrawInput ();
 }
 
-
+"""
