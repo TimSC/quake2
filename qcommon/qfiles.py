@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+import struct
+"""
 
 //
 // qfiles.h: quake file formats
@@ -30,24 +32,38 @@ The .pak files are just a linear collapse of a directory tree
 
 ========================================================================
 */
+"""
+IDPAKHEADER		= (ord('K')<<24)+(ord('C')<<16)+(ord('A')<<8)+ord('P')
 
-#define IDPAKHEADER		(('K'<<24)+('C'<<16)+('A'<<8)+'P')
 
-typedef struct
-{
-	char	name[56];
-	int		filepos, filelen;
-} dpackfile_t;
+class dpackfile_t(object):
 
-typedef struct
-{
-	int		ident;		// == IDPAKHEADER
-	int		dirofs;
-	int		dirlen;
-} dpackheader_t;
+	def __init__(self):
+		self.name = None #char [56]
+		self.filepos, self.filelen = None, None # int
 
-#define	MAX_FILES_IN_PACK	4096
+	def read(self, fi):
+		self.name = fi.read(56).decode("ascii")
 
+		self.filepos, self.filelen = struct.unpack('<ll', fi.read(8))
+
+class dpackheader_t(object):
+	def __init__(self):
+
+		ident = None #int == IDPAKHEADER
+		dirofs = None #int
+		dirlen = None #int
+
+	def read(self, fi):
+
+		self.ident, self.dirofs, self.dirlen = struct.unpack('<lll', fi.read(12))
+
+		if self.ident != IDPAKHEADER:
+			common.Com_Error (ERR_FATAL, "{} is not a packfile".format(packfile))
+
+
+MAX_FILES_IN_PACK = 4096
+"""
 
 /*
 ========================================================================
@@ -480,3 +496,4 @@ typedef struct
 	int		numareaportals;
 	int		firstareaportal;
 } darea_t;
+"""

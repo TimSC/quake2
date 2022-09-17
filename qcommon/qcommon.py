@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,17 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+"""
 // qcommon.h -- definitions common between client and server, but not game.dll
 
 #include "../game/q_shared.h"
 
+"""
+VERSION		= 3.21
 
-#define	VERSION		3.21
+BASEDIRNAME	= "baseq2"
 
-#define	BASEDIRNAME	"baseq2"
-
+"""
 #ifdef WIN32
 
 #ifdef NDEBUG
@@ -822,5 +823,5 @@ void SV_Init (void);
 void SV_Shutdown (char *finalmsg, qboolean reconnect);
 void SV_Frame (int msec);
 
-
+"""
 

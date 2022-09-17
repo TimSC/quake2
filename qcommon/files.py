@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+import os
+from qcommon import cmd, common, qcommon, cvar, qfiles
+from game import q_shared
+"""
 #include "qcommon.h"
 
 // define this to dissalow any data but the demo pak file
@@ -50,18 +53,20 @@ typedef struct
 	int		filepos, filelen;
 } packfile_t;
 
-typedef struct pack_s
-{
-	char	filename[MAX_OSPATH];
-	FILE	*handle;
-	int		numfiles;
-	packfile_t	*files;
-} pack_t;
+"""
+class pack_t(object):
+	def __init__(self):
+		
+		filename = None #char	[MAX_OSPATH]
+		handle = None #FILE	*
+		numfiles = None #int		
+		files = None #packfile_t	*
 
-char	fs_gamedir[MAX_OSPATH];
-cvar_t	*fs_basedir;
-cvar_t	*fs_cddir;
-cvar_t	*fs_gamedirvar;
+fs_gamedir = None #char[MAX_OSPATH];
+fs_basedir = None #cvar_t	*;
+fs_cddir = None #cvar_t	*;
+fs_gamedirvar = None # None cvar_t	*;
+"""
 
 typedef struct filelink_s
 {
@@ -72,17 +77,17 @@ typedef struct filelink_s
 } filelink_t;
 
 filelink_t	*fs_links;
+"""
+class searchpath_t(object):
 
-typedef struct searchpath_s
-{
-	char	filename[MAX_OSPATH];
-	pack_t	*pack;		// only one of filename / pack will be used
-	struct searchpath_s *next;
-} searchpath_t;
+	def __init__(self):
 
-searchpath_t	*fs_searchpaths;
-searchpath_t	*fs_base_searchpaths;	// without gamedirs
+		self.filename = None #char	[MAX_OSPATH];
+		self.pack = None #pack_t	*;		# only one of filename / pack will be used
 
+fs_searchpaths = [] #searchpath_t	*;
+fs_searchpaths = [] #searchpath_t	*x;	# without gamedirs
+"""
 
 /*
 
@@ -200,20 +205,24 @@ returns filesize and an open FILE *
 Used for streaming data out of either a pak file or
 a seperate file.
 ===========
-*/
-int file_from_pak = 0;
+"""
+#int file_from_pak = 0;
 #ifndef NO_ADDONS
-int FS_FOpenFile (char *filename, FILE **file)
-{
+def FS_FOpenFile (filename): #char *
+
+	"""
 	searchpath_t	*search;
 	char			netpath[MAX_OSPATH];
 	pack_t			*pak;
 	int				i;
 	filelink_t		*link;
+	"""
 
-	file_from_pak = 0;
+	file_from_pak = 0
+	handle = None
 
-	// check for links first
+	"""
+	# check for links first
 	for (link = fs_links ; link ; link=link->next)
 	{
 		if (!strncmp (filename, link->from, link->fromlength))
@@ -228,53 +237,50 @@ int FS_FOpenFile (char *filename, FILE **file)
 			return -1;
 		}
 	}
+"""
 
-//
-// search through the path, one element at a time
-//
-	for (search = fs_searchpaths ; search ; search = search->next)
-	{
-	// is the element a pak file?
-		if (search->pack)
-		{
-		// look through all the pak file elements
-			pak = search->pack;
-			for (i=0 ; i<pak->numfiles ; i++)
-				if (!Q_strcasecmp (pak->files[i].name, filename))
-				{	// found it!
-					file_from_pak = 1;
-					Com_DPrintf ("PackFile: %s : %s\n",pak->filename, filename);
-				// open a new file on the pakfile
-					*file = fopen (pak->filename, "rb");
-					if (!*file)
-						Com_Error (ERR_FATAL, "Couldn't reopen %s", pak->filename);	
-					fseek (*file, pak->files[i].filepos, SEEK_SET);
-					return pak->files[i].filelen;
-				}
-		}
-		else
-		{		
-	// check a file in the directory tree
-			
-			Com_sprintf (netpath, sizeof(netpath), "%s/%s",search->filename, filename);
-			
-			*file = fopen (netpath, "rb");
-			if (!*file)
-				continue;
-			
-			Com_DPrintf ("FindFile: %s\n",netpath);
-
-			return FS_filelength (*file);
-		}
+	#
+	# search through the path, one element at a time
+	#
+	for search in fs_searchpaths:
+	
+		# is the element a pak file?
+		if search.pack is not None:
 		
-	}
-	
-	Com_DPrintf ("FindFile: can't find %s\n", filename);
-	
-	*file = NULL;
-	return -1;
-}
+			# look through all the pak file elements
+			pak = search.pack
+			for i in range (pak.numfiles):
+				if not q_shared.Q_strcasecmp (pak.files[i].name, filename):
+					# found it!
+					file_from_pak = 1;
+					common.Com_DPrintf ("PackFile: {} : {}\n".format(pak.filename, filename))
+					# open a new file on the pakfile
+					try:
+						handle = open (pak.filename, "rb")
+					except FileNotFoundError:
+						common.Com_Error (q_shared.ERR_FATAL, "Couldn't reopen {}".format(pak.filename))
+					handle.seek(pak.files[i].filepos)
+					return pak.files[i].filelen, handle
+					
+		else:
+			
+			# check a file in the directory tree
+			netpath = os.path.join(search.filename, filename)
+			
+			try:
+				handle = open (netpath, "rb")
+			except FileNotFoundError:
+				continue
+			
+			common.Com_DPrintf ("FindFile: {}\n".format(netpath))
 
+			return FS_filelength (*file), handle
+	
+	common.Com_DPrintf ("FindFile: can't find {}\n".format(filename))
+	
+	return -1, None
+
+"""
 #else
 
 // this is just for demos to prevent add on hacking
@@ -390,42 +396,22 @@ FS_LoadFile
 Filename are reletive to the quake search path
 a null buffer will just return the file length without loading
 ============
-*/
-int FS_LoadFile (char *path, void **buffer)
-{
+"""
+def FS_LoadFile (path): #char * (returns int)
+
+	"""
 	FILE	*h;
 	byte	*buf;
 	int		len;
+"""
+	# look for it in the filesystem or pack files
+	length, handle = FS_FOpenFile (path);
+	if handle is None:
+		return -1, None
 
-	buf = NULL;	// quiet compiler warning
+	return length, handle.read(length);
 
-// look for it in the filesystem or pack files
-	len = FS_FOpenFile (path, &h);
-	if (!h)
-	{
-		if (buffer)
-			*buffer = NULL;
-		return -1;
-	}
-	
-	if (!buffer)
-	{
-		fclose (h);
-		return len;
-	}
-
-	buf = Z_Malloc(len);
-	*buffer = buf;
-
-	FS_Read (buf, len, h);
-
-	fclose (h);
-
-	return len;
-}
-
-
-/*
+"""
 =============
 FS_FreeFile
 =============
@@ -444,9 +430,10 @@ Takes an explicit (not game tree related) path to a pak file.
 Loads the header and directory, adding the files at the beginning
 of the list so they override previous pack files.
 =================
-*/
-pack_t *FS_LoadPackFile (char *packfile)
-{
+"""
+def FS_LoadPackFile (packfile): # char * (returns pack_t *)
+
+	"""
 	dpackheader_t	header;
 	int				i;
 	packfile_t		*newfiles;
@@ -455,95 +442,91 @@ pack_t *FS_LoadPackFile (char *packfile)
 	FILE			*packhandle;
 	dpackfile_t		info[MAX_FILES_IN_PACK];
 	unsigned		checksum;
+	"""
 
-	packhandle = fopen(packfile, "rb");
-	if (!packhandle)
-		return NULL;
+	try:
+		packhandle = open(packfile, "rb")
+	except FileNotFoundError:
+		return None
 
-	fread (&header, 1, sizeof(header), packhandle);
-	if (LittleLong(header.ident) != IDPAKHEADER)
-		Com_Error (ERR_FATAL, "%s is not a packfile", packfile);
-	header.dirofs = LittleLong (header.dirofs);
-	header.dirlen = LittleLong (header.dirlen);
+	header = qfiles.dpackheader_t()
+	header.read(packhandle)
 
-	numpackfiles = header.dirlen / sizeof(dpackfile_t);
+	numpackfiles = header.dirlen // 64;
 
-	if (numpackfiles > MAX_FILES_IN_PACK)
-		Com_Error (ERR_FATAL, "%s has %i files", packfile, numpackfiles);
+	if numpackfiles > qfiles.MAX_FILES_IN_PACK:
+		common.Com_Error (ERR_FATAL, "{} has {} files".format(packfile, numpackfiles))
 
-	newfiles = Z_Malloc (numpackfiles * sizeof(packfile_t));
+	newfiles = []
 
-	fseek (packhandle, header.dirofs, SEEK_SET);
-	fread (info, 1, header.dirlen, packhandle);
+	packhandle.seek(header.dirofs);
 
-// crc the directory to check for modifications
-	checksum = Com_BlockChecksum ((void *)info, header.dirlen);
+	# crc the directory to check for modifications
+	#checksum = Com_BlockChecksum ((void *)info, header.dirlen);
 
-#ifdef NO_ADDONS
-	if (checksum != PAK0_CHECKSUM)
-		return NULL;
-#endif
-// parse the directory
-	for (i=0 ; i<numpackfiles ; i++)
-	{
-		strcpy (newfiles[i].name, info[i].name);
-		newfiles[i].filepos = LittleLong(info[i].filepos);
-		newfiles[i].filelen = LittleLong(info[i].filelen);
-	}
+	##ifdef NO_ADDONS
+	#if (checksum != PAK0_CHECKSUM)
+	#	return NULL;
+	##endif
 
-	pack = Z_Malloc (sizeof (pack_t));
-	strcpy (pack->filename, packfile);
-	pack->handle = packhandle;
-	pack->numfiles = numpackfiles;
-	pack->files = newfiles;
+	# parse the directory
+	for i in range(numpackfiles):
 	
-	Com_Printf ("Added packfile %s (%i files)\n", packfile, numpackfiles);
+		newfile = qfiles.dpackfile_t()
+		newfile.read(packhandle)
+		newfiles.append(newfile)
+
+	pack = pack_t()
+	pack.filename = packfile
+	pack.handle = packhandle
+	pack.numfiles = numpackfiles
+	pack.files = newfiles
+	
+	common.Com_Printf ("Added packfile {} ({} files)\n".format(packfile, numpackfiles))
 	return pack;
-}
 
-
-/*
+"""
 ================
 FS_AddGameDirectory
 
 Sets fs_gamedir, adds the directory to the head of the path,
 then loads and adds pak1.pak pak2.pak ... 
 ================
-*/
-void FS_AddGameDirectory (char *dir)
-{
+"""
+def FS_AddGameDirectory (folder): #char *
+
+	global fs_gamedir
+
+	"""
 	int				i;
 	searchpath_t	*search;
 	pack_t			*pak;
 	char			pakfile[MAX_OSPATH];
+	"""
 
-	strcpy (fs_gamedir, dir);
+	fs_gamedir = folder
 
-	//
-	// add the directory to the search path
-	//
-	search = Z_Malloc (sizeof(searchpath_t));
-	strcpy (search->filename, dir);
-	search->next = fs_searchpaths;
-	fs_searchpaths = search;
+	#
+	# add the directory to the search path
+	#
+	search = searchpath_t();
+	search.filename = folder
+	fs_searchpaths.insert(0, search)
 
-	//
-	// add any pak files in the format pak0.pak pak1.pak, ...
-	//
-	for (i=0; i<10; i++)
-	{
-		Com_sprintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", dir, i);
-		pak = FS_LoadPackFile (pakfile);
-		if (!pak)
-			continue;
-		search = Z_Malloc (sizeof(searchpath_t));
-		search->pack = pak;
-		search->next = fs_searchpaths;
-		fs_searchpaths = search;		
-	}
-
-
-}
+	#
+	# add any pak files in the format pak0.pak pak1.pak, ...
+	#
+	for i in range(10):
+	
+		pakfile = os.path.join(folder, "pak{}.pak".format(i))
+		pak = FS_LoadPackFile (pakfile)
+		if pak is None:
+			continue
+		search = searchpath_t()
+		search.pack = pak
+		fs_searchpaths.insert(0, search)
+	
+"""
 
 /*
 ============
@@ -557,7 +540,7 @@ char *FS_Gamedir (void)
 	if (*fs_gamedir)
 		return fs_gamedir;
 	else
-		return BASEDIRNAME;
+		return qcommon.BASEDIRNAME;
 }
 
 /*
@@ -574,7 +557,7 @@ void FS_ExecAutoexec (void)
 	if (*dir)
 		Com_sprintf(name, sizeof(name), "%s/%s/autoexec.cfg", fs_basedir->string, dir); 
 	else
-		Com_sprintf(name, sizeof(name), "%s/%s/autoexec.cfg", fs_basedir->string, BASEDIRNAME); 
+		Com_sprintf(name, sizeof(name), "%s/%s/autoexec.cfg", fs_basedir->string, qcommon.BASEDIRNAME); 
 	if (Sys_FindFirst(name, 0, SFF_SUBDIR | SFF_HIDDEN | SFF_SYSTEM))
 		Cbuf_AddText ("exec autoexec.cfg\n");
 	Sys_FindClose();
@@ -587,66 +570,51 @@ FS_SetGamedir
 
 Sets the gamedir and path to a different directory.
 ================
-*/
-void FS_SetGamedir (char *dir)
-{
-	searchpath_t	*next;
+"""
+def FS_SetGamedir (folder): #char *
 
-	if (strstr(dir, "..") || strstr(dir, "/")
-		|| strstr(dir, "\\") || strstr(dir, ":") )
-	{
-		Com_Printf ("Gamedir should be a single filename, not a path\n");
-		return;
-	}
+	if folder.find("..") != -1 or folder.find("/") != -1 \
+		or folder.find("\\") != -1 or folder.find(":") != -1:
+	
+		common.Com_Printf ("Gamedir should be a single filename, not a path\n")
+		return
+	
+	#
+	# free up any current game dir info
+	#
+	fs_searchpaths = fs_base_searchpaths[:]
+	
+	#
+	# flush all data, so it will be forced to reload
+	#
+	if common.dedicated is not None and not common.dedicated.value:
+		cmd.Cbuf_AddText ("vid_restart\nsnd_restart\n")
 
-	//
-	// free up any current game dir info
-	//
-	while (fs_searchpaths != fs_base_searchpaths)
-	{
-		if (fs_searchpaths->pack)
-		{
-			fclose (fs_searchpaths->pack->handle);
-			Z_Free (fs_searchpaths->pack->files);
-			Z_Free (fs_searchpaths->pack);
-		}
-		next = fs_searchpaths->next;
-		Z_Free (fs_searchpaths);
-		fs_searchpaths = next;
-	}
+	fs_gamedir = os.path.join(fs_basedir.string, folder)
 
-	//
-	// flush all data, so it will be forced to reload
-	//
-	if (dedicated && !dedicated->value)
-		Cbuf_AddText ("vid_restart\nsnd_restart\n");
+	if folder == qcommon.BASEDIRNAME or len(folder) == 0:
+	
+		cmd.Cvar_FullSet ("gamedir", "", q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET);
+		cmd.Cvar_FullSet ("game", "", q_shared.CVAR_LATCH|q_shared.CVAR_SERVERINFO);
+	
+	else:	
+		cmd.Cvar_FullSet ("gamedir", dir, q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET);
+		if len(fs_cddir.string) > 0:
+			FS_AddGameDirectory (os.path.join(fs_cddir.string, folder) )
+		FS_AddGameDirectory (os.path.join(fs_basedir.string, folder) )
+	
 
-	Com_sprintf (fs_gamedir, sizeof(fs_gamedir), "%s/%s", fs_basedir->string, dir);
-
-	if (!strcmp(dir,BASEDIRNAME) || (*dir == 0))
-	{
-		Cvar_FullSet ("gamedir", "", CVAR_SERVERINFO|CVAR_NOSET);
-		Cvar_FullSet ("game", "", CVAR_LATCH|CVAR_SERVERINFO);
-	}
-	else
-	{
-		Cvar_FullSet ("gamedir", dir, CVAR_SERVERINFO|CVAR_NOSET);
-		if (fs_cddir->string[0])
-			FS_AddGameDirectory (va("%s/%s", fs_cddir->string, dir) );
-		FS_AddGameDirectory (va("%s/%s", fs_basedir->string, dir) );
-	}
-}
-
-
-/*
+"""
 ================
 FS_Link_f
 
 Creates a filelink_t
 ================
-*/
-void FS_Link_f (void)
-{
+"""
+def FS_Link_f ():
+
+	pass
+"""
 	filelink_t	*l, **prev;
 
 	if (Cmd_Argc() != 3)
@@ -732,9 +700,11 @@ char **FS_ListFiles( char *findname, int *numfiles, unsigned musthave, unsigned 
 
 /*
 ** FS_Dir_f
-*/
-void FS_Dir_f( void )
-{
+"""
+def FS_Dir_f():
+	pass
+"""
+
 	char	*path = NULL;
 	char	findname[1024];
 	char	wildcard[1024] = "*.*";
@@ -778,16 +748,18 @@ void FS_Dir_f( void )
 		}
 		Com_Printf( "\n" );
 	};
-}
+
 
 /*
 ============
 FS_Path_f
 
 ============
-*/
-void FS_Path_f (void)
-{
+"""
+def FS_Path_f ():
+	pass
+
+"""
 	searchpath_t	*s;
 	filelink_t		*l;
 
@@ -805,8 +777,9 @@ void FS_Path_f (void)
 	Com_Printf ("\nLinks:\n");
 	for (l=fs_links ; l ; l=l->next)
 		Com_Printf ("%s : %s\n", l->from, l->to);
-}
+"""
 
+"""
 /*
 ================
 FS_NextPath
@@ -835,46 +808,45 @@ char *FS_NextPath (char *prevpath)
 	return NULL;
 }
 
-
-/*
+"""
+"""
 ================
 FS_InitFilesystem
 ================
-*/
-void FS_InitFilesystem (void)
-{
-	Cmd_AddCommand ("path", FS_Path_f);
-	Cmd_AddCommand ("link", FS_Link_f);
-	Cmd_AddCommand ("dir", FS_Dir_f );
+"""
+def FS_InitFilesystem ():
 
-	//
-	// basedir <path>
-	// allows the game to run from outside the data tree
-	//
-	fs_basedir = Cvar_Get ("basedir", ".", CVAR_NOSET);
+	global fs_gamedir, fs_basedir, fs_cddir, fs_gamedirvar
 
-	//
-	// cddir <path>
-	// Logically concatenates the cddir after the basedir for 
-	// allows the game to run from outside the data tree
-	//
-	fs_cddir = Cvar_Get ("cddir", "", CVAR_NOSET);
-	if (fs_cddir->string[0])
-		FS_AddGameDirectory (va("%s/"BASEDIRNAME, fs_cddir->string) );
+	cmd.Cmd_AddCommand ("path", FS_Path_f)
+	cmd.Cmd_AddCommand ("link", FS_Link_f)
+	cmd.Cmd_AddCommand ("dir", FS_Dir_f )
 
-	//
-	// start up with baseq2 by default
-	//
-	FS_AddGameDirectory (va("%s/"BASEDIRNAME, fs_basedir->string) );
+	#
+	# basedir <path>
+	# allows the game to run from outside the data tree
+	#
+	fs_basedir = cvar.Cvar_Get ("basedir", ".", q_shared.CVAR_NOSET)
 
-	// any set gamedirs will be freed up to here
-	fs_base_searchpaths = fs_searchpaths;
+	#
+	# cddir <path>
+	# Logically concatenates the cddir after the basedir for 
+	# allows the game to run from outside the data tree
+	#
+	fs_cddir = cvar.Cvar_Get ("cddir", "", q_shared.CVAR_NOSET)
+	if len(fs_cddir.string) > 0:
+		FS_AddGameDirectory (os.path.join(fs_cddir.string, qcommon.BASEDIRNAME) )
 
-	// check for game override
-	fs_gamedirvar = Cvar_Get ("game", "", CVAR_LATCH|CVAR_SERVERINFO);
-	if (fs_gamedirvar->string[0])
-		FS_SetGamedir (fs_gamedirvar->string);
-}
+	#
+	# start up with baseq2 by default
+	#
+	FS_AddGameDirectory (os.path.join(fs_basedir.string, qcommon.BASEDIRNAME) )
 
+	# any set gamedirs will be freed up to here
+	fs_base_searchpaths = fs_searchpaths[:]
 
+	# check for game override
+	fs_gamedirvar = cvar.Cvar_Get ("game", "", q_shared.CVAR_LATCH|q_shared.CVAR_SERVERINFO)
+	if len(fs_gamedirvar.string) > 0:
+		FS_SetGamedir (fs_gamedirvar.string)
 

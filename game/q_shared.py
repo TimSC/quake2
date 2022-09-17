@@ -70,12 +70,10 @@ typedef enum {false, true}	qboolean;
 """
 MAX_STRING_TOKENS = 80		# max tokens resulting from Cmd_TokenizeString
 MAX_TOKEN_CHARS = 128		# max length of an individual token
+
+MAX_QPATH			= 64		# max length of a quake game pathname
+MAX_OSPATH			= 128		# max length of a filesystem pathname
 """
-
-
-#define	MAX_QPATH			64		// max length of a quake game pathname
-#define	MAX_OSPATH			128		// max length of a filesystem pathname
-
 //
 // per-level limits
 //
@@ -2382,13 +2380,13 @@ int Q_strncasecmp (char *s1, char *s2, int n)
 	
 	return 0;		// strings are equal
 }
+"""
+def Q_strcasecmp (s1, s2): #char *, char *
 
-int Q_strcasecmp (char *s1, char *s2)
-{
-	return Q_strncasecmp (s1, s2, 99999);
-}
+	return s1.lower() != s2.lower()
+	##return Q_strncasecmp (s1, s2, 99999);
 
-
+"""
 
 void Com_sprintf (char *dest, int size, char *fmt, ...)
 {

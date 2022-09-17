@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, common
+from qcommon import cvar, common, files
 from game import q_shared
 """
 // cmd.c -- Quake script command processing module
@@ -259,9 +259,9 @@ def Cbuf_AddEarlyCommands (clear):
 		Cbuf_AddText ("set {} {}\n".format(common.COM_Argv(i+1), common.COM_Argv(i+2)))
 		if clear:
 		
-			COM_ClearArgv(i);
-			COM_ClearArgv(i+1);
-			COM_ClearArgv(i+2);
+			common.COM_ClearArgv(i);
+			common.COM_ClearArgv(i+1);
+			common.COM_ClearArgv(i+2);
 		
 		i += 3
 
@@ -276,69 +276,60 @@ quake +vid_ref gl +map amlev1
 Returns true if any late commands were added, which
 will keep the demoloop from immediately starting
 =================
-*/
-qboolean Cbuf_AddLateCommands (void)
-{
+"""
+def Cbuf_AddLateCommands (): #(returns qboolean)
+
+	"""
 	int		i, j;
 	int		s;
 	char	*text, *build, c;
 	int		argc;
-	qboolean	ret;
+	qboolean	ret; """
 
-// build the combined string to parse from
-	s = 0;
-	argc = COM_Argc();
-	for (i=1 ; i<argc ; i++)
-	{
-		s += strlen (COM_Argv(i)) + 1;
-	}
-	if (!s)
-		return false;
+	# build the combined string to parse from
+	argc = common.COM_Argc()	
+	if argc == 0:
+		return False
 		
-	text = Z_Malloc (s+1);
-	text[0] = 0;
-	for (i=1 ; i<argc ; i++)
-	{
-		strcat (text,COM_Argv(i));
-		if (i != argc-1)
-			strcat (text, " ");
-	}
-	
-// pull out the commands
-	build = Z_Malloc (s+1);
-	build[0] = 0;
-	
-	for (i=0 ; i<s-1 ; i++)
-	{
-		if (text[i] == '+')
-		{
-			i++;
+	text = []
+	for i in range(argc):
 
-			for (j=i ; (text[j] != '+') && (text[j] != '-') && (text[j] != 0) ; j++)
-				;
+		text.append(common.COM_Argv(i))
+		if i != argc-1:
+			text.append(" ")
 
-			c = text[j];
-			text[j] = 0;
+	text = "".join(text)
+	text += " " #Extra space at end of string simplifies code in next stage
+	if len(text) == 0:
+		return False
+	
+	# pull out the commands
+	build = []
+	i = 0
+	while i<len(text)-1:
+	
+		if text[i] == '+':
+		
+			i+=1
+
+			j=i
+			while j<len(text) and (text[j] != '+') and (text[j] != '-'): 
+				j+=1
 			
-			strcat (build, text+i);
-			strcat (build, "\n");
-			text[j] = c;
-			i = j-1;
-		}
-	}
+			build.append("{}\n".format(text[i:j]))
 
-	ret = (build[0] != 0);
-	if (ret)
-		Cbuf_AddText (build);
+			i = j-1
+		
+		i += 1
+	build = "".join(build)	
+
+	ret = len(build) > 0
+	if ret:
+		Cbuf_AddText (build)
 	
-	Z_Free (text);
-	Z_Free (build);
-
 	return ret;
-}
 
-
-/*
+"""
 ==============================================================================
 
 						SCRIPT COMMANDS
@@ -354,39 +345,27 @@ Cmd_Exec_f
 """
 def Cmd_Exec_f ():
 
-	pass
+	#char	*f, *f2;
+	#int		len;
+
+	if Cmd_Argc () != 2:
+	
+		common.Com_Printf ("exec <filename> : execute a script file\n")
+		return
+	
+	length, data = files.FS_LoadFile (Cmd_Argv(1));
+	if data is None:
+	
+		common.Com_Printf ("couldn't exec {}\n".format(Cmd_Argv(1)))
+		return
+	
+	common.Com_Printf ("execing {}\n".format(Cmd_Argv(1)))
+	
+	# the file doesn't have a trailing 0, so we need to copy it off
+
+	Cbuf_InsertText (data);
 
 """
-	char	*f, *f2;
-	int		len;
-
-	if (Cmd_Argc () != 2)
-	{
-		common.Com_Printf ("exec <filename> : execute a script file\n");
-		return;
-	}
-
-	len = FS_LoadFile (Cmd_Argv(1), (void **)&f);
-	if (!f)
-	{
-		common.Com_Printf ("couldn't exec %s\n",Cmd_Argv(1));
-		return;
-	}
-	common.Com_Printf ("execing %s\n",Cmd_Argv(1));
-	
-	// the file doesn't have a trailing 0, so we need to copy it off
-	f2 = Z_Malloc(len+1);
-	memcpy (f2, f, len);
-	f2[len] = 0;
-
-	Cbuf_InsertText (f2);
-
-	Z_Free (f2);
-	FS_FreeFile (f);
-
-
-
-
 ===============
 Cmd_Echo_f
 
@@ -625,6 +604,9 @@ def Cmd_TokenizeString (text, macroExpand): #char *, qboolean
 		while cursor < len(text) and text[cursor].strip() == '' and text[cursor] != '\n':
 			cursor += 1
 		
+		if cursor >= len(text):
+			return;
+
 		if text[cursor] == '\n':
 			# a newline seperates commands in the buffer
 			cursor += 1

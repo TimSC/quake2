@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import sys
-from qcommon import cvar, cmd
+from qcommon import cvar, cmd, files, qcommon
 from linux import sys_linux
 from game import q_shared
 import pygame
@@ -47,15 +47,17 @@ jmp_buf abortframe;		// an ERR_DROP occured, exit the entire frame
 
 FILE	*log_stats_file;
 
-cvar_t	*host_speeds;
-cvar_t	*log_stats;
-cvar_t	*developer;
-cvar_t	*timescale;
-cvar_t	*fixedtime;
-cvar_t	*logfile_active;	// 1 = buffer log, 2 = flush after each print
-cvar_t	*showtrace;
-cvar_t	*dedicated;
 
+"""
+host_speeds = None #cvar_t	*
+log_stats = None #cvar_t	*
+developer = None #cvar_t	*
+timescale = None #cvar_t	*
+fixedtime = None #cvar_t	*
+logfile_active = None #cvar_t	*, 1 = buffer log, 2 = flush after each print
+showtrace = None #cvar_t	*
+dedicated = None #cvar_t	*
+"""
 FILE	*logfile;
 
 int			server_state;
@@ -161,24 +163,25 @@ Com_DPrintf
 
 A Com_Printf that only shows up if the "developer" cvar is set
 ================
-*/
-void Com_DPrintf (char *fmt, ...)
-{
+"""
+def Com_DPrintf (fmt):
+
+	"""
 	va_list		argptr;
 	char		msg[MAXPRINTMSG];
-		
-	if (!developer || !developer->value)
-		return;			// don't confuse non-developers with techie stuff...
+	"""
 
+	if developer is None or not developer.value:
+		return			# don't confuse non-developers with techie stuff...
+
+	"""
 	va_start (argptr,fmt);
 	vsprintf (msg,fmt,argptr);
 	va_end (argptr);
-	
-	Com_Printf ("%s", msg);
-}
+	"""
 
+	Com_Printf (msg)
 
-"""
 """
 =============
 Com_Error
@@ -240,9 +243,10 @@ Com_Quit
 Both client and server can use this, and it will
 do the apropriate things.
 =============
-*/
-void Com_Quit (void)
-{
+"""
+def Com_Quit ():
+
+	"""
 	SV_Shutdown ("Server quit\n", false);
 	CL_Shutdown ();
 
@@ -251,10 +255,11 @@ void Com_Quit (void)
 		fclose (logfile);
 		logfile = NULL;
 	}
+	"""
 
-	Sys_Quit ();
-}
+	sys_linux.Sys_Quit()
 
+"""
 
 /*
 ==================
@@ -1414,7 +1419,8 @@ Qcommon_Init
 def Qcommon_Init (): #int argc, char **argv
 
 	pygame.init()
-	global screen
+	global screen, host_speeds, log_stats, developer, timescale, fixedtime, logfile_active, showtrace, dedicated
+
 	screen = pygame.display.set_mode((1000,600), 0, 32)
 
 	#char	*s;
@@ -1442,12 +1448,12 @@ def Qcommon_Init (): #int argc, char **argv
 	# the settings of the config files
 	cmd.Cbuf_AddEarlyCommands (False)
 	cmd.Cbuf_Execute ()
-	"""
-	FS_InitFilesystem ();
 
-	Cbuf_AddText ("exec default.cfg\n");
-	Cbuf_AddText ("exec config.cfg\n");
-"""
+	files.FS_InitFilesystem ();
+
+	cmd.Cbuf_AddText ("exec default.cfg\n");
+	cmd.Cbuf_AddText ("exec config.cfg\n");
+
 	cmd.Cbuf_AddEarlyCommands (True);
 	cmd.Cbuf_Execute ();
 
@@ -1456,50 +1462,52 @@ def Qcommon_Init (): #int argc, char **argv
 	#
 	cmd.Cmd_AddCommand ("z_stats", Z_Stats_f);
 	cmd.Cmd_AddCommand ("error", Com_Error_f);
+
+	host_speeds = cvar.Cvar_Get ("host_speeds", "0", 0);
+	log_stats = cvar.Cvar_Get ("log_stats", "0", 0);
+	developer = cvar.Cvar_Get ("developer", "0", 0);
+	timescale = cvar.Cvar_Get ("timescale", "1", 0);
+	fixedtime = cvar.Cvar_Get ("fixedtime", "0", 0);
+	logfile_active = cvar.Cvar_Get ("logfile", "0", 0);
+	showtrace = cvar.Cvar_Get ("showtrace", "0", 0);
+	##ifdef DEDICATED_ONLY
+	#dedicated = Cvar_Get ("dedicated", "1", q_shared.CVAR_NOSET);
+	##else
+	dedicated = cvar.Cvar_Get ("dedicated", "0", q_shared.CVAR_NOSET);
+	##endif
+	
+	s = "{:4.2f}".format(qcommon.VERSION)
+	cvar.Cvar_Get ("version", s, q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET)
+	
+
+	if dedicated.value:
+		cmd.Cmd_AddCommand ("quit", Com_Quit)
+
+	sys_linux.Sys_Init ()
 	"""
-	host_speeds = Cvar_Get ("host_speeds", "0", 0);
-	log_stats = Cvar_Get ("log_stats", "0", 0);
-	developer = Cvar_Get ("developer", "0", 0);
-	timescale = Cvar_Get ("timescale", "1", 0);
-	fixedtime = Cvar_Get ("fixedtime", "0", 0);
-	logfile_active = Cvar_Get ("logfile", "0", 0);
-	showtrace = Cvar_Get ("showtrace", "0", 0);
-##ifdef DEDICATED_ONLY
-	dedicated = Cvar_Get ("dedicated", "1", CVAR_NOSET);
-##else
-	dedicated = Cvar_Get ("dedicated", "0", CVAR_NOSET);
-##endif
-
-	s = va("%4.2f %s %s %s", VERSION, CPUSTRING, __DATE__, BUILDSTRING);
-	Cvar_Get ("version", s, CVAR_SERVERINFO|CVAR_NOSET);
-
-
-	if (dedicated->value)
-		Cmd_AddCommand ("quit", Com_Quit);
-
-	Sys_Init ();
-
 	NET_Init ();
 	Netchan_Init ();
 
 	SV_Init ();
 	CL_Init ();
+	"""
 
 	# add + commands from command line
-	if (!Cbuf_AddLateCommands ())
-	{	# if the user didn't give any commands, run default action
-		if (!dedicated->value)
-			Cbuf_AddText ("d1\n");
-		else
-			Cbuf_AddText ("dedicated_start\n");
-		Cbuf_Execute ();
-	}
-	else
-	{	# the user asked for something explicit
+	if not cmd.Cbuf_AddLateCommands ():
+		# if the user didn't give any commands, run default action
+		if not dedicated.value:
+			cmd.Cbuf_AddText ("d1\n")
+		else:
+			cmd.Cbuf_AddText ("dedicated_start\n")
+		cmd.Cbuf_Execute ()
+	
+	else:
+		# the user asked for something explicit
 		# so drop the loading plaque
-		SCR_EndLoadingPlaque ();
-	}
-"""
+		#SCR_EndLoadingPlaque ()
+		pass
+	
+
 	Com_Printf ("====== Quake2 Initialized ======\n\n")
 
 

@@ -91,22 +91,23 @@ void Sys_Printf (char *fmt, ...)
 			putc(*p, stdout);
 	}
 }
-
-void Sys_Quit (void)
-{
-	CL_Shutdown ();
-	Qcommon_Shutdown ();
-    fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
-	_exit(0);
-}
-
-void Sys_Init(void)
-{
-#if id386
-//	Sys_SetFPCW();
-#endif
-}
 """
+def Sys_Quit ():
+
+	#CL_Shutdown ();
+	common.Qcommon_Shutdown ()
+    #fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
+	exit(0)
+
+
+def Sys_Init():
+
+	#if id386
+	#	Sys_SetFPCW();
+	#endif
+	pass
+
+
 def Sys_Error (error):
 
 	"""
