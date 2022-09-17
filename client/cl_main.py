@@ -19,7 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cvar, common
 from game import q_shared
-from client import console, snd_dma
+from client import console, snd_dma, cl_scrn
+from linux import q_shlinux
 
 """
 // cl_main.c  -- client main loop
@@ -1678,9 +1679,11 @@ void CL_SendCommand (void)
 CL_Frame
 
 ==================
-*/
-void CL_Frame (int msec)
-{
+"""
+def CL_Frame (msec): #int
+
+	pass
+	"""
 	static int	extratime;
 	static int  lasttimecalled;
 
@@ -1731,14 +1734,14 @@ void CL_Frame (int msec)
 	VID_CheckChanges ();
 	if (!cl.refresh_prepped && cls.state == ca_active)
 		CL_PrepRefresh ();
-
-	// update the screen
-	if (host_speeds->value)
-		time_before_ref = Sys_Milliseconds ();
-	SCR_UpdateScreen ();
-	if (host_speeds->value)
-		time_after_ref = Sys_Milliseconds ();
-
+"""
+	# update the screen
+	if common.host_speeds.value:
+		common.time_before_ref = q_shlinux.Sys_Milliseconds ()
+	cl_scrn.SCR_UpdateScreen ()
+	if common.host_speeds.value:
+		common.time_after_ref = q_shlinux.Sys_Milliseconds ()
+"""
 	// update audio
 	S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
 	

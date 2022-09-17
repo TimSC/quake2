@@ -1267,9 +1267,10 @@ SCR_UpdateScreen
 This is called every frame, and can also be called explicitly to flush
 text to the screen.
 ==================
-*/
-void SCR_UpdateScreen (void)
-{
+"""
+def SCR_UpdateScreen ():
+	pass
+	"""
 	int numframes;
 	int i;
 	float separation[2] = { 0, 0 };

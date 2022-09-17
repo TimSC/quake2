@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from server import sv_ccmds
-from qcommon import cvar, qcommon
+from qcommon import cvar, qcommon, common
 from game import q_shared
 """
 #include "server.h"
@@ -759,11 +759,12 @@ void SV_RunGameFrame (void)
 SV_Frame
 
 ==================
-*/
-void SV_Frame (int msec)
-{
-	time_before_game = time_after_game = 0;
-
+"""
+def SV_Frame (msec): #int
+ 
+	common.time_before_game = 0
+	common.time_after_game = 0
+	"""
 	// if server is not active, do nothing
 	if (!svs.initialized)
 		return;

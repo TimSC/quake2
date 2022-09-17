@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -15,8 +15,10 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+"""
+import time
 
-*/
+"""
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -94,10 +96,12 @@ void Hunk_Free (void *base)
 ================
 Sys_Milliseconds
 ================
-*/
-int curtime;
-int Sys_Milliseconds (void)
-{
+"""
+#int curtime;
+def Sys_Milliseconds (): #(returns int)
+
+	return int(time.time() * 1000.0)
+	"""
 	struct timeval tp;
 	struct timezone tzp;
 	static int		secbase;
@@ -113,7 +117,6 @@ int Sys_Milliseconds (void)
 	curtime = (tp.tv_sec - secbase)*1000 + tp.tv_usec/1000;
 	
 	return curtime;
-}
 
 void Sys_Mkdir (char *path)
 {
@@ -222,4 +225,4 @@ void Sys_FindClose (void)
 
 
 //============================================
-
+"""

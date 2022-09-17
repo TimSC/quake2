@@ -1016,7 +1016,7 @@ S_Update
 Called once each time through the main loop
 ============
 """
-def S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up):
+def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 
 	pass
 	"""
@@ -1089,7 +1089,7 @@ def S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up):
 
 // mix some sound
 	S_Update_();
-}
+
 
 void GetSoundtime(void)
 {

@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import sys
 from qcommon import cvar, cmd, files, qcommon
-from linux import sys_linux
+from linux import sys_linux, q_shlinux
 from game import q_shared
 from server import sv_main
 from client import cl_main, cl_scrn
@@ -64,12 +64,15 @@ FILE	*logfile;
 
 int			server_state;
 
-// host_speeds times
-int		time_before_game;
-int		time_after_game;
-int		time_before_ref;
-int		time_after_ref;
+"""
 
+# host_speeds times
+time_before_game = None #int
+time_after_game = None #int
+time_before_ref = None #int
+time_after_ref = None #int
+
+"""
 /*
 ============================================================================
 
@@ -1517,6 +1520,9 @@ Qcommon_Frame
 """
 def Qcommon_Frame (msec): #int
 	
+	global host_speeds
+	global time_before_game, time_after_game, time_before_ref, time_after_ref
+
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			pygame.quit()
@@ -1585,37 +1591,35 @@ def Qcommon_Frame (msec): #int
 			cmd.Cbuf_AddText ("{}\n".format(s))
 	
 	cmd.Cbuf_Execute ()
-	"""
-	if (host_speeds->value)
-		time_before = Sys_Milliseconds ();
-
-	SV_Frame (msec);
-
-	if (host_speeds->value)
-		time_between = Sys_Milliseconds ();		
-
-	CL_Frame (msec);
-
-	if (host_speeds->value)
-		time_after = Sys_Milliseconds ();		
+	
 
 
-	if (host_speeds->value)
-	{
-		int			all, sv, gm, cl, rf;
+	if host_speeds.value:
+		time_before = q_shlinux.Sys_Milliseconds ()
+	
+	sv_main.SV_Frame (msec)
+	
+	if host_speeds.value:
+		time_between = q_shlinux.Sys_Milliseconds ()
+	
+	cl_main.CL_Frame (msec)
+	
+	if host_speeds.value:
+		time_after = q_shlinux.Sys_Milliseconds ()
 
-		all = time_after - time_before;
-		sv = time_between - time_before;
-		cl = time_after - time_between;
-		gm = time_after_game - time_before_game;
-		rf = time_after_ref - time_before_ref;
-		sv -= gm;
-		cl -= rf;
-		Com_Printf ("all:%3i sv:%3i gm:%3i cl:%3i rf:%3i\n",
-			all, sv, gm, cl, rf);
-	}	
-"""
+	if host_speeds.value:
+	
+		#int			all, sv, gm, cl, rf;
 
+		allt = time_after - time_before
+		sv = time_between - time_before
+		cl = time_after - time_between
+		gm = time_after_game - time_before_game
+		rf = time_after_ref - time_before_ref
+		sv -= gm
+		cl -= rf
+		Com_Printf ("all:{: 3d} sv:{: 3d} gm:{: 3d} cl:{: 3d} rf:{: 3d}\n".format(
+			allt, sv, gm, cl, rf))
 
 """
 =================
