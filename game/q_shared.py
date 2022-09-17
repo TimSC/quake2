@@ -96,11 +96,11 @@ MAX_TOKEN_CHARS = 128		# max length of an individual token
 #define	PRINT_CHAT			3		// chat messages
 
 
-
-#define	ERR_FATAL			0		// exit the entire game with a popup window
-#define	ERR_DROP			1		// print to console and disconnect from game
-#define	ERR_DISCONNECT		2		// don't kill server
-
+"""
+ERR_FATAL			= 0		# exit the entire game with a popup window
+ERR_DROP			= 1		# print to console and disconnect from game
+ERR_DISCONNECT		= 2		# don't kill server
+"""
 #define	PRINT_ALL			0
 #define PRINT_DEVELOPER		1		// only print when "developer 1"
 #define PRINT_ALERT			2		

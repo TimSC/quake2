@@ -17,8 +17,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import sys
 from qcommon import cvar, cmd
 from linux import sys_linux
+from game import q_shared
 import pygame
 
 screen = None
@@ -29,13 +31,15 @@ screen = None
 #include <setjmp.h>
 
 #define	MAXPRINTMSG	4096
+"""
+MAX_NUM_ARGVS = 50
 
-#define MAX_NUM_ARGVS	50
+com_argc = None #int
+com_argv = [] #char	*[MAX_NUM_ARGVS+1];
+for i in range(MAX_NUM_ARGVS+1):
+	com_argv.append(None)
 
-
-int		com_argc;
-char	*com_argv[MAX_NUM_ARGVS+1];
-
+"""
 int		realtime;
 
 jmp_buf abortframe;		// an ERR_DROP occured, exit the entire frame
@@ -174,16 +178,18 @@ void Com_DPrintf (char *fmt, ...)
 }
 
 
-/*
+"""
+"""
 =============
 Com_Error
 
 Both client and server can use this, and it will
 do the apropriate things.
 =============
-*/
-void Com_Error (int code, char *fmt, ...)
-{
+"""
+def Com_Error (code, msg):
+
+	"""
 	va_list		argptr;
 	static char		msg[MAXPRINTMSG];
 	static	qboolean	recursive;
@@ -221,10 +227,11 @@ void Com_Error (int code, char *fmt, ...)
 		fclose (logfile);
 		logfile = NULL;
 	}
+	"""
+	sys_linux.Sys_Error (msg);
+	
 
-	Sys_Error ("%s", msg);
-}
-
+"""
 
 /*
 =============
@@ -294,7 +301,7 @@ void MSG_WriteChar (sizebuf_t *sb, int c)
 	
 #ifdef PARANOID
 	if (c < -128 || c > 127)
-		Com_Error (ERR_FATAL, "MSG_WriteChar: range error");
+		Com_Error (q_shared.ERR_FATAL, "MSG_WriteChar: range error");
 #endif
 
 	buf = SZ_GetSpace (sb, 1);
@@ -307,7 +314,7 @@ void MSG_WriteByte (sizebuf_t *sb, int c)
 	
 #ifdef PARANOID
 	if (c < 0 || c > 255)
-		Com_Error (ERR_FATAL, "MSG_WriteByte: range error");
+		Com_Error (q_shared.ERR_FATAL, "MSG_WriteByte: range error");
 #endif
 
 	buf = SZ_GetSpace (sb, 1);
@@ -320,7 +327,7 @@ void MSG_WriteShort (sizebuf_t *sb, int c)
 	
 #ifdef PARANOID
 	if (c < ((short)0x8000) || c > (short)0x7fff)
-		Com_Error (ERR_FATAL, "MSG_WriteShort: range error");
+		Com_Error (q_shared.ERR_FATAL, "MSG_WriteShort: range error");
 #endif
 
 	buf = SZ_GetSpace (sb, 2);
@@ -486,9 +493,9 @@ void MSG_WriteDeltaEntity (entity_state_t *from, entity_state_t *to, sizebuf_t *
 	int		bits;
 
 	if (!to->number)
-		Com_Error (ERR_FATAL, "Unset entity number");
+		Com_Error (q_shared.ERR_FATAL, "Unset entity number");
 	if (to->number >= MAX_EDICTS)
-		Com_Error (ERR_FATAL, "Entity number >= MAX_EDICTS");
+		Com_Error (q_shared.ERR_FATAL, "Entity number >= MAX_EDICTS");
 
 // send an update
 	bits = 0;
@@ -903,10 +910,10 @@ void *SZ_GetSpace (sizebuf_t *buf, int length)
 	if (buf->cursize + length > buf->maxsize)
 	{
 		if (!buf->allowoverflow)
-			Com_Error (ERR_FATAL, "SZ_GetSpace: overflow without allowoverflow set");
+			Com_Error (q_shared.ERR_FATAL, "SZ_GetSpace: overflow without allowoverflow set");
 		
 		if (length > buf->maxsize)
-			Com_Error (ERR_FATAL, "SZ_GetSpace: %i is > full buffer size", length);
+			Com_Error (q_shared.ERR_FATAL, "SZ_GetSpace: %i is > full buffer size", length);
 			
 		Com_Printf ("SZ_GetSpace: overflow\n");
 		SZ_Clear (buf); 
@@ -965,48 +972,46 @@ int COM_CheckParm (char *parm)
 		
 	return 0;
 }
+"""
+def COM_Argc ():
 
-int COM_Argc (void)
-{
-	return com_argc;
-}
-
-char *COM_Argv (int arg)
-{
-	if (arg < 0 || arg >= com_argc || !com_argv[arg])
-		return "";
-	return com_argv[arg];
-}
-
-void COM_ClearArgv (int arg)
-{
-	if (arg < 0 || arg >= com_argc || !com_argv[arg])
-		return;
-	com_argv[arg] = "";
-}
+	return com_argc
 
 
-/*
+def COM_Argv (arg):
+
+	if arg < 0 or arg >= com_argc or com_argv[arg] is None:
+		return ""
+	return com_argv[arg]
+
+
+def COM_ClearArgv (arg):
+
+	if arg < 0 or arg >= com_argc or com_argv[arg] is None:
+		return
+	com_argv[arg] = ""
+
+"""
 ================
 COM_InitArgv
 ================
-*/
-void COM_InitArgv (int argc, char **argv)
-{
-	int		i;
+"""
+def COM_InitArgv ():
 
-	if (argc > MAX_NUM_ARGVS)
-		Com_Error (ERR_FATAL, "argc > MAX_NUM_ARGVS");
+	global com_argc, com_argv
+
+	argc = len(sys.argv)
+	if argc > MAX_NUM_ARGVS:
+		Com_Error (q_shared.ERR_FATAL, "argc > MAX_NUM_ARGVS");
 	com_argc = argc;
-	for (i=0 ; i<argc ; i++)
-	{
-		if (!argv[i] || strlen(argv[i]) >= MAX_TOKEN_CHARS )
-			com_argv[i] = "";
-		else
-			com_argv[i] = argv[i];
-	}
-}
+	for i in range (argc):
+	
+		if sys.argv[i] is None or len(sys.argv[i]) >= q_shared.MAX_TOKEN_CHARS:
+			com_argv[i] = ""
+		else:
+			com_argv[i] = sys.argv[i]
 
+"""
 /*
 ================
 COM_AddParm
@@ -1017,7 +1022,7 @@ Adds the given string at the end of the current argument list
 void COM_AddParm (char *parm)
 {
 	if (com_argc == MAX_NUM_ARGVS)
-		Com_Error (ERR_FATAL, "COM_AddParm: MAX_NUM)ARGS");
+		Com_Error (q_shared.ERR_FATAL, "COM_AddParm: MAX_NUM)ARGS");
 	com_argv[com_argc++] = parm;
 }
 
@@ -1113,8 +1118,9 @@ typedef struct zhead_s
 } zhead_t;
 
 zhead_t		z_chain;
-int		z_count, z_bytes;
-
+"""
+z_count, z_bytes = None, None # int		
+"""
 /*
 ========================
 Z_Free
@@ -1127,7 +1133,7 @@ void Z_Free (void *ptr)
 	z = ((zhead_t *)ptr) - 1;
 
 	if (z->magic != Z_MAGIC)
-		Com_Error (ERR_FATAL, "Z_Free: bad magic");
+		Com_Error (q_shared.ERR_FATAL, "Z_Free: bad magic");
 
 	z->prev->next = z->next;
 	z->next->prev = z->prev;
@@ -1137,17 +1143,17 @@ void Z_Free (void *ptr)
 	free (z);
 }
 
-
-/*
+"""
+"""
 ========================
 Z_Stats_f
 ========================
-*/
-void Z_Stats_f (void)
-{
-	Com_Printf ("%i bytes in %i blocks\n", z_bytes, z_count);
-}
+"""
+def Z_Stats_f ():
 
+	Com_Printf ("{} bytes in {} blocks\n", z_bytes, z_count)
+
+"""
 /*
 ========================
 Z_FreeTags
@@ -1177,7 +1183,7 @@ void *Z_TagMalloc (int size, int tag)
 	size = size + sizeof(zhead_t);
 	z = malloc(size);
 	if (!z)
-		Com_Error (ERR_FATAL, "Z_Malloc: failed on allocation of %i bytes",size);
+		Com_Error (q_shared.ERR_FATAL, "Z_Malloc: failed on allocation of %i bytes",size);
 	memset (z, 0, size);
 	z_count++;
 	z_bytes += size;
@@ -1386,21 +1392,20 @@ float	crand(void)
 void Key_Init (void);
 void SCR_EndLoadingPlaque (void);
 
-/*
+"""
+"""
 =============
 Com_Error_f
 
 Just throw a fatal error to
 test error shutdown procedures
 =============
-*/
-void Com_Error_f (void)
-{
-	Com_Error (ERR_FATAL, "%s", Cmd_Argv(1));
-}
+"""
+def Com_Error_f ():
 
+	Com_Error (q_shared.ERR_FATAL, cmd.Cmd_Argv(1))
 
-
+"""
 =================
 Qcommon_Init
 =================
@@ -1421,7 +1426,7 @@ def Qcommon_Init (): #int argc, char **argv
 
 	# prepare enough of the subsystems to handle
 	# cvar and command buffer management
-	#COM_InitArgv () #argc, argv
+	COM_InitArgv () #argc, argv
 
 	#Swap_Init ()
 	cmd.Cbuf_Init ()
@@ -1430,28 +1435,28 @@ def Qcommon_Init (): #int argc, char **argv
 	cvar.Cvar_Init()
 
 	#Key_Init ()
-	"""
+	
 	# we need to add the early commands twice, because
 	# a basedir or cddir needs to be set before execing
 	# config files, but we want other parms to override
 	# the settings of the config files
-	Cbuf_AddEarlyCommands (false);
-	Cbuf_Execute ();
-
+	cmd.Cbuf_AddEarlyCommands (False)
+	cmd.Cbuf_Execute ()
+	"""
 	FS_InitFilesystem ();
 
 	Cbuf_AddText ("exec default.cfg\n");
 	Cbuf_AddText ("exec config.cfg\n");
-
-	Cbuf_AddEarlyCommands (true);
-	Cbuf_Execute ();
+"""
+	cmd.Cbuf_AddEarlyCommands (True);
+	cmd.Cbuf_Execute ();
 
 	#
 	# init commands and vars
 	#
-	Cmd_AddCommand ("z_stats", Z_Stats_f);
-	Cmd_AddCommand ("error", Com_Error_f);
-
+	cmd.Cmd_AddCommand ("z_stats", Z_Stats_f);
+	cmd.Cmd_AddCommand ("error", Com_Error_f);
+	"""
 	host_speeds = Cvar_Get ("host_speeds", "0", 0);
 	log_stats = Cvar_Get ("log_stats", "0", 0);
 	developer = Cvar_Get ("developer", "0", 0);
@@ -1606,12 +1611,10 @@ def Qcommon_Frame (msec): #int
 
 
 """
-/*
 =================
 Qcommon_Shutdown
 =================
-*/
-void Qcommon_Shutdown (void)
-{
-}
 """
+def Qcommon_Shutdown ():
+	pass
+

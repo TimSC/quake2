@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import sys
 import time
 import pygame
 from qcommon import common
@@ -105,9 +106,10 @@ void Sys_Init(void)
 //	Sys_SetFPCW();
 #endif
 }
+"""
+def Sys_Error (error):
 
-void Sys_Error (char *error, ...)
-{ 
+	"""
     va_list     argptr;
     char        string[1024];
 
@@ -115,17 +117,18 @@ void Sys_Error (char *error, ...)
     fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
 
 	CL_Shutdown ();
-	Qcommon_Shutdown ();
-    
+"""
+	common.Qcommon_Shutdown ()
+	""" 
     va_start (argptr,error);
     vsprintf (string,error,argptr);
     va_end (argptr);
-	fprintf(stderr, "Error: %s\n", string);
+"""
+	sys.stderr.write("Error: {}\n".format(error))
 
-	_exit (1);
+	exit (1)
 
-} 
-
+"""
 void Sys_Warn (char *warning, ...)
 { 
     va_list     argptr;
@@ -260,8 +263,6 @@ void *Sys_GetGameAPI (void *parms)
 	const char *gamename = "gamei386.so";
 #elif defined __alpha__
 	const char *gamename = "gameaxp.so";
-#elif defined __x86_64__
-	const char *gamename = "gamex64.so";
 #else
 #error "Unknown arch"
 #endif

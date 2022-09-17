@@ -245,29 +245,27 @@ the client and server initialize for the first time.
 
 Other commands are added late, after all initialization is complete.
 ===============
-*/
-void Cbuf_AddEarlyCommands (qboolean clear)
-{
-	int		i;
-	char	*s;
+"""
+def Cbuf_AddEarlyCommands (clear):
 
-	for (i=0 ; i<COM_Argc() ; i++)
-	{
-		s = COM_Argv(i);
-		if (strcmp (s, "+set"))
-			continue;
-		Cbuf_AddText (va("set %s %s\n", COM_Argv(i+1), COM_Argv(i+2)));
-		if (clear)
-		{
+	i = 0
+	while i < common.COM_Argc():
+	
+		s = common.COM_Argv(i)
+
+		if s != "+set":
+			i += 1
+			continue
+		Cbuf_AddText ("set {} {}\n".format(common.COM_Argv(i+1), common.COM_Argv(i+2)))
+		if clear:
+		
 			COM_ClearArgv(i);
 			COM_ClearArgv(i+1);
 			COM_ClearArgv(i+2);
-		}
-		i+=2;
-	}
-}
+		
+		i += 3
 
-/*
+"""
 =================
 Cbuf_AddLateCommands
 
@@ -611,10 +609,6 @@ def Cmd_TokenizeString (text, macroExpand): #char *, qboolean
 
 	global cmd_argc, cmd_argv, cmd_args
 
-	"""
-	int		i;
-	char	*com_token;
-	"""
 	# clear the args from the last string	
 	cmd_argc = 0;
 	cmd_args = "";

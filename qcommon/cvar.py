@@ -143,7 +143,10 @@ def Cvar_Get (var_name, var_value, flags):  #char *, char *, int (returns cvar_t
 	var.name = var_name
 	var.string = var_value
 	var.modified = True
-	var.value = float(var.string)
+	try:
+		var.value = float(var.string)
+	except ValueError:
+		var.value = None
 	var.flags = flags
 
 	cvar_vars.insert(0, var)
@@ -197,7 +200,10 @@ def Cvar_Set2 (var_name, value, force): #char *, char *, qboolean (returns cvar_
 			else:
 			
 				var.string = value
-				var.value = float(var.string)
+				try:
+					var.value = float(var.string)
+				except ValueError:
+					var.value = None
 				if var.name == "game":
 				
 					FS_SetGamedir (var.string);
@@ -220,7 +226,10 @@ def Cvar_Set2 (var_name, value, force): #char *, char *, qboolean (returns cvar_
 		userinfo_modified = True	# transmit at next oportunity
 	
 	var.string = value
-	var.value = float(var.string)
+	try:
+		var.value = float(var.string)
+	except ValueError:
+		var.value = None
 
 	return var
 
@@ -228,13 +237,11 @@ def Cvar_Set2 (var_name, value, force): #char *, char *, qboolean (returns cvar_
 ============
 Cvar_ForceSet
 ============
-*/
-cvar_t *Cvar_ForceSet (char *var_name, char *value)
-{
-	return Cvar_Set2 (var_name, value, True);
-}
-
 """
+def Cvar_ForceSet (var_name, value):
+
+	return Cvar_Set2 (var_name, value, True)
+
 """
 ============
 Cvar_Set
@@ -261,7 +268,7 @@ cvar_t *Cvar_FullSet (char *var_name, char *value, int flags)
 
 	var.modified = true;
 
-	if (var.flags & CVAR_USERINFO)
+	if (var.flags & q_shared.CVAR_USERINFO)
 		userinfo_modified = true;	// transmit at next oportunity
 	
 	Z_Free (var.string);	// free the old value string
