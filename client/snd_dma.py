@@ -1015,9 +1015,11 @@ S_Update
 
 Called once each time through the main loop
 ============
-*/
-void S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
-{
+"""
+def S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up):
+
+	pass
+	"""
 	int			i;
 	int			total;
 	channel_t	*ch;
