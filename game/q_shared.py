@@ -2297,7 +2297,7 @@ def COM_Parse (data, cursor): #char ** (returns char *)
 		
 	# parse a regular word
 	c = data[cursor]
-	while c != " " and cursor < len(data):
+	while c != None and c.strip() != "" and cursor < len(data):
 		
 		if length < MAX_TOKEN_CHARS:
 		

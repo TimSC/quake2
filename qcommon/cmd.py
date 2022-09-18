@@ -25,18 +25,17 @@ from game import q_shared
 #include "qcommon.h"
 
 void Cmd_ForwardToServer (void);
-
-#define	MAX_ALIAS_NAME	32
-
-typedef struct cmdalias_s
-{
-	struct cmdalias_s	*next;
-	char	name[MAX_ALIAS_NAME];
-	char	*value;
-} cmdalias_t;
-
-cmdalias_t	*cmd_alias;
 """
+MAX_ALIAS_NAME = 32
+
+class cmdalias_t(object):
+
+	def __init__(self):
+		name = None #char	[MAX_ALIAS_NAME]
+		value = None #char	*value
+
+cmd_alias = [] #cmdalias_t	*
+
 cmd_wait = None
 ALIAS_LOOP_COUNT = 16
 alias_count = None		# for detecting runaway loops
@@ -377,71 +376,62 @@ Creates a new command that executes a command string (possibly ; seperated)
 """
 def Cmd_Alias_f ():
 
-	pass
-"""
+
+	"""
 	cmdalias_t	*a;
 	char		cmd[1024];
 	int			i, c;
 	char		*s;
+	"""
 
-	if (Cmd_Argc() == 1)
-	{
-		common.Com_Printf ("Current alias commands:\n");
-		for (a = cmd_alias ; a ; a=a->next)
-			common.Com_Printf ("%s : %s\n", a->name, a->value);
-		return;
-	}
-
-	s = Cmd_Argv(1);
-	if (strlen(s) >= MAX_ALIAS_NAME)
-	{
-		common.Com_Printf ("Alias name is too long\n");
-		return;
-	}
-
-	// if the alias already exists, reuse it
-	for (a = cmd_alias ; a ; a=a->next)
-	{
-		if (!strcmp(s, a->name))
-		{
-			Z_Free (a->value);
-			break;
-		}
-	}
-
-	if (!a)
-	{
-		a = Z_Malloc (sizeof(cmdalias_t));
-		a->next = cmd_alias;
-		cmd_alias = a;
-	}
-	strcpy (a->name, s);	
-
-// copy the rest of the command line
-	cmd[0] = 0;		// start out with a null string
-	c = Cmd_Argc();
-	for (i=2 ; i< c ; i++)
-	{
-		strcat (cmd, Cmd_Argv(i));
-		if (i != (c - 1))
-			strcat (cmd, " ");
-	}
-	strcat (cmd, "\n");
+	if Cmd_Argc() == 1:
 	
-	a->value = CopyString (cmd);
+		common.Com_Printf ("Current alias commands:\n")
+		for a in cmd_alias:
+			common.Com_Printf ("{} : {}\n".format(a.name, a.value))
+		return
+	
+	
+	s = Cmd_Argv(1)
+	if len(s) >= MAX_ALIAS_NAME:
+	
+		common.Com_Printf ("Alias name is too long\n")
+		return
+	
+	# if the alias already exists, reuse it
+	alias = None
+	for a in cmd_alias:
+	
+		if s == a.name:
+			alias = a
+			break;
+
+	if alias is None:
+	
+		alias = cmdalias_t()
+		cmd_alias.append(alias)
+	
+	alias.name = s
+
+	# copy the rest of the command line
+	cmd = []		# start out with a null string
+	c = Cmd_Argc()
+	for i in range(2, Cmd_Argc()):
+	
+		cmd.append(Cmd_Argv(i))
+		if i != (c - 1):
+			cmd.append(" ")
+	
+	cmd.append("\n")
+	
+	alias.value = "".join(cmd)
 
 """
-
-"""
-
-/*
 =============================================================================
 
 					COMMAND EXECUTION
 
 =============================================================================
-*/
-
 """
 class cmd_function_t(object):
 	def __init__(self, nameIn=None, functionIn=None):
@@ -449,10 +439,7 @@ class cmd_function_t(object):
 		name = nameIn #char *
 		function = functionIn #xcommand_t
 
-cmd_argc = 0 # int
 cmd_argv = [] #char *[MAX_STRING_TOKENS]
-for i in range(q_shared.MAX_STRING_TOKENS):
-	cmd_argv.append(None)
 cmd_null_string = "" # char *
 cmd_args = "" #char[MAX_STRING_CHARS]
 
@@ -465,7 +452,7 @@ Cmd_Argc
 ============
 """
 def Cmd_Argc():
-	return cmd_argc
+	return len(cmd_argv)
 
 """
 ============
@@ -474,7 +461,7 @@ Cmd_Argv
 """
 def Cmd_Argv(arg): #int
 
-	if arg >= cmd_argc:
+	if arg >= len(cmd_argv):
 		return cmd_null_string
 	return cmd_argv[arg]
 
@@ -576,10 +563,10 @@ $Cvars will be expanded unless they are in a quoted token
 """
 def Cmd_TokenizeString (text, macroExpand): #char *, qboolean
 
-	global cmd_argc, cmd_argv, cmd_args
+	global cmd_argv, cmd_args
 
-	# clear the args from the last string	
-	cmd_argc = 0;
+	# clear the args from the last string
+	cmd_argv = []
 	cmd_args = "";
 	cursor = 0
 
@@ -606,19 +593,18 @@ def Cmd_TokenizeString (text, macroExpand): #char *, qboolean
 			return;
 
 		# set cmd_args to everything after the first arg
-		if cmd_argc == 1:
+		if len(cmd_argv) == 1:
 
 			# strip off any trailing whitespace
 			cmd_args = text[:cursor].strip()
 					
 		com_token, cursor = q_shared.COM_Parse (text, cursor)
+
 		if cursor > len(text):
 			return;
 
-		if cmd_argc < q_shared.MAX_STRING_TOKENS:	
-
-			cmd_argv[cmd_argc] = com_token
-			cmd_argc+=1
+		if len(cmd_argv) < q_shared.MAX_STRING_TOKENS:	
+			cmd_argv.append(com_token)
 
 		if cursor >= len(text):
 			return;
@@ -751,9 +737,10 @@ def Cmd_ExecuteString (text): #char *
 	cmd_function_t	*cmd;
 	cmdalias_t		*a;
 """
-	global cmd_argc, cmd_argv
+	global cmd_argv, alias_count
 
 	Cmd_TokenizeString (text, True)
+	#common.Com_Printf ("{}\n".format(cmd_argv))
 
 	# execute the command line
 	if Cmd_Argc() == 0:
@@ -762,7 +749,7 @@ def Cmd_ExecuteString (text): #char *
 	# check functions
 	for cmd in cmd_functions:
 	
-		if cmd_argv[0].lower() == cmd.name.lower():
+		if not q_shared.Q_strcasecmp(cmd_argv[0], cmd.name):
 		
 			if cmd.function is None:
 				# forward to server command
@@ -771,29 +758,27 @@ def Cmd_ExecuteString (text): #char *
 				cmd.function()
 			return
 		
-	"""
-	// check alias
-	for (a=cmd_alias ; a ; a=a->next)
-	{
-		if (!Q_strcasecmp (cmd_argv[0], a->name))
-		{
-			if (++alias_count == ALIAS_LOOP_COUNT)
-			{
-				common.Com_Printf ("ALIAS_LOOP_COUNT\n");
-				return;
-			}
-			Cbuf_InsertText (a->value);
-			return;
-		}
-	}
-	"""
+	
+	# check alias
+	for a in cmd_alias:
+	
+		if not q_shared.Q_strcasecmp (cmd_argv[0], a.name):
+		
+			alias_count += 1
+			if alias_count == ALIAS_LOOP_COUNT:
+			
+				common.Com_Printf ("ALIAS_LOOP_COUNT\n")
+				return
+			
+			Cbuf_InsertText (a.value)
+			return
+
 	# check cvars
 	if cvar.Cvar_Command ():
 		return
 
-	""" # send it as a server command if we are connected
-	Cmd_ForwardToServer ();
-"""
+	# send it as a server command if we are connected
+	#Cmd_ForwardToServer ();
 
 """
 ============
