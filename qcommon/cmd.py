@@ -121,12 +121,13 @@ def Cbuf_InsertText (text): #char *
 
 	# copy off any commands still remaining in the exec buffer
 	temp = cmd_text_buf
+	cmd_text_buf = ""
 	
 	# add the entire text of the file
 	Cbuf_AddText (text);
 	
 	# add the copied off data
-	cmd_text_buf = temp
+	cmd_text_buf += temp
 
 """
 ============

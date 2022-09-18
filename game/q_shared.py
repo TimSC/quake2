@@ -2264,8 +2264,7 @@ def COM_Parse (data, cursor): #char ** (returns char *)
 	possInComment = True
 	
 	while possInComment:
-		while data[cursor].strip() == '':
-		
+		while cursor >= len(data) or data[cursor].strip() == '':
 			if cursor >= len(data):
 				return "", cursor
 			
