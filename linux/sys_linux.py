@@ -186,8 +186,15 @@ def Key_Event(event):
 	elif event.key == pygame.K_BACKSPACE:
 		if len(keyBuffer) > 0:
 			keyBuffer.pop(-1)
+	elif event.key in [pygame.K_RSHIFT, pygame.K_LSHIFT, pygame.K_RCTRL, pygame.K_LCTRL, pygame.K_RALT, pygame.K_LALT]:
+		pass #Ignore modifiers
 	else:
-		keyBuffer.append(pygame.key.name(event.key))
+		keysPressed = pygame.key.get_pressed()
+		keyName = pygame.key.name(event.key)
+		if keysPressed[pygame.K_RSHIFT] or keysPressed[pygame.K_LSHIFT]:
+			keyName = keyName.upper() #Switch to upper case
+
+		keyBuffer.append(keyName)
 
 def Sys_ConsoleInput():
 

@@ -112,36 +112,23 @@ Adds command text immediately after the current command
 Adds a \n to the text
 FIXME: actually change the command buffer to do less copying
 ============
-*/
-void Cbuf_InsertText (char *text)
-{
-	char	*temp;
-	int		templen;
+"""
+def Cbuf_InsertText (text): #char *
 
-// copy off any commands still remaining in the exec buffer
-	templen = cmd_text.cursize;
-	if (templen)
-	{
-		temp = Z_Malloc (templen);
-		memcpy (temp, cmd_text.data, templen);
-		SZ_Clear (&cmd_text);
-	}
-	else
-		temp = NULL;	// shut up compiler
-		
-// add the entire text of the file
+	global cmd_text_buf
+	#char	*temp;
+	#int		templen;
+
+	# copy off any commands still remaining in the exec buffer
+	temp = cmd_text_buf
+	
+	# add the entire text of the file
 	Cbuf_AddText (text);
 	
-// add the copied off data
-	if (templen)
-	{
-		SZ_Write (&cmd_text, temp, templen);
-		Z_Free (temp);
-	}
-}
+	# add the copied off data
+	cmd_text_buf = temp
 
-
-/*
+"""
 ============
 Cbuf_CopyToDefer
 ============
@@ -359,6 +346,8 @@ def Cmd_Exec_f ():
 		common.Com_Printf ("couldn't exec {}\n".format(Cmd_Argv(1)))
 		return
 	
+	data = data.decode("ascii")
+
 	common.Com_Printf ("execing {}\n".format(Cmd_Argv(1)))
 	
 	# the file doesn't have a trailing 0, so we need to copy it off

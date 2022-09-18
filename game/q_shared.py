@@ -81,7 +81,9 @@ MAX_OSPATH			= 128		# max length of a filesystem pathname
 #define	MAX_EDICTS			1024	// must change protocol to increase more
 #define	MAX_LIGHTSTYLES		256
 #define	MAX_MODELS			256		// these are sent over the net as bytes
-#define	MAX_SOUNDS			256		// so they cannot be blindly increased
+"""
+MAX_SOUNDS = 256		# so they cannot be blindly increased
+"""
 #define	MAX_IMAGES			256
 #define	MAX_ITEMS			256
 #define MAX_GENERAL			(MAX_CLIENTS*2)	// general config strings

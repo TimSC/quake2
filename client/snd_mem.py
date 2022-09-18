@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import files, common
+from client import snd_loc
+"""
 // snd_mem.c: sound caching
 
 #include "client.h"
@@ -94,9 +97,10 @@ void ResampleSfx (sfx_t *sfx, int inrate, int inwidth, byte *data)
 ==============
 S_LoadSound
 ==============
-*/
-sfxcache_t *S_LoadSound (sfx_t *s)
-{
+"""
+def S_LoadSound (s): #sfx_t * (returns sfxcache_t *)
+
+	"""
     char	namebuffer[MAX_QPATH];
 	byte	*data;
 	wavinfo_t	info;
@@ -105,36 +109,41 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	sfxcache_t	*sc;
 	int		size;
 	char	*name;
+	"""
 
-	if (s->name[0] == '*')
-		return NULL;
+	if s.name[0] == '*':
+		return None
 
-// see if still in memory
-	sc = s->cache;
-	if (sc)
-		return sc;
+	# see if still in memory
+	sc = s.cache
+	if sc is not None:
+		return sc
 
-//Com_Printf ("S_LoadSound: %x\n", (int)stackbuf);
-// load it in
-	if (s->truename)
-		name = s->truename;
-	else
-		name = s->name;
+	##common.Com_Printf ("S_LoadSound: {}\n".format(stackbuf))
+	# load it in
+	if s.truename is not None:
+		name = s.truename
+	else:
+		name = s.name
 
-	if (name[0] == '#')
-		strcpy(namebuffer, &name[1]);
-	else
-		Com_sprintf (namebuffer, sizeof(namebuffer), "sound/%s", name);
+	if name[0] == '#':
+		namebuffer = name[1:]
+	else:
+		namebuffer = "sound/{}".format(name)
 
-//	Com_Printf ("loading %s\n",namebuffer);
+	common.Com_Printf ("loading {}\n".format(namebuffer))
 
-	size = FS_LoadFile (namebuffer, (void **)&data);
+	size, data = files.FS_LoadFile (namebuffer)
 
-	if (!data)
-	{
-		Com_DPrintf ("Couldn't load %s\n", namebuffer);
-		return NULL;
-	}
+	if data is None:
+	
+		common.Com_DPrintf ("Couldn't load {}\n".format(namebuffer))
+		return None
+	
+	sc = snd_loc.sfxcache_t()
+	sc.data = data
+
+	"""
 
 	info = GetWavinfo (s->name, data, size);
 	if (info.channels != 1)
@@ -165,11 +174,11 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	ResampleSfx (s, sc->speed, sc->width, data + info.dataofs);
 
 	FS_FreeFile (data);
-
+"""
 	return sc;
-}
 
 
+"""
 
 /*
 ===============================================================================
@@ -356,4 +365,4 @@ wavinfo_t GetWavinfo (char *name, byte *wav, int wavlength)
 	
 	return info;
 }
-
+"""

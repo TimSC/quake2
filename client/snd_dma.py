@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 from qcommon import cmd, cvar, common
 from game import q_shared
 from linux import snd_linux
-from client import snd_mix, snd_loc
+from client import snd_mix, snd_loc, snd_mem, cl_main
 """
 // snd_dma.c -- main control for any streaming sound output device
 
@@ -41,9 +41,9 @@ void S_StopAllSounds(void);
 #define		SOUND_FULLVOLUME	80
 
 #define		SOUND_LOOPATTENUATE	0.003
-
-int			s_registration_sequence;
-
+"""
+s_registration_sequence = 0 #int
+"""
 channel_t   channels[MAX_CHANNELS];
 """
 snd_initialized = False #qboolean
@@ -56,28 +56,30 @@ vec3_t		listener_forward;
 vec3_t		listener_right;
 vec3_t		listener_up;
 
-qboolean	s_registering;
 """
+s_registering = False #qboolean
+
 soundtime = None	# int, sample PAIRS
 paintedtime = None 	# int, sample PAIRS
-"""
-// during registration it is possible to have more sounds
-// than could actually be referenced during gameplay,
-// because we don't want to free anything until we are
-// sure we won't need it.
-#define		MAX_SFX		(MAX_SOUNDS*2)
-sfx_t		known_sfx[MAX_SFX];
-"""
+
+# during registration it is possible to have more sounds
+# than could actually be referenced during gameplay,
+# because we don't want to free anything until we are
+# sure we won't need it.
+MAX_SFX = (q_shared.MAX_SOUNDS*2)
+known_sfx = [] #sfx_t [MAX_SFX];
+for i in range(MAX_SFX):
+	known_sfx.append(snd_loc.sfx_t())
+
 num_sfx = None #int			
 """
 #define		MAX_PLAYSOUNDS	128
 playsound_t	s_playsounds[MAX_PLAYSOUNDS];
 playsound_t	s_freeplays;
-playsound_t	s_pendingplays;
-
-int			s_beginofs;
-
 """
+s_pendingplays = [] #playsound_t (linked list)
+s_beginofs = 0 #int
+
 s_volume = None #cvar_t		*
 s_testsound = None #cvar_t		*
 s_loadas8bit = None #cvar_t		*
@@ -210,51 +212,52 @@ void S_Shutdown(void)
 S_FindName
 
 ==================
-*/
-sfx_t *S_FindName (char *name, qboolean create)
-{
-	int		i;
-	sfx_t	*sfx;
+"""
+def S_FindName (name, create): #char *, qboolean (returns sfx_t *)
 
-	if (!name)
-		Com_Error (ERR_FATAL, "S_FindName: NULL\n");
-	if (!name[0])
-		Com_Error (ERR_FATAL, "S_FindName: empty name\n");
+	global num_sfx, known_sfx
+	#int		i;
+	#sfx_t	*sfx;
 
-	if (strlen(name) >= MAX_QPATH)
-		Com_Error (ERR_FATAL, "Sound name too long: %s", name);
+	if name is None:
+		common.Com_Error (q_shared.ERR_FATAL, "S_FindName: NULL\n")
+	if len(name) == 0:
+		common.Com_Error (q_shared.ERR_FATAL, "S_FindName: empty name\n")
 
-	// see if already loaded
-	for (i=0 ; i < num_sfx ; i++)
-		if (!strcmp(known_sfx[i].name, name))
-		{
-			return &known_sfx[i];
-		}
+	if len(name) >= q_shared.MAX_QPATH:
+		common.Com_Error (q_shared.ERR_FATAL, "Sound name too long: {}".format(name))
 
-	if (!create)
-		return NULL;
+	# see if already loaded
+	for i in range(num_sfx):
+		if known_sfx[i].name == name:
+			return known_sfx[i]
+		
+	if not create:
+		return None
 
-	// find a free sfx
-	for (i=0 ; i < num_sfx ; i++)
-		if (!known_sfx[i].name[0])
-//			registration_sequence < s_registration_sequence)
+	# find a free sfx
+	i = 0
+	while i < num_sfx:
+		if known_sfx[i].name is None:
+			##registration_sequence < s_registration_sequence)
 			break;
+		i+=1
 
-	if (i == num_sfx)
-	{
-		if (num_sfx == MAX_SFX)
-			Com_Error (ERR_FATAL, "S_FindName: out of sfx_t");
-		num_sfx++;
-	}
+	if i == num_sfx:
 	
-	sfx = &known_sfx[i];
-	memset (sfx, 0, sizeof(*sfx));
-	strcpy (sfx->name, name);
-	sfx->registration_sequence = s_registration_sequence;
+		if num_sfx == MAX_SFX:
+			common.Com_Error (q_shared.ERR_FATAL, "S_FindName: out of sfx_t")
+		num_sfx+=1
+	
+	sfx = known_sfx[i]
+	sfx.name = name
+	sfx.registration_sequence = s_registration_sequence
+	sfx.cache = None
+	sfx.truename = None
 	
 	return sfx;
-}
 
+"""
 
 /*
 ==================
@@ -280,7 +283,7 @@ sfx_t *S_AliasName (char *aliasname, char *truename)
 	{
 		if (num_sfx == MAX_SFX)
 			Com_Error (ERR_FATAL, "S_FindName: out of sfx_t");
-		num_sfx++;
+		num_sfx+=1
 	}
 	
 	sfx = &known_sfx[i];
@@ -310,25 +313,24 @@ void S_BeginRegistration (void)
 S_RegisterSound
 
 ==================
-*/
-sfx_t *S_RegisterSound (char *name)
-{
-	sfx_t	*sfx;
+"""
+def S_RegisterSound (name): #char * (returns sfx_t *)
 
-	if (!sound_started)
-		return NULL;
+	#sfx_t	*sfx;
 
-	sfx = S_FindName (name, true);
-	sfx->registration_sequence = s_registration_sequence;
+	if not sound_started:
+		return None
 
-	if (!s_registering)
-		S_LoadSound (sfx);
+	sfx = S_FindName (name, True)
+	sfx.registration_sequence = s_registration_sequence
 
-	return sfx;
-}
+	if not s_registering:
+		snd_mem.S_LoadSound (sfx)
+
+	return sfx
 
 
-/*
+"""
 =====================
 S_EndRegistration
 
@@ -660,50 +662,56 @@ Validates the parms and ques the sound up
 if pos is NULL, the sound will be dynamically sourced from the entity
 Entchannel 0 will never override a playing sound
 ====================
-*/
-void S_StartSound(vec3_t origin, int entnum, int entchannel, sfx_t *sfx, float fvol, float attenuation, float timeofs)
-{
+"""
+def S_StartSound(origin, entnum, entchannel, sfx, fvol, attenuation, timeofs): #vec3_t, int, int, sfx_t *, float, float, float
+
+	global s_beginofs
+	#common.Com_Printf("S_StartSound {}\n".format(sfx.name))
+
+	"""
 	sfxcache_t	*sc;
 	int			vol;
 	playsound_t	*ps, *sort;
 	int			start;
+	"""
 
-	if (!sound_started)
-		return;
+	if not sound_started:
+		return
 
-	if (!sfx)
-		return;
+	if sfx is None:
+		return
 
-	if (sfx->name[0] == '*')
-		sfx = S_RegisterSexedSound(&cl_entities[entnum].current, sfx->name);
+	#if sfx.name[0] == '*':
+	#	sfx = S_RegisterSexedSound(&cl_entities[entnum].current, sfx.name)
 
-	// make sure the sound is loaded
-	sc = S_LoadSound (sfx);
-	if (!sc)
-		return;		// couldn't load the sound's data
+	# make sure the sound is loaded
+	sc = snd_mem.S_LoadSound (sfx)
+	print (sc)
+	if sc is None:
+		return		# couldn't load the sound's data
 
-	vol = fvol*255;
+	vol = fvol*255
 
-	// make the playsound_t
-	ps = S_AllocPlaysound ();
-	if (!ps)
-		return;
+	# make the playsound_t
+	ps = snd_loc.playsound_t ()
+	if ps is None:
+		return
 
-	if (origin)
-	{
-		VectorCopy (origin, ps->origin);
-		ps->fixed_origin = true;
-	}
-	else
-		ps->fixed_origin = false;
+	if origin is not None:
+		ps.origin = origin
+		ps.fixed_origin = True
+	else:
+		ps.origin = None
+		ps.fixed_origin = False
 
-	ps->entnum = entnum;
-	ps->entchannel = entchannel;
-	ps->attenuation = attenuation;
-	ps->volume = vol;
-	ps->sfx = sfx;
+	ps.entnum = entnum
+	ps.entchannel = entchannel
+	ps.attenuation = attenuation
+	ps.volume = vol
+	ps.sfx = sfx
 
-	// drift s_beginofs
+	"""
+	# drift s_beginofs
 	start = cl.frame.servertime * 0.001 * dma.speed + s_beginofs;
 	if (start < paintedtime)
 	{
@@ -719,27 +727,17 @@ void S_StartSound(vec3_t origin, int entnum, int entchannel, sfx_t *sfx, float f
 	{
 		s_beginofs-=10;
 	}
+"""
+	if not timeofs:
+		ps.begin = paintedtime
+	else:
+		ps.begin = start + timeofs * dma.speed
 
-	if (!timeofs)
-		ps->begin = paintedtime;
-	else
-		ps->begin = start + timeofs * dma.speed;
+	# sort into the pending sound list
+	s_pendingplays.append(ps)
+	s_pendingplays.sort(key = lambda x: x.begin)
 
-	// sort into the pending sound list
-	for (sort = s_pendingplays.next ; 
-		sort != &s_pendingplays && sort->begin < ps->begin ;
-		sort = sort->next)
-			;
-
-	ps->next = sort;
-	ps->prev = sort->prev;
-
-	ps->next->prev = ps;
-	ps->prev->next = ps;
-}
-
-
-/*
+"""
 ==================
 S_StartLocalSound
 ==================
@@ -1087,7 +1085,7 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 		Com_Printf ("----(%i)---- painted: %i\n", total, paintedtime);
 	}
 
-// mix some sound
+	// mix some sound
 	S_Update_();
 
 
@@ -1170,28 +1168,23 @@ console functions
 
 def S_Play():
 
-	pass
 	"""
 	int 	i;
 	char name[256];
 	sfx_t	*sfx;
-	
+	"""
 	i = 1;
-	while (i<Cmd_Argc())
-	{
-		if (!strrchr(Cmd_Argv(i), '.'))
-		{
-			strcpy(name, Cmd_Argv(i));
-			strcat(name, ".wav");
-		}
-		else
-			strcpy(name, Cmd_Argv(i));
-		sfx = S_RegisterSound(name);
-		S_StartSound(NULL, cl.playernum+1, 0, sfx, 1.0, 1.0, 0);
-		i++;
-	}
-
-"""
+	while i<cmd.Cmd_Argc():
+	
+		if cmd.Cmd_Argv(i).find('.') == -1:
+		
+			name = "{}.wav".format(cmd.Cmd_Argv(i))
+		
+		else:
+			name = cmd.Cmd_Argv(i)
+		sfx = S_RegisterSound(name)
+		S_StartSound(None, cl_main.cl.playernum+1, 0, sfx, 1.0, 1.0, 0)
+		i+=1
 
 def S_SoundList():
 	pass
@@ -1226,5 +1219,5 @@ def S_SoundList():
 		}
 	}
 	Com_Printf ("Total resident: %i\n", total);
-}
+
 """

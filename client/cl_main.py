@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cvar, common
 from game import q_shared
-from client import console, snd_dma, cl_scrn
+from client import console, snd_dma, cl_scrn, client
 from linux import q_shlinux
 
 """
@@ -94,8 +94,9 @@ cvar_t	*gender_auto;
 cvar_t	*cl_vwep;
 
 client_static_t	cls;
-client_state_t	cl;
-
+"""
+cl = client.client_state_t()
+"""
 centity_t		cl_entities[MAX_EDICTS];
 
 entity_state_t	cl_parse_entities[MAX_PARSE_ENTITIES];

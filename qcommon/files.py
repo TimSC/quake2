@@ -85,8 +85,11 @@ class searchpath_t(object):
 		self.filename = None #char	[MAX_OSPATH];
 		self.pack = None #pack_t	*;		# only one of filename / pack will be used
 
+	def __repr__(self):
+		return "searchpath_t ({} {})".format(self.filename, self.pack is not None)
+
 fs_searchpaths = [] #searchpath_t	*;
-fs_searchpaths = [] #searchpath_t	*x;	# without gamedirs
+fs_base_searchpaths = [] #searchpath_t	*x;	# without gamedirs
 """
 
 /*
@@ -250,6 +253,7 @@ def FS_FOpenFile (filename): #char *
 			# look through all the pak file elements
 			pak = search.pack
 			for i in range (pak.numfiles):
+
 				if not q_shared.Q_strcasecmp (pak.files[i].name, filename):
 					# found it!
 					file_from_pak = 1;
@@ -655,8 +659,10 @@ def FS_Link_f ():
 /*
 ** FS_ListFiles
 */
-char **FS_ListFiles( char *findname, int *numfiles, unsigned musthave, unsigned canthave )
-{
+"""
+def FS_ListFiles( findname, musthave, canthave ): #char *, unsigned, unsigned (returns char **)
+	
+	"""
 	char *s;
 	int nfiles = 0;
 	char **list = 0;
@@ -696,61 +702,52 @@ char **FS_ListFiles( char *findname, int *numfiles, unsigned musthave, unsigned 
 	Sys_FindClose ();
 
 	return list;
-}
+	"""
+	return []
 
+"""
 /*
 ** FS_Dir_f
 """
 def FS_Dir_f():
-	pass
-"""
-
-	char	*path = NULL;
+	
+	"""
 	char	findname[1024];
-	char	wildcard[1024] = "*.*";
 	char	**dirnames;
 	int		ndirs;
+	"""
+	findname = None
+	path = None #char	*
+	wildcard = "*.*" #char[1024]
+ 
+	if cmd.Cmd_Argc() != 1:
+	
+		wildcard = cmd.Cmd_Argv( 1 )
 
-	if ( Cmd_Argc() != 1 )
-	{
-		strcpy( wildcard, Cmd_Argv( 1 ) );
-	}
+	path = FS_NextPath( path )
+	while path != None:
 
-	while ( ( path = FS_NextPath( path ) ) != NULL )
-	{
-		char *tmp = findname;
+		findname = os.path.join(path, wildcard)
+		findname = findname.replace("\\", "/")
 
-		Com_sprintf( findname, sizeof(findname), "%s/%s", path, wildcard );
+		common.Com_Printf( "Directory of {}\n".format(findname))
+		common.Com_Printf( "----\n" )
 
-		while ( *tmp != 0 )
-		{
-			if ( *tmp == '\\' ) 
-				*tmp = '/';
-			tmp++;
-		}
-		Com_Printf( "Directory of %s\n", findname );
-		Com_Printf( "----\n" );
+		dirnames = FS_ListFiles( findname, 0, 0 )		
+		if dirnames is not None:
+			
+			for name in dirnames:
+			
+				if name.rfind('/') != -1:
+					Com_Printf( "{}\n", name[name.rfind('/')+1:] )
+				else:
+					Com_Printf( "{}\n", name )
 
-		if ( ( dirnames = FS_ListFiles( findname, &ndirs, 0, 0 ) ) != 0 )
-		{
-			int i;
+		common.Com_Printf( "\n" );
+		
+		path = FS_NextPath( path )
 
-			for ( i = 0; i < ndirs-1; i++ )
-			{
-				if ( strrchr( dirnames[i], '/' ) )
-					Com_Printf( "%s\n", strrchr( dirnames[i], '/' ) + 1 );
-				else
-					Com_Printf( "%s\n", dirnames[i] );
-
-				free( dirnames[i] );
-			}
-			free( dirnames );
-		}
-		Com_Printf( "\n" );
-	};
-
-
-/*
+"""
 ============
 FS_Path_f
 
@@ -786,29 +783,31 @@ FS_NextPath
 
 Allows enumerating all of the directories in the search path
 ================
-*/
-char *FS_NextPath (char *prevpath)
-{
-	searchpath_t	*s;
-	char			*prev;
-
-	if (!prevpath)
-		return fs_gamedir;
-
-	prev = fs_gamedir;
-	for (s=fs_searchpaths ; s ; s=s->next)
-	{
-		if (s->pack)
-			continue;
-		if (prevpath == prev)
-			return s->filename;
-		prev = s->filename;
-	}
-
-	return NULL;
-}
-
 """
+def FS_NextPath (prevpath): #char * (returns char *)
+
+	global fs_gamedir, fs_searchpaths
+
+	#searchpath_t	*s;
+	#char			*prev;
+
+	if prevpath is None:
+		return fs_gamedir
+
+	prev = fs_gamedir
+
+	for s in fs_searchpaths:
+	
+		if s.pack is not None:
+			continue;
+		if prevpath == prev and s.filename != prevpath: #Why is this fix neccessary in python code?
+			return s.filename
+		prev = s.filename
+
+	return None
+
+
+
 """
 ================
 FS_InitFilesystem
@@ -816,7 +815,7 @@ FS_InitFilesystem
 """
 def FS_InitFilesystem ():
 
-	global fs_gamedir, fs_basedir, fs_cddir, fs_gamedirvar
+	global fs_gamedir, fs_basedir, fs_cddir, fs_gamedirvar, fs_base_searchpaths
 
 	cmd.Cmd_AddCommand ("path", FS_Path_f)
 	cmd.Cmd_AddCommand ("link", FS_Link_f)

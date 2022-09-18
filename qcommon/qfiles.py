@@ -43,9 +43,12 @@ class dpackfile_t(object):
 		self.filepos, self.filelen = None, None # int
 
 	def read(self, fi):
-		self.name = fi.read(56).decode("ascii")
+		self.name = fi.read(56).decode("ascii").replace("\x00", "", -1)
 
 		self.filepos, self.filelen = struct.unpack('<ll', fi.read(8))
+
+	def __repr__(self):
+		return "dpackfile_t ({} {} {})".format(self.name, self.filepos, self.filelen)
 
 class dpackheader_t(object):
 	def __init__(self):
