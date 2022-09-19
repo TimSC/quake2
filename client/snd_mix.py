@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+from client import snd_dma
 """
 // snd_mix.c -- portable code to mix sounds for snd_dma.c
 
@@ -223,50 +223,55 @@ CHANNEL MIXING
 void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int endtime, int offset);
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int endtime, int offset);
 
-void S_PaintChannels(int endtime)
-{
+"""
+def S_PaintChannels(endtime): #int
+
+	"""
 	int 	i;
 	int 	end;
 	channel_t *ch;
 	sfxcache_t	*sc;
 	int		ltime, count;
 	playsound_t	*ps;
+	"""
 
-	snd_vol = s_volume->value*256;
+	#print (snd_dma.paintedtime, endtime, snd_dma.s_pendingplays)
+	
+	snd_vol = snd_dma.s_volume.value*256
 
-//Com_Printf ("%i to %i\n", paintedtime, endtime);
-	while (paintedtime < endtime)
-	{
-	// if paintbuffer is smaller than DMA buffer
-		end = endtime;
-		if (endtime - paintedtime > PAINTBUFFER_SIZE)
-			end = paintedtime + PAINTBUFFER_SIZE;
+	##Com_Printf ("%i to %i\n", snd_dma.paintedtime, endtime);
+	while snd_dma.paintedtime < endtime:
 
-		// start any playsounds
-		while (1)
-		{
-			ps = s_pendingplays.next;
-			if (ps == &s_pendingplays)
-				break;	// no more pending sounds
-			if (ps->begin <= paintedtime)
-			{
-				S_IssuePlaysound (ps);
-				continue;
-			}
+		# if paintbuffer is smaller than DMA buffer
+		end = endtime
+		#if endtime - paintedtime > PAINTBUFFER_SIZE:
+		#	end = paintedtime + PAINTBUFFER_SIZE
 
-			if (ps->begin < end)
-				end = ps->begin;		// stop here
-			break;
-		}
+		# start any playsounds
+		
+		while len(snd_dma.s_pendingplays) > 0:
+		
+			ps = snd_dma.s_pendingplays[0]
 
-	// clear the paint buffer
+			if ps.begin <= snd_dma.paintedtime:
+				
+				ps = snd_dma.s_pendingplays.pop(0)
+				snd_dma.S_IssuePlaysound (ps)
+				continue
+			
+			#if ps.begin < end:
+			#	end = ps.begin		# stop here
+			break
+		
+		"""
+		# clear the paint buffer
 		if (s_rawend < paintedtime)
 		{
-//			Com_Printf ("clear\n");
+			## Com_Printf ("clear\n");
 			memset(paintbuffer, 0, (end - paintedtime) * sizeof(portable_samplepair_t));
 		}
 		else
-		{	// copy from the streaming sound source
+		{	# copy from the streaming sound source
 			int		s;
 			int		stop;
 
@@ -277,10 +282,10 @@ void S_PaintChannels(int endtime)
 				s = i&(MAX_RAW_SAMPLES-1);
 				paintbuffer[i-paintedtime] = s_rawsamples[s];
 			}
-//		if (i != end)
-//			Com_Printf ("partial stream\n");
-//		else
-//			Com_Printf ("full stream\n");
+##		if (i != end)
+##			Com_Printf ("partial stream\n");
+##		else
+##			Com_Printf ("full stream\n");
 			for ( ; i<end ; i++)
 			{
 				paintbuffer[i-paintedtime].left =
@@ -289,7 +294,7 @@ void S_PaintChannels(int endtime)
 		}
 
 
-	// paint in the channels.
+		# paint in the channels.
 		ch = channels;
 		for (i=0; i<MAX_CHANNELS ; i++, ch++)
 		{
@@ -342,12 +347,12 @@ void S_PaintChannels(int endtime)
 			}
 															  
 		}
+"""
+		# transfer out according to DMA format
+		#S_TransferPaintBuffer(end);
+		snd_dma.paintedtime = end;
+"""
 
-	// transfer out according to DMA format
-		S_TransferPaintBuffer(end);
-		paintedtime = end;
-	}
-}
 """
 def S_InitScaletable ():
 	pass

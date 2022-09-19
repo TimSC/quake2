@@ -1683,7 +1683,6 @@ CL_Frame
 """
 def CL_Frame (msec): #int
 
-	pass
 	"""
 	static int	extratime;
 	static int  lasttimecalled;
@@ -1742,10 +1741,12 @@ def CL_Frame (msec): #int
 	cl_scrn.SCR_UpdateScreen ()
 	if common.host_speeds.value:
 		common.time_after_ref = q_shlinux.Sys_Milliseconds ()
-"""
-	// update audio
-	S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
-	
+
+	# update audio
+	#S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up)
+	snd_dma.S_Update (None, cl.v_forward, cl.v_right, cl.v_up) #FIXME Simplified while porting
+
+"""	
 	CDAudio_Update();
 
 	// advance local effects for next frame

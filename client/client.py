@@ -133,11 +133,11 @@ class client_state_t(object):
 		int			time;			// this is the time value that the client
 									// is rendering at.  always <= cls.realtime
 		float		lerpfrac;		// between oldframe and frame
-
-		refdef_t	refdef;
-
-		vec3_t		v_forward, v_right, v_up;	// set when refdef.angles is set
-
+		
+		refdef = refdef_t()
+		"""
+		self.v_forward, self.v_right, self.v_up = None, None, None #vec3_t, set when refdef.angles is set
+		"""
 		//
 		// transient data from server
 		//

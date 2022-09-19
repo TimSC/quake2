@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cmd, cvar, common
 from game import q_shared
-from linux import snd_linux
+from linux import snd_linux, q_shlinux
 from client import snd_mix, snd_loc, snd_mem, cl_main
 """
 // snd_dma.c -- main control for any streaming sound output device
@@ -47,7 +47,7 @@ s_registration_sequence = 0 #int
 channel_t   channels[MAX_CHANNELS];
 """
 snd_initialized = False #qboolean
-sound_started = 0 #int
+sound_started = False #int
 
 dma = snd_loc.dma_t()
 """
@@ -101,6 +101,7 @@ portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
 """
 def S_SoundInfo_f():
 
+	global sound_started
 	pass
 	"""
 	if (!sound_started)
@@ -316,6 +317,7 @@ S_RegisterSound
 """
 def S_RegisterSound (name): #char * (returns sfx_t *)
 
+	global sound_started
 	#sfx_t	*sfx;
 
 	if not sound_started:
@@ -382,18 +384,20 @@ void S_EndRegistration (void)
 =================
 S_PickChannel
 =================
-*/
-channel_t *S_PickChannel(int entnum, int entchannel)
-{
+"""
+def S_PickChannel(entnum, entchannel): #int, int (returns channel_t *)
+
+	return None
+	"""
     int			ch_idx;
     int			first_to_die;
     int			life_left;
 	channel_t	*ch;
-
+	
 	if (entchannel<0)
 		Com_Error (ERR_DROP, "S_PickChannel: entchannel<0");
 
-// Check for replacement sound, or find the best one to replace
+	# Check for replacement sound, or find the best one to replace
     first_to_die = -1;
     life_left = 0x7fffffff;
     for (ch_idx=0 ; ch_idx < MAX_CHANNELS ; ch_idx++)
@@ -424,9 +428,8 @@ channel_t *S_PickChannel(int entnum, int entchannel)
 	memset (ch, 0, sizeof(*ch));
 
     return ch;
-}       
+ 
 
-/*
 =================
 S_SpatializeOrigin
 
@@ -557,23 +560,25 @@ Take the next playsound and begin it on the channel
 This is never called directly by S_Play*, but only
 by the update loop.
 ===============
-*/
-void S_IssuePlaysound (playsound_t *ps)
-{
+"""
+def S_IssuePlaysound (ps): #playsound_t *
+
+	"""
 	channel_t	*ch;
 	sfxcache_t	*sc;
+	"""
 
-	if (s_show->value)
-		Com_Printf ("Issue %i\n", ps->begin);
-	// pick a channel to play on
-	ch = S_PickChannel(ps->entnum, ps->entchannel);
-	if (!ch)
-	{
-		S_FreePlaysound (ps);
+	if s_show.value:
+		common.Com_Printf ("Issue %i\n".format(ps.begin))
+	# pick a channel to play on
+	ch = S_PickChannel(ps.entnum, ps.entchannel)
+	if ch is None:
+	
+		#S_FreePlaysound (ps)
 		return;
-	}
-
-	// spatialize
+	
+	"""
+	# spatialize
 	if (ps->attenuation == ATTN_STATIC)
 		ch->dist_mult = ps->attenuation * 0.001;
 	else
@@ -591,10 +596,11 @@ void S_IssuePlaysound (playsound_t *ps)
 	sc = S_LoadSound (ch->sfx);
     ch->end = paintedtime + sc->length;
 
-	// free the playsound
+	# free the playsound
 	S_FreePlaysound (ps);
-}
+	"""
 
+"""
 struct sfx_s *S_RegisterSexedSound (entity_state_t *ent, char *base)
 {
 	int				n;
@@ -665,7 +671,7 @@ Entchannel 0 will never override a playing sound
 """
 def S_StartSound(origin, entnum, entchannel, sfx, fvol, attenuation, timeofs): #vec3_t, int, int, sfx_t *, float, float, float
 
-	global s_beginofs
+	global s_beginofs, sound_started
 	#common.Com_Printf("S_StartSound {}\n".format(sfx.name))
 
 	"""
@@ -728,7 +734,7 @@ def S_StartSound(origin, entnum, entchannel, sfx, fvol, attenuation, timeofs): #
 		s_beginofs-=10;
 	}
 """
-	if not timeofs:
+	if timeofs == 0.0:
 		ps.begin = paintedtime
 	else:
 		ps.begin = start + timeofs * dma.speed
@@ -755,7 +761,7 @@ void S_StartLocalSound (char *sound)
 		Com_Printf ("S_StartLocalSound: can't cache %s\n", sound);
 		return;
 	}
-	S_StartSound (NULL, cl.playernum+1, 0, sfx, 1, 1, 0);
+	S_StartSound (NULL, cl.playernum+1, 0, sfx, 1, 1, 0.0);
 }
 
 
@@ -1016,26 +1022,29 @@ Called once each time through the main loop
 """
 def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 
-	pass
 	"""
 	int			i;
 	int			total;
 	channel_t	*ch;
 	channel_t	*combine;
+	"""
 
-	if (!sound_started)
-		return;
+	global sound_started
 
-	// if the laoding plaque is up, clear everything
-	// out to make sure we aren't looping a dirty
-	// dma buffer while loading
+	if not sound_started:
+		return
+
+	"""
+	# if the laoding plaque is up, clear everything
+	# out to make sure we aren't looping a dirty
+	# dma buffer while loading
 	if (cls.disable_screen)
 	{
 		S_ClearBuffer ();
 		return;
 	}
 
-	// rebuild scale tables if volume is modified
+	# rebuild scale tables if volume is modified
 	if (s_volume->modified)
 		S_InitScaletable ();
 
@@ -1046,7 +1055,7 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 
 	combine = NULL;
 
-	// update spatialization for dynamic sounds	
+	# update spatialization for dynamic sounds	
 	ch = channels;
 	for (i=0 ; i<MAX_CHANNELS; i++, ch++)
 	{
@@ -1065,12 +1074,12 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 		}
 	}
 
-	// add loopsounds
+	# add loopsounds
 	S_AddLoopSounds ();
 
-	//
-	// debugging output
-	//
+	#
+	# debugging output
+	#
 	if (s_show->value)
 	{
 		total = 0;
@@ -1084,18 +1093,22 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 		
 		Com_Printf ("----(%i)---- painted: %i\n", total, paintedtime);
 	}
-
-	// mix some sound
+"""
+	# mix some sound
 	S_Update_();
 
 
-void GetSoundtime(void)
-{
+def GetSoundtime():
+
+	global soundtime
+	"""
 	int		samplepos;
 	static	int		buffers;
 	static	int		oldsamplepos;
 	int		fullsamples;
+	"""
 	
+	"""
 	fullsamples = dma.samples / dma.channels;
 
 // it is possible to miscount buffers if it has wrapped twice between
@@ -1116,49 +1129,55 @@ void GetSoundtime(void)
 	oldsamplepos = samplepos;
 
 	soundtime = buffers*fullsamples + samplepos/dma.channels;
-}
+	"""
+	soundtime = q_shlinux.Sys_Milliseconds() #FIXME set the real value?
 
 
-void S_Update_(void)
-{
+def S_Update_():
+
+	"""
 	unsigned        endtime;
 	int				samps;
+	"""
 
-	if (!sound_started)
-		return;
+	global sound_started, paintedtime, soundtime
 
+	if not sound_started:
+		return
+	"""
 	SNDDMA_BeginPainting ();
 
 	if (!dma.buffer)
 		return;
+"""
+	# Updates DMA time
+	GetSoundtime()
 
-// Updates DMA time
-	GetSoundtime();
-
-// check to make sure that we haven't overshot
-	if (paintedtime < soundtime)
-	{
-		Com_DPrintf ("S_Update_ : overflow\n");
-		paintedtime = soundtime;
-	}
-
-// mix ahead of current position
+	# check to make sure that we haven't overshot
+	#if paintedtime < soundtime:
+	
+	#	common.Com_DPrintf ("S_Update_ : overflow\n")
+	#	paintedtime = soundtime
+	
+	endtime = soundtime #FIXME is mix ahead needed?
+	"""
+	# mix ahead of current position
 	endtime = soundtime + s_mixahead->value * dma.speed;
-//endtime = (soundtime + 4096) & ~4095;
+	##endtime = (soundtime + 4096) & ~4095;
 
-	// mix to an even submission block size
+	# mix to an even submission block size
 	endtime = (endtime + dma.submission_chunk-1)
 		& ~(dma.submission_chunk-1);
 	samps = dma.samples >> (dma.channels-1);
 	if (endtime - soundtime > samps)
 		endtime = soundtime + samps;
+	"""
 
-	S_PaintChannels (endtime);
+	snd_mix.S_PaintChannels (endtime)
 
-	SNDDMA_Submit ();
-}
+	#SNDDMA_Submit ()
 
-/*
+"""
 ===============================================================================
 
 console functions
@@ -1173,7 +1192,7 @@ def S_Play():
 	char name[256];
 	sfx_t	*sfx;
 	"""
-	i = 1;
+	i = 1
 	while i<cmd.Cmd_Argc():
 	
 		if cmd.Cmd_Argv(i).find('.') == -1:
@@ -1183,7 +1202,7 @@ def S_Play():
 		else:
 			name = cmd.Cmd_Argv(i)
 		sfx = S_RegisterSound(name)
-		S_StartSound(None, cl_main.cl.playernum+1, 0, sfx, 1.0, 1.0, 0)
+		S_StartSound(None, cl_main.cl.playernum+1, 0, sfx, 1.0, 1.0, 0.0)
 		i+=1
 
 def S_SoundList():
