@@ -80,8 +80,6 @@ class dma_t(object):
 		self.speed = None #int			
 		self.buffer = None #byte		*
 
-
-# !!! if this is changed, the asm code must change !!!
 class channel_t(object):
 	def __init__(self):
 		self.chan = None			# pygame mixer channel

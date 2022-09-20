@@ -2194,9 +2194,11 @@ float FloatNoSwap (float f)
 ================
 Swap_Init
 ================
-*/
-void Swap_Init (void)
-{
+"""
+def Swap_Init ():
+
+	pass
+	"""
 	byte	swaptest[2] = {1,0};
 
 // set the byte swapping variables in a portable manner	
@@ -2221,11 +2223,11 @@ void Swap_Init (void)
 		_LittleFloat = FloatSwap;
 	}
 
-}
+"""
 
 
 
-/*
+"""
 ============
 va
 

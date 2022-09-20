@@ -1146,7 +1146,7 @@ def GetSoundtime():
 
 	soundtime = buffers*fullsamples + samplepos/dma.channels;
 	"""
-	soundtime = q_shlinux.Sys_Milliseconds() #FIXME set the real value?
+	soundtime = q_shlinux.Sys_Milliseconds()
 
 
 def S_Update_():

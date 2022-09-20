@@ -39,12 +39,10 @@ cmd_alias = [] #cmdalias_t	*
 cmd_wait = None
 ALIAS_LOOP_COUNT = 16
 alias_count = None		# for detecting runaway loops
-"""
 
+"""
 //=============================================================================
 
-"""
-"""
 ============
 Cmd_Wait_f
 
@@ -59,14 +57,11 @@ def Cmd_Wait_f ():
 	cmd_wait = True
 
 """
-
-/*
 =============================================================================
 
 						COMMAND BUFFER
 
 =============================================================================
-*/
 """
 cmd_text_maxsize=8192
 cmd_text_buf="" #byte[8192]
@@ -103,7 +98,6 @@ def Cbuf_AddText (text): #char *
 	##SZ_Write (&cmd_text, text, strlen (text));
 
 """
-/*
 ============
 Cbuf_InsertText
 
@@ -322,7 +316,7 @@ def Cbuf_AddLateCommands (): #(returns qboolean)
 						SCRIPT COMMANDS
 
 ==============================================================================
-*/
+
 
 
 
@@ -478,7 +472,6 @@ def Cmd_Args():
 
 
 """
-/*
 ======================
 Cmd_MacroExpandString
 ======================
@@ -723,7 +716,7 @@ def Cmd_ExecuteString (text): #char *
 	"""
 	cmd_function_t	*cmd;
 	cmdalias_t		*a;
-"""
+	"""
 	global cmd_argv, alias_count
 
 	Cmd_TokenizeString (text, True)

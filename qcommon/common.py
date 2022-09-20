@@ -1439,7 +1439,7 @@ def Qcommon_Init (): #int argc, char **argv
 	# cvar and command buffer management
 	COM_InitArgv () #argc, argv
 
-	#Swap_Init ()
+	q_shared.Swap_Init ()
 	cmd.Cbuf_Init ()
 
 	cmd.Cmd_Init ()
@@ -1484,8 +1484,7 @@ def Qcommon_Init (): #int argc, char **argv
 	s = "{:4.2f}".format(qcommon.VERSION)
 	cvar.Cvar_Get ("version", s, q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET)
 	
-
-	if dedicated.value or True: #FIXME hack to be true
+	if dedicated.value:
 		cmd.Cmd_AddCommand ("quit", Com_Quit)
 
 	sys_linux.Sys_Init ()
