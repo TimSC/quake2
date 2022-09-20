@@ -1831,9 +1831,10 @@ CL_Shutdown
 FIXME: this is a callback from Sys_Quit and Com_Error.  It would be better
 to run quit through here before the final handoff to the sys code.
 ===============
-*/
-void CL_Shutdown(void)
-{
+"""
+def CL_Shutdown():
+
+	"""
 	static qboolean isdown = false;
 	
 	if (isdown)
@@ -1846,9 +1847,10 @@ void CL_Shutdown(void)
 	CL_WriteConfiguration (); 
 
 	CDAudio_Shutdown ();
-	S_Shutdown();
+	"""
+	snd_dma.S_Shutdown()
+	"""
 	IN_Shutdown ();
 	VID_Shutdown();
-}
+	"""
 
-"""

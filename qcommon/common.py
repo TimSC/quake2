@@ -1485,7 +1485,7 @@ def Qcommon_Init (): #int argc, char **argv
 	cvar.Cvar_Get ("version", s, q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET)
 	
 
-	if dedicated.value:
+	if dedicated.value or True: #FIXME hack to be true
 		cmd.Cmd_AddCommand ("quit", Com_Quit)
 
 	sys_linux.Sys_Init ()

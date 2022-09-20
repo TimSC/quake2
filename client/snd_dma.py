@@ -180,38 +180,35 @@ def S_Init ():
 // =======================================================================
 // Shutdown sound engine
 // =======================================================================
+"""
+def S_Shutdown():
 
-void S_Shutdown(void)
-{
-	int		i;
-	sfx_t	*sfx;
+	#int		i;
+	#sfx_t	*sfx;
+	global sound_started, known_sfx, num_sfx
 
-	if (!sound_started)
+	if not sound_started:
 		return;
 
-	SNDDMA_Shutdown();
+	snd_linux.SNDDMA_Shutdown()
 
-	sound_started = 0;
+	sound_started = 0
 
-	Cmd_RemoveCommand("play");
-	Cmd_RemoveCommand("stopsound");
-	Cmd_RemoveCommand("soundlist");
-	Cmd_RemoveCommand("soundinfo");
+	cmd.Cmd_RemoveCommand("play")
+	cmd.Cmd_RemoveCommand("stopsound")
+	cmd.Cmd_RemoveCommand("soundlist")
+	cmd.Cmd_RemoveCommand("soundinfo")
 
-	// free all sounds
-	for (i=0, sfx=known_sfx ; i < num_sfx ; i++,sfx++)
-	{
-		if (!sfx->name[0])
-			continue;
-		if (sfx->cache)
-			Z_Free (sfx->cache);
-		memset (sfx, 0, sizeof(*sfx));
-	}
+	# free all sounds
+	total = 0
+	for i in range(num_sfx):
+	
+		sfx=known_sfx[i]
+		sfx.clear()
 
-	num_sfx = 0;
-}
+	num_sfx = 0
 
-
+"""
 // =======================================================================
 // Load a sound
 // =======================================================================
@@ -408,7 +405,7 @@ def S_PickChannel(entnum, entchannel): #int, int (returns channel_t *)
 
 	# Check for replacement sound, or find the best one to replace
 	first_to_die = -1
-	life_left = 0x7fffffff
+	life_left = None
 
 	for ch_idx in range(snd_loc.MAX_CHANNELS):
 	
@@ -427,7 +424,7 @@ def S_PickChannel(entnum, entchannel): #int, int (returns channel_t *)
 		if ch.entnum == cl_main.cl.playernum+1 and entnum != cl_main.cl.playernum+1 and ch.sfx:
 			continue
 
-		if ch.end - paintedtime < life_left:
+		if life_left is None or ch.end - paintedtime < life_left:
 		
 			life_left = ch.end - paintedtime
 			first_to_die = ch_idx
@@ -446,9 +443,11 @@ S_SpatializeOrigin
 
 Used for spatializing channels and autosounds
 =================
-*/
-void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
-{
+"""
+def S_SpatializeOrigin (origin, master_vol, dist_mult): #vec3_t, float, float (returns int, int)
+	
+	return 255, 255 #FIXME simplified while porting
+	"""
 	vec_t		dot;
 	vec_t		dist;
 	vec_t		lscale, rscale, scale;
@@ -492,42 +491,34 @@ void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *
 	*left_vol = (int) (master_vol * scale);
 	if (*left_vol < 0)
 		*left_vol = 0;
-}
 
-/*
+
 =================
 S_Spatialize
 =================
 """
 def S_Spatialize(ch): #channel_t *
 
-	#Temporary code while porting
-	ch.leftvol = 255 
-	ch.rightvol = 255
+	#vec3_t		origin;
 
-	"""
-	vec3_t		origin;
+	# anything coming from the view entity will always be full volume
+	if ch.entnum == cl_main.cl.playernum+1:
+	
+		ch.leftvol = ch.master_vol
+		ch.rightvol = ch.master_vol
+		return
+	
 
-	// anything coming from the view entity will always be full volume
-	if (ch->entnum == cl.playernum+1)
-	{
-		ch->leftvol = ch->master_vol;
-		ch->rightvol = ch->master_vol;
-		return;
-	}
+	if ch.fixed_origin:	
+		ch.origin = origin	
 
-	if (ch->fixed_origin)
-	{
-		VectorCopy (ch->origin, origin);
-	}
-	else
-		CL_GetEntitySoundOrigin (ch->entnum, origin);
+	else:
+		origin = CL_GetEntitySoundOrigin (ch.entnum)
 
-	S_SpatializeOrigin (origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
+	ch.leftvol, ch.rightvol = S_SpatializeOrigin (origin, ch.master_vol, ch.dist_mult)
 
 
-
-/*
+"""
 =================
 S_AllocPlaysound
 =================
@@ -611,7 +602,7 @@ def S_IssuePlaysound (ps): #playsound_t *
 	sc = snd_mem.S_LoadSound (ch.sfx)
 	ch.end = paintedtime + sc.length
 
-	ch.chan.set_volume(ch.master_vol/255*ch.leftvol/255, ch.master_vol/255*ch.rightvol/255)
+	ch.chan.set_volume(ch.leftvol/255, ch.rightvol/255)
 	ch.chan.play(sc.data)
 
 """
@@ -775,7 +766,7 @@ void S_StartLocalSound (char *sound)
 		Com_Printf ("S_StartLocalSound: can't cache %s\n", sound);
 		return;
 	}
-	S_StartSound (NULL, cl.playernum+1, 0, sfx, 1, 1, 0.0);
+	S_StartSound (NULL, cl_main.cl.playernum+1, 0, sfx, 1, 1, 0.0);
 }
 
 
@@ -783,14 +774,16 @@ void S_StartLocalSound (char *sound)
 ==================
 S_ClearBuffer
 ==================
-*/
-void S_ClearBuffer (void)
-{
-	int		clear;
-		
-	if (!sound_started)
-		return;
+"""
+def S_ClearBuffer ():
 
+	#int		clear;
+		
+	global sound_started
+
+	if not sound_started:
+		return;
+	"""
 	s_rawend = 0;
 
 	if (dma.samplebits == 8)
@@ -802,26 +795,29 @@ void S_ClearBuffer (void)
 	if (dma.buffer)
 		memset(dma.buffer, clear, dma.samples * dma.samplebits/8);
 	SNDDMA_Submit ();
-}
+	"""
 
-/*
+"""
 ==================
 S_StopAllSounds
 ==================
 """
 def S_StopAllSounds():
-	pass
-	"""
-	int		i;
+	
+	#int		i;
 
-	if (!sound_started)
+	global sound_started, s_pendingplays
+
+	if not sound_started:
 		return;
-
-	// clear all the playsounds
+	"""
+	# clear all the playsounds
 	memset(s_playsounds, 0, sizeof(s_playsounds));
 	s_freeplays.next = s_freeplays.prev = &s_freeplays;
 	s_pendingplays.next = s_pendingplays.prev = &s_pendingplays;
-
+	"""
+	s_pendingplays = []
+	"""
 	for (i=0 ; i<MAX_PLAYSOUNDS ; i++)
 	{
 		s_playsounds[i].prev = &s_freeplays;
@@ -829,14 +825,20 @@ def S_StopAllSounds():
 		s_playsounds[i].prev->next = &s_playsounds[i];
 		s_playsounds[i].next->prev = &s_playsounds[i];
 	}
+	"""
 
-	// clear all the channels
-	memset(channels, 0, sizeof(channels));
+	# clear all the channels
+	for ch_idx in range(snd_loc.MAX_CHANNELS):
+	
+		ch = channels[ch_idx]
+		if ch.chan is None: continue
+		ch.chan.stop()
+	
+	#memset(channels, 0, sizeof(channels));
 
 	S_ClearBuffer ();
-}
 
-/*
+"""
 ==================
 S_AddLoopSounds
 
@@ -1220,37 +1222,40 @@ def S_Play():
 		i+=1
 
 def S_SoundList():
-	pass
+	
 	"""
 	int		i;
 	sfx_t	*sfx;
 	sfxcache_t	*sc;
 	int		size, total;
+	"""
+	global known_sfx, num_sfx
 
-	total = 0;
-	for (sfx=known_sfx, i=0 ; i<num_sfx ; i++, sfx++)
-	{
-		if (!sfx->registration_sequence)
-			continue;
-		sc = sfx->cache;
-		if (sc)
-		{
-			size = sc->length*sc->width*(sc->stereo+1);
+	total = 0
+	for i in range(num_sfx):
+	
+		sfx=known_sfx[i]
+		if not sfx.registration_sequence:
+			continue
+		sc = sfx.cache
+
+		if sc is not None:
+		
+			size = len(sc.data.get_raw())
 			total += size;
-			if (sc->loopstart >= 0)
-				Com_Printf ("L");
-			else
-				Com_Printf (" ");
-			Com_Printf("(%2db) %6i : %s\n",sc->width*8,  size, sfx->name);
-		}
-		else
-		{
-			if (sfx->name[0] == '*')
-				Com_Printf("  placeholder : %s\n", sfx->name);
-			else
-				Com_Printf("  not loaded  : %s\n", sfx->name);
-		}
-	}
-	Com_Printf ("Total resident: %i\n", total);
+			if sc.loopstart >= 0:
+				common.Com_Printf ("L")
+			else:
+				common.Com_Printf (" ")
+			common.Com_Printf("  {}\n", sfx.name)
+		
+		else:
+		
+			if sfx.name[0] == '*':
+				common.Com_Printf("  placeholder : {}\n".format(sfx.name))
+			else:
+				common.Com_Printf("  not loaded  : {}\n".format(sfx.name))
+		
+	common.Com_Printf ("Total resident: {}\n".format(total))
 
-"""
+

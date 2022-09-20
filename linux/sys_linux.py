@@ -21,6 +21,7 @@ import sys
 import time
 import pygame
 from qcommon import common
+from client import cl_main
 """
 #include <unistd.h>
 #include <signal.h>
@@ -94,7 +95,7 @@ void Sys_Printf (char *fmt, ...)
 """
 def Sys_Quit ():
 
-	#CL_Shutdown ();
+	cl_main.CL_Shutdown ()
 	common.Qcommon_Shutdown ()
     #fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
 	exit(0)
@@ -116,9 +117,9 @@ def Sys_Error (error):
 
 // change stdin to non blocking
     fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
-
-	CL_Shutdown ();
 """
+	cl_main.CL_Shutdown ()
+
 	common.Qcommon_Shutdown ()
 	""" 
     va_start (argptr,error);

@@ -637,56 +637,43 @@ def Cmd_AddCommand(cmd_name, function): #char *, xcommand_t
 
 
 """
-
-/*
 ============
 Cmd_RemoveCommand
 ============
-*/
-void	Cmd_RemoveCommand (char *cmd_name)
-{
-	cmd_function_t	*cmd, **back;
+"""
+def Cmd_RemoveCommand (cmd_name): #char *
 
-	back = &cmd_functions;
-	while (1)
-	{
-		cmd = *back;
-		if (!cmd)
-		{
-			common.Com_Printf ("Cmd_RemoveCommand: %s not added\n", cmd_name);
-			return;
-		}
-		if (!strcmp (cmd_name, cmd->name))
-		{
-			*back = cmd->next;
-			Z_Free (cmd);
-			return;
-		}
-		back = &cmd->next;
-	}
-}
+	#cmd_function_t	*cmd, **back;
+	found = None
+	for cmd in cmd_functions:
+	
+		if cmd_name == cmd.name:
+			found = cmd
+			break
+		
+	if found is not None:
+		cmd_functions.remove(cmd)
+	else:	
+		common.Com_Printf ("Cmd_RemoveCommand: %s not added\n", cmd_name);
 
-/*
+"""
 ============
 Cmd_Exists
 ============
-*/
-qboolean	Cmd_Exists (char *cmd_name)
-{
-	cmd_function_t	*cmd;
+"""
+def Cmd_Exists (cmd_name): #char * (returns qboolean)
 
-	for (cmd=cmd_functions ; cmd ; cmd=cmd->next)
-	{
-		if (!strcmp (cmd_name,cmd->name))
-			return true;
-	}
+	#cmd_function_t	*cmd;
 
-	return false;
-}
+	for cmd in cmd_functions:
+	
+		if cmd_name == cmd.name:
+			return True
+	
+	return False
 
 
-
-/*
+"""
 ============
 Cmd_CompleteCommand
 ============

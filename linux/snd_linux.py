@@ -261,19 +261,20 @@ int SNDDMA_GetDMAPos(void)
 	return dma.samplepos;
 
 }
+"""
+def SNDDMA_Shutdown():
 
-void SNDDMA_Shutdown(void)
-{
-#if 0
-	if (snd_inited)
-	{
-		close(audio_fd);
-		snd_inited = 0;
-	}
-#endif
-}
+	pygame.mixer.quit()
 
-/*
+	##if 0
+	##if (snd_inited)
+	##{
+	##	close(audio_fd);
+	##	snd_inited = 0;
+	##}
+	##endif
+
+"""
 ==============
 SNDDMA_Submit
 
