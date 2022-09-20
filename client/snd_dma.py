@@ -21,6 +21,7 @@ from qcommon import cmd, cvar, common
 from game import q_shared
 from linux import snd_linux, q_shlinux
 from client import snd_mix, snd_loc, snd_mem, cl_main
+import pygame
 """
 // snd_dma.c -- main control for any streaming sound output device
 
@@ -43,9 +44,10 @@ void S_StopAllSounds(void);
 #define		SOUND_LOOPATTENUATE	0.003
 """
 s_registration_sequence = 0 #int
-"""
-channel_t   channels[MAX_CHANNELS];
-"""
+channels = [] #channel_t[]
+for i in range(snd_loc.MAX_CHANNELS):
+	channels.append(snd_loc.channel_t())
+
 snd_initialized = False #qboolean
 sound_started = False #int
 
@@ -110,13 +112,13 @@ def S_SoundInfo_f():
 		return;
 	}
 	
-    Com_Printf("%5d stereo\n", dma.channels - 1);
-    Com_Printf("%5d samples\n", dma.samples);
-    Com_Printf("%5d samplepos\n", dma.samplepos);
-    Com_Printf("%5d samplebits\n", dma.samplebits);
-    Com_Printf("%5d submission_chunk\n", dma.submission_chunk);
-    Com_Printf("%5d speed\n", dma.speed);
-    Com_Printf("0x%x dma buffer\n", dma.buffer);
+	Com_Printf("%5d stereo\n", dma.channels - 1);
+	Com_Printf("%5d samples\n", dma.samples);
+	Com_Printf("%5d samplepos\n", dma.samplepos);
+	Com_Printf("%5d samplebits\n", dma.samplebits);
+	Com_Printf("%5d submission_chunk\n", dma.submission_chunk);
+	Com_Printf("%5d speed\n", dma.speed);
+	Com_Printf("0x%x dma buffer\n", dma.buffer);
 
 /*
 ================
@@ -126,7 +128,7 @@ S_Init
 def S_Init ():
 
 	global s_volume, s_testsound, s_loadas8bit, s_khz, s_show, s_mixahead, s_primary
-	global sound_started, num_sfx, soundtime, paintedtime
+	global sound_started, num_sfx, soundtime, paintedtime, channels
 
 	#cvar_t	*cv;
 
@@ -162,6 +164,12 @@ def S_Init ():
 		paintedtime = 0
 
 		common.Com_Printf ("sound sampling rate: {}\n".format(dma.speed))
+
+		pygame.mixer.set_num_channels(snd_loc.MAX_CHANNELS)
+
+		maxChan = min(snd_loc.MAX_CHANNELS, pygame.mixer.get_num_channels())
+		for ch_idx in range(maxChan):
+			channels[ch_idx].chan = pygame.mixer.Channel(ch_idx)
 		
 		S_StopAllSounds ()
 	
@@ -387,49 +395,52 @@ S_PickChannel
 """
 def S_PickChannel(entnum, entchannel): #int, int (returns channel_t *)
 
-	return None
 	"""
-    int			ch_idx;
-    int			first_to_die;
-    int			life_left;
+	int			ch_idx;
+	int			first_to_die;
+	int			life_left;
 	channel_t	*ch;
-	
-	if (entchannel<0)
-		Com_Error (ERR_DROP, "S_PickChannel: entchannel<0");
+	"""
+	global channels
+
+	if entchannel<0:
+		common.Com_Error (ERR_DROP, "S_PickChannel: entchannel<0")
 
 	# Check for replacement sound, or find the best one to replace
-    first_to_die = -1;
-    life_left = 0x7fffffff;
-    for (ch_idx=0 ; ch_idx < MAX_CHANNELS ; ch_idx++)
-    {
-		if (entchannel != 0		// channel 0 never overrides
-		&& channels[ch_idx].entnum == entnum
-		&& channels[ch_idx].entchannel == entchannel)
-		{	// always override sound from same entity
-			first_to_die = ch_idx;
-			break;
-		}
+	first_to_die = -1
+	life_left = 0x7fffffff
 
-		// don't let monster sounds override player sounds
-		if (channels[ch_idx].entnum == cl.playernum+1 && entnum != cl.playernum+1 && channels[ch_idx].sfx)
-			continue;
+	for ch_idx in range(snd_loc.MAX_CHANNELS):
+	
+		ch = channels[ch_idx]
+		if ch.chan is None: continue
+	
+		if (entchannel != 0		# channel 0 never overrides
+			and ch.entnum == entnum
+			and ch.entchannel == entchannel):
+		
+			# always override sound from same entity
+			first_to_die = ch_idx
+			break
+			
+		# don't let monster sounds override player sounds
+		if ch.entnum == cl_main.cl.playernum+1 and entnum != cl_main.cl.playernum+1 and ch.sfx:
+			continue
 
-		if (channels[ch_idx].end - paintedtime < life_left)
-		{
-			life_left = channels[ch_idx].end - paintedtime;
-			first_to_die = ch_idx;
-		}
-   }
+		if ch.end - paintedtime < life_left:
+		
+			life_left = ch.end - paintedtime
+			first_to_die = ch_idx
+   
+	if first_to_die == -1:
+		return None
 
-	if (first_to_die == -1)
-		return NULL;
+	ch = channels[first_to_die]
+	ch.clear()
 
-	ch = &channels[first_to_die];
-	memset (ch, 0, sizeof(*ch));
+	return ch
 
-    return ch;
- 
-
+"""
 =================
 S_SpatializeOrigin
 
@@ -438,10 +449,10 @@ Used for spatializing channels and autosounds
 */
 void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *left_vol, int *right_vol)
 {
-    vec_t		dot;
-    vec_t		dist;
-    vec_t		lscale, rscale, scale;
-    vec3_t		source_vec;
+	vec_t		dot;
+	vec_t		dist;
+	vec_t		lscale, rscale, scale;
+	vec3_t		source_vec;
 
 	if (cls.state != ca_active)
 	{
@@ -487,9 +498,14 @@ void S_SpatializeOrigin (vec3_t origin, float master_vol, float dist_mult, int *
 =================
 S_Spatialize
 =================
-*/
-void S_Spatialize(channel_t *ch)
-{
+"""
+def S_Spatialize(ch): #channel_t *
+
+	#Temporary code while porting
+	ch.leftvol = 255 
+	ch.rightvol = 255
+
+	"""
 	vec3_t		origin;
 
 	// anything coming from the view entity will always be full volume
@@ -508,7 +524,7 @@ void S_Spatialize(channel_t *ch)
 		CL_GetEntitySoundOrigin (ch->entnum, origin);
 
 	S_SpatializeOrigin (origin, ch->master_vol, ch->dist_mult, &ch->leftvol, &ch->rightvol);
-}           
+
 
 
 /*
@@ -576,29 +592,27 @@ def S_IssuePlaysound (ps): #playsound_t *
 	
 		#S_FreePlaysound (ps)
 		return;
-	
-	"""
+
 	# spatialize
-	if (ps->attenuation == ATTN_STATIC)
-		ch->dist_mult = ps->attenuation * 0.001;
-	else
-		ch->dist_mult = ps->attenuation * 0.0005;
-	ch->master_vol = ps->volume;
-	ch->entnum = ps->entnum;
-	ch->entchannel = ps->entchannel;
-	ch->sfx = ps->sfx;
-	VectorCopy (ps->origin, ch->origin);
-	ch->fixed_origin = ps->fixed_origin;
+	if ps.attenuation == q_shared.ATTN_STATIC:
+		ch.dist_mult = ps.attenuation * 0.001
+	else:
+		ch.dist_mult = ps.attenuation * 0.0005
+	ch.master_vol = ps.volume
+	ch.entnum = ps.entnum
+	ch.entchannel = ps.entchannel
+	ch.sfx = ps.sfx
+	ps.origin = ch.origin
+	ch.fixed_origin = ps.fixed_origin
 
-	S_Spatialize(ch);
+	S_Spatialize(ch)
+	
+	ch.pos = 0;
+	sc = snd_mem.S_LoadSound (ch.sfx)
+	ch.end = paintedtime + sc.length
 
-	ch->pos = 0;
-	sc = S_LoadSound (ch->sfx);
-    ch->end = paintedtime + sc->length;
-
-	# free the playsound
-	S_FreePlaysound (ps);
-	"""
+	ch.chan.set_volume(ch.master_vol/255*ch.leftvol/255, ch.master_vol/255*ch.rightvol/255)
+	ch.chan.play(sc.data)
 
 """
 struct sfx_s *S_RegisterSexedSound (entity_state_t *ent, char *base)
@@ -692,7 +706,7 @@ def S_StartSound(origin, entnum, entchannel, sfx, fvol, attenuation, timeofs): #
 
 	# make sure the sound is loaded
 	sc = snd_mem.S_LoadSound (sfx)
-	print (sc)
+
 	if sc is None:
 		return		# couldn't load the sound's data
 
@@ -944,9 +958,9 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 				dst = s_rawend&(MAX_RAW_SAMPLES-1);
 				s_rawend++;
 				s_rawsamples[dst].left =
-				    LittleShort(((short *)data)[i*2]) << 8;
+					LittleShort(((short *)data)[i*2]) << 8;
 				s_rawsamples[dst].right =
-				    LittleShort(((short *)data)[i*2+1]) << 8;
+					LittleShort(((short *)data)[i*2+1]) << 8;
 			}
 		}
 		else
@@ -959,9 +973,9 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 				dst = s_rawend&(MAX_RAW_SAMPLES-1);
 				s_rawend++;
 				s_rawsamples[dst].left =
-				    LittleShort(((short *)data)[src*2]) << 8;
+					LittleShort(((short *)data)[src*2]) << 8;
 				s_rawsamples[dst].right =
-				    LittleShort(((short *)data)[src*2+1]) << 8;
+					LittleShort(((short *)data)[src*2+1]) << 8;
 			}
 		}
 	}
@@ -975,9 +989,9 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 			dst = s_rawend&(MAX_RAW_SAMPLES-1);
 			s_rawend++;
 			s_rawsamples[dst].left =
-			    LittleShort(((short *)data)[src]) << 8;
+				LittleShort(((short *)data)[src]) << 8;
 			s_rawsamples[dst].right =
-			    LittleShort(((short *)data)[src]) << 8;
+				LittleShort(((short *)data)[src]) << 8;
 		}
 	}
 	else if (channels == 2 && width == 1)
@@ -990,9 +1004,9 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 			dst = s_rawend&(MAX_RAW_SAMPLES-1);
 			s_rawend++;
 			s_rawsamples[dst].left =
-			    ((char *)data)[src*2] << 16;
+				((char *)data)[src*2] << 16;
 			s_rawsamples[dst].right =
-			    ((char *)data)[src*2+1] << 16;
+				((char *)data)[src*2+1] << 16;
 		}
 	}
 	else if (channels == 1 && width == 1)
@@ -1005,7 +1019,7 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 			dst = s_rawend&(MAX_RAW_SAMPLES-1);
 			s_rawend++;
 			s_rawsamples[dst].left =
-			    (((byte *)data)[src]-128) << 16;
+				(((byte *)data)[src]-128) << 16;
 			s_rawsamples[dst].right = (((byte *)data)[src]-128) << 16;
 		}
 	}
@@ -1066,7 +1080,7 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 			memset (ch, 0, sizeof(*ch));
 			continue;
 		}
-		S_Spatialize(ch);         // respatialize channel
+		S_Spatialize(ch);		 // respatialize channel
 		if (!ch->leftvol && !ch->rightvol)
 		{
 			memset (ch, 0, sizeof(*ch));
@@ -1136,7 +1150,7 @@ def GetSoundtime():
 def S_Update_():
 
 	"""
-	unsigned        endtime;
+	unsigned		endtime;
 	int				samps;
 	"""
 

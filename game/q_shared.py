@@ -988,14 +988,14 @@ typedef enum
 #define	CHAN_NO_PHS_ADD			8	// send to all clients, not just ones in PHS (ATTN 0 will also do this)
 #define	CHAN_RELIABLE			16	// send by reliable message, not datagram
 
+"""
+# sound attenuation values
+ATTN_NONE =               0	# full volume the entire level
+ATTN_NORM =               1
+ATTN_IDLE =               2
+ATTN_STATIC =             3	# diminish very rapidly with distance
 
-// sound attenuation values
-#define	ATTN_NONE               0	// full volume the entire level
-#define	ATTN_NORM               1
-#define	ATTN_IDLE               2
-#define	ATTN_STATIC             3	// diminish very rapidly with distance
-
-
+"""
 // player_state->stats[] indexes
 #define STAT_HEALTH_ICON		0
 #define	STAT_HEALTH				1

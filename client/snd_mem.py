@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import files, common
 from client import snd_loc
+import pygame
 """
 // snd_mem.c: sound caching
 
@@ -141,7 +142,7 @@ def S_LoadSound (s): #sfx_t * (returns sfxcache_t *)
 		return None
 	
 	sc = snd_loc.sfxcache_t()
-	sc.data = data
+	sc.data = pygame.mixer.Sound(data)
 
 	"""
 
@@ -164,8 +165,9 @@ def S_LoadSound (s): #sfx_t * (returns sfxcache_t *)
 		FS_FreeFile (data);
 		return NULL;
 	}
-	
-	sc->length = info.samples;
+	"""
+	sc.length = sc.data.get_length() * 1000
+	"""
 	sc->loopstart = info.loopstart;
 	sc->speed = info.rate;
 	sc->width = info.width;

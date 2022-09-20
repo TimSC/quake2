@@ -80,25 +80,29 @@ class dma_t(object):
 		self.speed = None #int			
 		self.buffer = None #byte		*
 
-"""
-// !!! if this is changed, the asm code must change !!!
-typedef struct
-{
-	sfx_t		*sfx;			// sfx number
-	int			leftvol;		// 0-255 volume
-	int			rightvol;		// 0-255 volume
-	int			end;			// end time in global paintsamples
-	int 		pos;			// sample position in sfx
-	int			looping;		// where to loop, -1 = no looping OBSOLETE?
-	int			entnum;			// to allow overriding a specific sound
-	int			entchannel;		//
-	vec3_t		origin;			// only use if fixed_origin is set
-	vec_t		dist_mult;		// distance multiplier (attenuation/clipK)
-	int			master_vol;		// 0-255 master volume
-	qboolean	fixed_origin;	// use origin instead of fetching entnum's origin
-	qboolean	autosound;		// from an entity->sound, cleared each frame
-} channel_t;
 
+# !!! if this is changed, the asm code must change !!!
+class channel_t(object):
+	def __init__(self):
+		self.chan = None			# pygame mixer channel
+		self.clear()
+
+	def clear(self):
+		self.sfx = None				# sfx_t		*, sfx number
+		self.leftvol = 0			# int, 0-255 volume
+		self.rightvol = 0			# int, 0-255 volume
+		self.end = 0				# int, end time in global paintsamples
+		self.pos = 0				# int, sample position in sfx
+		self.looping = 0			# int, where to loop, -1 = no looping OBSOLETE?
+		self.entnum = 0				# int, to allow overriding a specific sound
+		self.entchannel = 0			# int
+		self.origin = None			# vec3_t, only use if fixed_origin is set
+		self.dist_mult = None		# vec_t, distance multiplier (attenuation/clipK)
+		self.master_vol = 0			# int, 0-255 master volume
+		self.fixed_origin = False	# qboolean, use origin instead of fetching entnum's origin
+		self.autosound = False		# qboolean, from an entity->sound, cleared each frame
+
+"""
 typedef struct
 {
 	int			rate;
@@ -132,8 +136,9 @@ void	SNDDMA_BeginPainting (void);
 void	SNDDMA_Submit(void);
 
 //====================================================================
-
-#define	MAX_CHANNELS			32
+"""
+MAX_CHANNELS = 32
+"""
 extern	channel_t   channels[MAX_CHANNELS];
 
 extern	int		paintedtime;
