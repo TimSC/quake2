@@ -165,42 +165,8 @@ void floating_point_exception_handler(int whatever)
 	signal(SIGFPE, floating_point_exception_handler);
 }
 """
-keyBuffer = []
-cmdsReady = []
-
-def Key_Event(event):
-
-	global keyBuffer, cmdsReady
-	"""
-	if (!dedicated || !dedicated->value)
-		return;
-
-	if (!stdin_active)
-		return;
-"""
-
-	if event.key == pygame.K_RETURN:
-		cmdsReady.append("".join(keyBuffer))
-		keyBuffer = []
-	elif event.key == pygame.K_SPACE:
-		keyBuffer.append(" ")
-	elif event.key == pygame.K_BACKSPACE:
-		if len(keyBuffer) > 0:
-			keyBuffer.pop(-1)
-	elif event.key in [pygame.K_RSHIFT, pygame.K_LSHIFT, pygame.K_RCTRL, pygame.K_LCTRL, pygame.K_RALT, pygame.K_LALT]:
-		pass #Ignore modifiers
-	else:
-		keysPressed = pygame.key.get_pressed()
-		keyName = pygame.key.name(event.key)
-		if keysPressed[pygame.K_RSHIFT] or keysPressed[pygame.K_LSHIFT]:
-			keyName = keyName.upper() #Switch to upper case
-
-		keyBuffer.append(keyName)
 
 def Sys_ConsoleInput():
-
-	if len(cmdsReady) > 0:
-		return cmdsReady.pop(0)
 
 	return None
 
