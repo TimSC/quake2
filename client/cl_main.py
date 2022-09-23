@@ -92,9 +92,9 @@ cvar_t	*gender;
 cvar_t	*gender_auto;
 
 cvar_t	*cl_vwep;
-
-client_static_t	cls;
 """
+cls = client.client_static_t()
+
 cl = client.client_state_t()
 """
 centity_t		cl_entities[MAX_EDICTS];

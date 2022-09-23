@@ -22,7 +22,7 @@ from qcommon import cvar, cmd, files, qcommon
 from linux import sys_linux, q_shlinux
 from game import q_shared
 from server import sv_main
-from client import cl_main, cl_scrn
+from client import cl_main, cl_scrn, keys
 import pygame
 
 screen = None
@@ -1445,7 +1445,7 @@ def Qcommon_Init (): #int argc, char **argv
 	cmd.Cmd_Init ()
 	cvar.Cvar_Init()
 
-	#Key_Init ()
+	keys.Key_Init ()
 	
 	# we need to add the early commands twice, because
 	# a basedir or cddir needs to be set before execing
@@ -1529,6 +1529,9 @@ def Qcommon_Frame (msec): #int
 
 		if event.type == pygame.KEYDOWN:
 			sys_linux.Key_Event (event)
+
+		#if event.type == pygame.KEYUP:
+		#	keys.Key_Event (event)
 
 	"""
 	char	*s;

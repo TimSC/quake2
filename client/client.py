@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+from enum import Enum
 """
 // client.h -- primary header for client
 
@@ -156,7 +156,9 @@ class client_state_t(object):
 		//
 		// server state information
 		//
-		qboolean	attractloop;		// running the attract loop, any key will menu
+		"""
+		self.attractloop = False		# qboolean, running the attract loop, any key will menu
+		"""
 		int			servercount;	// server identification for prespawns
 		char		gamedir[MAX_QPATH];
 		"""
@@ -205,25 +207,32 @@ typedef enum {
 	dl_single
 } dltype_t;		// download type
 
-typedef enum {key_game, key_console, key_message, key_menu} keydest_t;
+"""
+class keydest_t(Enum):
+	key_game = 0
+	key_console = 1
+	key_message = 2
+	key_menu = 3
 
-typedef struct
-{
+class client_static_t(object):
+
+	"""
 	connstate_t	state;
-	keydest_t	key_dest;
-
+	"""
+	key_dest = keydest_t(keydest_t.key_game)
+	"""
 	int			framecount;
 	int			realtime;			// always increasing, no clamping, etc
 	float		frametime;			// seconds since last frame
 
-// screen rendering information
+	# screen rendering information
 	float		disable_screen;		// showing loading plaque between levels
 									// or changing rendering dlls
 									// if time gets > 30 seconds ahead, break it
 	int			disable_servercount;	// when we receive a frame and cl.servercount
 									// > cls.disable_servercount, clear disable_screen
 
-// connection information
+	# connection information
 	char		servername[MAX_OSPATH];	// name of server from original connect
 	float		connect_time;		// for connection retransmits
 
@@ -241,12 +250,14 @@ typedef struct
 	dltype_t	downloadtype;
 	int			downloadpercent;
 
-// demo recording info must be here, so it isn't cleared on level change
+	# demo recording info must be here, so it isn't cleared on level change
 	qboolean	demorecording;
 	qboolean	demowaiting;	// don't record until a non-delta message is received
 	FILE		*demofile;
-} client_static_t;
+	"""
 
+
+"""
 extern client_static_t	cls;
 
 //=============================================================================
