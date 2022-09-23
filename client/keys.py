@@ -486,9 +486,8 @@ def Key_Console (key): #int
 		return
 	
 	if ( key == K_BACKSPACE ) or ( key == K_LEFTARROW ) or ( key == K_KP_LEFTARROW ) or ( ( key == 'h' ) and ( keydown[K_CTRL] ) ):
-	
+
 		if key_linepos > 1:
-			key_lines[edit_line].pop()
 			key_linepos-=1
 		return
 
@@ -563,7 +562,7 @@ def Key_Console (key): #int
 	# handle normal character
 	if key_linepos < MAXCMDLINE-1:
 	
-		key_lines[edit_line] += chr(key)
+		key_lines[edit_line] = key_lines[edit_line][:key_linepos] + chr(key)
 		key_linepos+=1
 
 """
