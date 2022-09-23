@@ -190,15 +190,15 @@ of server connections
 
 ==================================================================
 */
+"""
+class connstate_t(Enum):
+	ca_uninitialized = 0
+	ca_disconnected = 1 	# not talking to a server
+	ca_connecting = 2		# sending request packets to the server
+	ca_connected = 3		# netchan_t established, waiting for svc_serverdata
+	ca_active = 4			# game views should be displayed
 
-typedef enum {
-	ca_uninitialized,
-	ca_disconnected, 	// not talking to a server
-	ca_connecting,		// sending request packets to the server
-	ca_connected,		// netchan_t established, waiting for svc_serverdata
-	ca_active			// game views should be displayed
-} connstate_t;
-
+"""
 typedef enum {
 	dl_none,
 	dl_model,
@@ -216,44 +216,44 @@ class keydest_t(Enum):
 
 class client_static_t(object):
 
-	"""
-	connstate_t	state;
-	"""
-	key_dest = keydest_t(keydest_t.key_game)
-	"""
-	int			framecount;
-	int			realtime;			// always increasing, no clamping, etc
-	float		frametime;			// seconds since last frame
+	def __init__(self):
+		self.state = connstate_t(connstate_t.ca_uninitialized)
+		
+		self.key_dest = keydest_t(keydest_t.key_game)
+		"""
+		int			framecount;
+		int			realtime;			// always increasing, no clamping, etc
+		float		frametime;			// seconds since last frame
 
-	# screen rendering information
-	float		disable_screen;		// showing loading plaque between levels
-									// or changing rendering dlls
-									// if time gets > 30 seconds ahead, break it
-	int			disable_servercount;	// when we receive a frame and cl.servercount
-									// > cls.disable_servercount, clear disable_screen
+		# screen rendering information
+		float		disable_screen;		// showing loading plaque between levels
+										// or changing rendering dlls
+										// if time gets > 30 seconds ahead, break it
+		int			disable_servercount;	// when we receive a frame and cl.servercount
+										// > cls.disable_servercount, clear disable_screen
 
-	# connection information
-	char		servername[MAX_OSPATH];	// name of server from original connect
-	float		connect_time;		// for connection retransmits
+		# connection information
+		char		servername[MAX_OSPATH];	// name of server from original connect
+		float		connect_time;		// for connection retransmits
 
-	int			quakePort;			// a 16 bit value that allows quake servers
-									// to work around address translating routers
-	netchan_t	netchan;
-	int			serverProtocol;		// in case we are doing some kind of version hack
+		int			quakePort;			// a 16 bit value that allows quake servers
+										// to work around address translating routers
+		netchan_t	netchan;
+		int			serverProtocol;		// in case we are doing some kind of version hack
 
-	int			challenge;			// from the server to use for connecting
+		int			challenge;			// from the server to use for connecting
 
-	FILE		*download;			// file transfer from server
-	char		downloadtempname[MAX_OSPATH];
-	char		downloadname[MAX_OSPATH];
-	int			downloadnumber;
-	dltype_t	downloadtype;
-	int			downloadpercent;
+		FILE		*download;			// file transfer from server
+		char		downloadtempname[MAX_OSPATH];
+		char		downloadname[MAX_OSPATH];
+		int			downloadnumber;
+		dltype_t	downloadtype;
+		int			downloadpercent;
 
-	# demo recording info must be here, so it isn't cleared on level change
-	qboolean	demorecording;
-	qboolean	demowaiting;	// don't record until a non-delta message is received
-	FILE		*demofile;
+		# demo recording info must be here, so it isn't cleared on level change
+		qboolean	demorecording;
+		qboolean	demowaiting;	// don't record until a non-delta message is received
+		FILE		*demofile;
 	"""
 
 

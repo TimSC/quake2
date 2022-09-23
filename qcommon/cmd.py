@@ -670,9 +670,11 @@ def Cmd_Exists (cmd_name): #char * (returns qboolean)
 ============
 Cmd_CompleteCommand
 ============
-*/
-char *Cmd_CompleteCommand (char *partial)
-{
+"""
+def Cmd_CompleteCommand (partial): #char * (returns char *)
+
+	return partial
+	"""
 	cmd_function_t	*cmd;
 	int				len;
 	cmdalias_t		*a;
@@ -699,7 +701,7 @@ char *Cmd_CompleteCommand (char *partial)
 			return a->name;
 
 	return NULL;
-}
+
 
 
 """
