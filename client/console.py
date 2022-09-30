@@ -49,8 +49,10 @@ class console_t(object):
 
 		vislines = None #int		
 
-		times = None #float	[NUM_CON_TIMES], cls.realtime time the line was generated
+		times = [] #float	[NUM_CON_TIMES], cls.realtime time the line was generated
 									# for transparent notify lines
+		for i in range(NUM_CON_TIMES):
+			times.append(None)
 
 con = console_t()
 
@@ -240,17 +242,16 @@ def Con_Dump_f ():
 ================
 Con_ClearNotify
 ================
-*/
-void Con_ClearNotify (void)
-{
-	int		i;
-	
-	for (i=0 ; i<NUM_CON_TIMES ; i++)
-		con.times[i] = 0;
-}
+"""
+def Con_ClearNotify ():
 
+	global con
+	#int		i;
+	
+	for i in range(NUM_CON_TIMES):
+		con.times[i] = 0
 						
-/*
+"""
 ================
 Con_MessageMode_f
 ================

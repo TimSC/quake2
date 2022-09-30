@@ -17,7 +17,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+from qcommon import cvar, cmd, qcommon, common
+from client import console, cl_main
+from linux import q_shlinux, vid_so
+from game import q_shared
 """
 // cl_scrn.c -- master for refresh, status bar, console, chat, notify, etc
 
@@ -38,28 +41,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 float		scr_con_current;	// aproaches scr_conlines at scr_conspeed
 float		scr_conlines;		// 0.0 to 1.0 lines of console to display
+"""
+scr_initialized = False # qboolean, ready to draw
+scr_draw_loading = 0 #int
 
-qboolean	scr_initialized;		// ready to draw
-
-int			scr_draw_loading;
-
+"""
 vrect_t		scr_vrect;		// position of render window on screen
 
+"""
+scr_viewsize = None #cvar_t		*
+scr_conspeed = None #cvar_t		*
+scr_centertime = None #cvar_t		*
+scr_showturtle = None #cvar_t		*
+scr_showpause = None #cvar_t		*
+scr_printspeed = None #cvar_t		*
 
-cvar_t		*scr_viewsize;
-cvar_t		*scr_conspeed;
-cvar_t		*scr_centertime;
-cvar_t		*scr_showturtle;
-cvar_t		*scr_showpause;
-cvar_t		*scr_printspeed;
-
-cvar_t		*scr_netgraph;
-cvar_t		*scr_timegraph;
-cvar_t		*scr_debuggraph;
-cvar_t		*scr_graphheight;
-cvar_t		*scr_graphscale;
-cvar_t		*scr_graphshift;
-cvar_t		*scr_drawall;
+scr_netgraph = None #cvar_t		*
+scr_timegraph = None #cvar_t		*
+scr_debuggraph = None #cvar_t		*
+scr_graphheight = None #cvar_t		*
+scr_graphscale = None #cvar_t		*
+scr_graphshift = None #cvar_t		*
+scr_drawall = None #cvar_t		*
+"""
 
 typedef struct
 {
@@ -344,37 +348,38 @@ SCR_SizeUp_f
 
 Keybinding command
 =================
-*/
-void SCR_SizeUp_f (void)
-{
-	Cvar_SetValue ("viewsize",scr_viewsize->value+10);
-}
+"""
+def SCR_SizeUp_f ():
+
+	cvar.Cvar_SetValue ("viewsize", scr_viewsize.value+10)
 
 
-/*
+"""
 =================
 SCR_SizeDown_f
 
 Keybinding command
 =================
-*/
-void SCR_SizeDown_f (void)
-{
-	Cvar_SetValue ("viewsize",scr_viewsize->value-10);
-}
+"""
+def SCR_SizeDown_f ():
 
-/*
+	cvar.Cvar_SetValue ("viewsize",scr_viewsize.value-10)
+
+
+"""
 =================
 SCR_Sky_f
 
 Set a specific sky and rotation speed
 =================
-*/
-void SCR_Sky_f (void)
-{
-	float	rotate;
-	vec3_t	axis;
+"""
+def SCR_Sky_f ():
 
+	#float	rotate;
+	#vec3_t	axis;
+
+	pass
+	"""
 	if (Cmd_Argc() < 2)
 	{
 		Com_Printf ("Usage: sky <basename> <rotate> <axis x y z>\n");
@@ -398,45 +403,48 @@ void SCR_Sky_f (void)
 	}
 
 	re.SetSky (Cmd_Argv(1), rotate, axis);
-}
+	"""
 
+"""
 //============================================================================
 
 /*
 ==================
 SCR_Init
 ==================
-*/
-void SCR_Init (void)
-{
-	scr_viewsize = Cvar_Get ("viewsize", "100", CVAR_ARCHIVE);
-	scr_conspeed = Cvar_Get ("scr_conspeed", "3", 0);
-	scr_showturtle = Cvar_Get ("scr_showturtle", "0", 0);
-	scr_showpause = Cvar_Get ("scr_showpause", "1", 0);
-	scr_centertime = Cvar_Get ("scr_centertime", "2.5", 0);
-	scr_printspeed = Cvar_Get ("scr_printspeed", "8", 0);
-	scr_netgraph = Cvar_Get ("netgraph", "0", 0);
-	scr_timegraph = Cvar_Get ("timegraph", "0", 0);
-	scr_debuggraph = Cvar_Get ("debuggraph", "0", 0);
-	scr_graphheight = Cvar_Get ("graphheight", "32", 0);
-	scr_graphscale = Cvar_Get ("graphscale", "1", 0);
-	scr_graphshift = Cvar_Get ("graphshift", "0", 0);
-	scr_drawall = Cvar_Get ("scr_drawall", "0", 0);
+"""
+def SCR_Init ():
 
-//
-// register our commands
-//
-	Cmd_AddCommand ("timerefresh",SCR_TimeRefresh_f);
-	Cmd_AddCommand ("loading",SCR_Loading_f);
-	Cmd_AddCommand ("sizeup",SCR_SizeUp_f);
-	Cmd_AddCommand ("sizedown",SCR_SizeDown_f);
-	Cmd_AddCommand ("sky",SCR_Sky_f);
+	global scr_initialized
+	global scr_viewsize, scr_conspeed, scr_centertime, scr_showturtle, scr_showpause, scr_printspeed
+	global scr_netgraph, scr_timegraph, scr_debuggraph, scr_graphheight, scr_graphscale, scr_graphshift, scr_drawall
 
-	scr_initialized = true;
-}
+	scr_viewsize = cvar.Cvar_Get ("viewsize", "100", q_shared.CVAR_ARCHIVE)
+	scr_conspeed = cvar.Cvar_Get ("scr_conspeed", "3", 0)
+	scr_showturtle = cvar.Cvar_Get ("scr_showturtle", "0", 0)
+	scr_showpause = cvar.Cvar_Get ("scr_showpause", "1", 0)
+	scr_centertime = cvar.Cvar_Get ("scr_centertime", "2.5", 0)
+	scr_printspeed = cvar.Cvar_Get ("scr_printspeed", "8", 0)
+	scr_netgraph = cvar.Cvar_Get ("netgraph", "0", 0)
+	scr_timegraph = cvar.Cvar_Get ("timegraph", "0", 0)
+	scr_debuggraph = cvar.Cvar_Get ("debuggraph", "0", 0)
+	scr_graphheight = cvar.Cvar_Get ("graphheight", "32", 0)
+	scr_graphscale = cvar.Cvar_Get ("graphscale", "1", 0)
+	scr_graphshift = cvar.Cvar_Get ("graphshift", "0", 0)
+	scr_drawall = cvar.Cvar_Get ("scr_drawall", "0", 0)
 
+	#
+	# register our commands
+	#
+	cmd.Cmd_AddCommand ("timerefresh",SCR_TimeRefresh_f)
+	cmd.Cmd_AddCommand ("loading",SCR_Loading_f)
+	cmd.Cmd_AddCommand ("sizeup",SCR_SizeUp_f)
+	cmd.Cmd_AddCommand ("sizedown",SCR_SizeDown_f)
+	cmd.Cmd_AddCommand ("sky",SCR_Sky_f)
 
-/*
+	scr_initialized = True
+
+"""
 ==============
 SCR_DrawNet
 ==============
@@ -558,9 +566,11 @@ void SCR_DrawConsole (void)
 ================
 SCR_BeginLoadingPlaque
 ================
-*/
-void SCR_BeginLoadingPlaque (void)
-{
+"""
+def SCR_BeginLoadingPlaque ():
+
+	pass
+	"""
 	S_StopAllSounds ();
 	cl.sound_prepped = false;		// don't play ambients
 	CDAudio_Stop ();
@@ -579,32 +589,29 @@ void SCR_BeginLoadingPlaque (void)
 	SCR_UpdateScreen ();
 	cls.disable_screen = Sys_Milliseconds ();
 	cls.disable_servercount = cl.servercount;
-}
+	"""
 
-/*
+"""
 ================
 SCR_EndLoadingPlaque
 ================
 """
 def SCR_EndLoadingPlaque ():
 
-	pass
-	#cls.disable_screen = 0;
-	#Con_ClearNotify ();
+	cl_main.cls.disable_screen = 0
+	console.Con_ClearNotify ()
 
 """
-
-/*
 ================
 SCR_Loading_f
 ================
-*/
-void SCR_Loading_f (void)
-{
-	SCR_BeginLoadingPlaque ();
-}
+"""
+def SCR_Loading_f ():
 
-/*
+	SCR_BeginLoadingPlaque ()
+
+
+"""
 ================
 SCR_TimeRefresh_f
 ================
@@ -623,13 +630,14 @@ int entitycmpfnc( const entity_t *a, const entity_t *b )
 		return ( ( int ) a->model - ( int ) b->model );
 	}
 }
+"""
+def SCR_TimeRefresh_f ():
 
-void SCR_TimeRefresh_f (void)
-{
-	int		i;
-	int		start, stop;
-	float	time;
-
+	#int		i;
+	#int		start, stop;
+	#float	time;
+	pass
+	"""
 	if ( cls.state != ca_active )
 		return;
 
@@ -660,9 +668,9 @@ void SCR_TimeRefresh_f (void)
 	stop = Sys_Milliseconds ();
 	time = (stop-start)/1000.0;
 	Com_Printf ("%f seconds (%f fps)\n", time, 128/time);
-}
+"""
 
-/*
+"""
 =================
 SCR_AddDirtyPoint
 =================
@@ -1269,140 +1277,148 @@ text to the screen.
 ==================
 """
 def SCR_UpdateScreen ():
-	pass
-	"""
-	int numframes;
-	int i;
-	float separation[2] = { 0, 0 };
 
-	// if the screen is disabled (loading plaque is up, or vid mode changing)
-	// do nothing at all
-	if (cls.disable_screen)
-	{
-		if (Sys_Milliseconds() - cls.disable_screen > 120000)
-		{
-			cls.disable_screen = 0;
-			Com_Printf ("Loading plaque timed out.\n");
-		}
-		return;
-	}
+	global scr_initialized
 
-	if (!scr_initialized || !con.initialized)
-		return;				// not initialized yet
+	#int numframes;
+	#int i;
+	separation = [0.0, 0.0] #float [2]
 
-	/*
-	** range check cl_camera_separation so we don't inadvertently fry someone's
-	** brain
-	*/
-	if ( cl_stereo_separation->value > 1.0 )
-		Cvar_SetValue( "cl_stereo_separation", 1.0 );
-	else if ( cl_stereo_separation->value < 0 )
-		Cvar_SetValue( "cl_stereo_separation", 0.0 );
+	# if the screen is disabled (loading plaque is up, or vid mode changing)
+	# do nothing at all
+	if cl_main.cls.disable_screen:
+	
+		if q_shlinux.Sys_Milliseconds () - cl_main.cls.disable_screen > 120000:
+		
+			cl_main.cls.disable_screen = 0
+			common.Com_Printf ("Loading plaque timed out.\n")
+		
+		return
+	
 
-	if ( cl_stereo->value )
-	{
-		numframes = 2;
-		separation[0] = -cl_stereo_separation->value / 2;
-		separation[1] =  cl_stereo_separation->value / 2;
-	}		
-	else
-	{
-		separation[0] = 0;
-		separation[1] = 0;
-		numframes = 1;
-	}
+	if not scr_initialized or not console.con.initialized:
+		return				# not initialized yet
 
-	for ( i = 0; i < numframes; i++ )
-	{
-		re.BeginFrame( separation[i] );
+	
+	#
+	# range check cl_camera_separation so we don't inadvertently fry someone's
+	# brain
+	#
+	if cl_main.cl_stereo_separation.value > 1.0 :
+		cvar.Cvar_SetValue( "cl_stereo_separation", 1.0 )
+	elif cl_main.cl_stereo_separation.value < 0 :
+		cvar.Cvar_SetValue( "cl_stereo_separation", 0.0 )
 
-		if (scr_draw_loading == 2)
-		{	//  loading plaque over black screen
+	if cl_main.cl_stereo.value:
+	
+		numframes = 2
+		separation[0] = -cl_main.cl_stereo_separation.value / 2
+		separation[1] =  cl_main.cl_stereo_separation.value / 2
+			
+	else:
+	
+		separation[0] = 0
+		separation[1] = 0
+		numframes = 1
+	
+	
+	for i in range(numframes):
+		
+		vid_so.re.BeginFrame( separation[i] )
+		
+		if scr_draw_loading == 2:
+			pass
+			"""
+			#  loading plaque over black screen
 			int		w, h;
 
 			re.CinematicSetPalette(NULL);
 			scr_draw_loading = false;
 			re.DrawGetPicSize (&w, &h, "loading");
 			re.DrawPic ((viddef.width-w)/2, (viddef.height-h)/2, "loading");
-//			re.EndFrame();
-//			return;
-		} 
-		// if a cinematic is supposed to be running, handle menus
-		// and console specially
-		else if (cl.cinematictime > 0)
-		{
+			##re.EndFrame();
+			##return;
+		"""
+
+		# if a cinematic is supposed to be running, handle menus
+		# and console specially
+		elif cl_main.cl.cinematictime > 0:
+		
+			pass
+			"""
 			if (cls.key_dest == key_menu)
 			{
 				if (cl.cinematicpalette_active)
 				{
-					re.CinematicSetPalette(NULL);
-					cl.cinematicpalette_active = false;
+					re.CinematicSetPalette(NULL)
+					cl.cinematicpalette_active = false
 				}
-				M_Draw ();
-//				re.EndFrame();
-//				return;
+				M_Draw ()
+				##re.EndFrame()
+				##return
 			}
 			else if (cls.key_dest == key_console)
 			{
 				if (cl.cinematicpalette_active)
 				{
-					re.CinematicSetPalette(NULL);
-					cl.cinematicpalette_active = false;
+					re.CinematicSetPalette(NULL)
+					cl.cinematicpalette_active = false
 				}
-				SCR_DrawConsole ();
-//				re.EndFrame();
-//				return;
+				SCR_DrawConsole ()
+				##re.EndFrame()
+				##return
 			}
 			else
 			{
-				SCR_DrawCinematic();
-//				re.EndFrame();
-//				return;
+				SCR_DrawCinematic()
+				##re.EndFrame()
+				##return
 			}
-		}
-		else 
-		{
-
-			// make sure the game palette is active
+			"""
+		
+		else:
+		
+			pass
+			"""
+			# make sure the game palette is active
 			if (cl.cinematicpalette_active)
 			{
-				re.CinematicSetPalette(NULL);
-				cl.cinematicpalette_active = false;
+				re.CinematicSetPalette(NULL)
+				cl.cinematicpalette_active = false
 			}
 
-			// do 3D refresh drawing, and then update the screen
-			SCR_CalcVrect ();
+			# do 3D refresh drawing, and then update the screen
+			SCR_CalcVrect ()
 
-			// clear any dirty part of the background
-			SCR_TileClear ();
+			# clear any dirty part of the background
+			SCR_TileClear ()
 
-			V_RenderView ( separation[i] );
+			V_RenderView ( separation[i] )
 
-			SCR_DrawStats ();
+			SCR_DrawStats ()
 			if (cl.frame.playerstate.stats[STAT_LAYOUTS] & 1)
-				SCR_DrawLayout ();
+				SCR_DrawLayout ()
 			if (cl.frame.playerstate.stats[STAT_LAYOUTS] & 2)
-				CL_DrawInventory ();
+				CL_DrawInventory ()
 
-			SCR_DrawNet ();
-			SCR_CheckDrawCenterString ();
+			SCR_DrawNet ()
+			SCR_CheckDrawCenterString ()
 
 			if (scr_timegraph->value)
-				SCR_DebugGraph (cls.frametime*300, 0);
+				SCR_DebugGraph (cls.frametime*300, 0)
 
 			if (scr_debuggraph->value || scr_timegraph->value || scr_netgraph->value)
-				SCR_DrawDebugGraph ();
+				SCR_DrawDebugGraph ()
 
-			SCR_DrawPause ();
+			SCR_DrawPause ()
 
-			SCR_DrawConsole ();
+			SCR_DrawConsole ()
 
-			M_Draw ();
+			M_Draw ()
 
-			SCR_DrawLoading ();
-		}
-	}
-	re.EndFrame();
-}
+			SCR_DrawLoading ()
+			"""
+		
+	
+	vid_so.re.EndFrame()
 
-"""

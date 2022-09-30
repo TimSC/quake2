@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-/*
+"""
+
+"""
 ** GLW_IMP.C
 **
 ** This file contains ALL Linux specific stuff having to do with the
@@ -799,18 +800,23 @@ void GLimp_BeginFrame( float camera_seperation )
 ** as yet to be determined.  Probably better not to make this a GLimp
 ** function and instead do a call to GLimp_SwapBuffers.
 */
-void GLimp_EndFrame (void)
-{
-	qglFlush();
-	qglXSwapBuffers(dpy, win);
-}
+"""
+def GLimp_EndFrame ():
 
+	pass
+	#qglFlush();
+	#qglXSwapBuffers(dpy, win);
+
+
+"""
 /*
 ** GLimp_AppActivate
 */
-void GLimp_AppActivate( qboolean active )
-{
-}
+"""
+def GLimp_AppActivate( active ): #qboolean
+	pass
+
+"""
 
 void Fake_glColorTableEXT( GLenum target, GLenum internalformat,
                              GLsizei width, GLenum format, GLenum type,
@@ -833,4 +839,4 @@ void Fake_glColorTableEXT( GLenum target, GLenum internalformat,
 /*------------------------------------------------*/
 /* X11 Input Stuff
 /*------------------------------------------------*/
-
+"""

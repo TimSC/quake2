@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import os
 from qcommon import cvar, common, cmd
-from client import snd_dma, cl_main
+from client import snd_dma, cl_main, ref
 from game import q_shared
 """
 #include <assert.h>
@@ -35,11 +35,10 @@ from game import q_shared
 #include "../client/client.h"
 
 #include "../linux/rw_linux.h"
-
-// Structure containing functions exported from refresh DLL
-refexport_t	re;
-
 """
+# Structure containing functions exported from refresh DLL
+re = ref.refexport_t()
+
 # Console variables that we need to access from this module
 vid_gamma = None       #cvar_t		*
 vid_ref = None         #cvar_t		*, Name of Refresh DLL loaded
@@ -50,8 +49,9 @@ vid_fullscreen = None  #cvar_t		*
 // Global variables used internally by this module
 viddef_t	viddef;				// global video state; used by other modules
 void		*reflib_library;		// Handle to refresh DLL 
-qboolean	reflib_active = 0;
-
+"""
+reflib_active = 0 #qboolean
+"""
 #define VID_NUM_MODES ( sizeof( vid_modes ) / sizeof( vid_modes[0] ) )
 
 const char so_file[] = "/etc/quake2.conf";
@@ -178,8 +178,11 @@ void VID_NewWindow ( int width, int height)
 	viddef.height = height;
 }
 
-void VID_FreeReflib (void)
-{
+"""
+def VID_FreeReflib ():
+
+	pass
+	"""
 	if (reflib_library) {
 		if (KBD_Close_fp)
 			KBD_Close_fp();
@@ -201,18 +204,20 @@ void VID_FreeReflib (void)
 	memset (&re, 0, sizeof(re));
 	reflib_library = NULL;
 	reflib_active  = false;
-}
+	"""
 
-/*
+
+"""
 ==============
 VID_LoadRefresh
 ==============
 """
 def VID_LoadRefresh(name): #char * (returns qboolean)
 
+	global re, reflib_active
 
+	ri = ref.refimport_t()
 	"""
-	refimport_t	ri;
 	GetRefAPI_t	GetRefAPI;
 	char	fn[MAX_OSPATH];
 	struct stat st;
@@ -230,9 +235,9 @@ def VID_LoadRefresh(name): #char * (returns qboolean)
 		re.Shutdown();
 		VID_FreeReflib ();
 	}
-
-	Com_Printf( "------- Loading %s -------\n", name );
-
+	"""
+	common.Com_Printf( "------- Loading {} -------\n".format(name) )
+	"""
 	//regain root
 	seteuid(saved_euid);
 
@@ -295,6 +300,13 @@ def VID_LoadRefresh(name): #char * (returns qboolean)
 	ri.Vid_MenuInit = VID_MenuInit;
 	ri.Vid_NewWindow = VID_NewWindow;
 
+	"""
+	if name == "gl" or True: #Force to gl for python port
+		from ref_gl import gl_rmain
+		re = gl_rmain.GetRefAPI(ri)
+
+	"""
+
 	if ( ( GetRefAPI = (void *) dlsym( reflib_library, "GetRefAPI" ) ) == 0 )
 		Com_Error( ERR_FATAL, "dlsym failed on %s", name );
 
@@ -322,13 +334,14 @@ def VID_LoadRefresh(name): #char * (returns qboolean)
 
 	Real_IN_Init();
 
-	if ( re.Init( 0, 0 ) == -1 )
-	{
-		re.Shutdown();
-		VID_FreeReflib ();
-		return false;
-	}
-
+	"""
+	if re.Init( 0, 0 ) == -1:
+	
+		re.Shutdown()
+		VID_FreeReflib ()
+		return False
+	
+	"""
 	/* Init KBD */
 #if 1
 	if ((KBD_Init_fp = dlsym(reflib_library, "KBD_Init")) == NULL ||
@@ -352,9 +365,10 @@ def VID_LoadRefresh(name): #char * (returns qboolean)
 	setreuid(getuid(), getuid());
 	setegid(getgid());
 
-	Com_Printf( "------------------------------------\n");
-	reflib_active = true;
 	"""
+	common.Com_Printf( "------------------------------------\n")
+	reflib_active = True
+
 	return True
 
 

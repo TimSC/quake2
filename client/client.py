@@ -149,7 +149,9 @@ class client_state_t(object):
 		// non-gameserver infornamtion
 		// FIXME: move this cinematic stuff into the cin_t structure
 		FILE		*cinematic_file;
-		int			cinematictime;		// cls.realtime for first cinematic frame
+		"""
+		self.cinematictime = 0 #int, cls.realtime for first cinematic frame
+		"""
 		int			cinematicframe;
 		char		cinematicpalette[768];
 		qboolean	cinematicpalette_active;

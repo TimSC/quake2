@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,16 +16,21 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from client import ref
+from ref_gl import gl_model
+from linux import gl_glx
+from game import q_shared
+"""
 // r_main.c
 #include "gl_local.h"
 
 void R_Clear (void);
 
 viddef_t	vid;
-
-refimport_t	ri;
-
+"""
+ri = ref.refimport_t()
+"""
 int GL_TEXTURE0, GL_TEXTURE1;
 
 model_t		*r_worldmodel;
@@ -960,14 +965,17 @@ void R_SetLightLevel (void)
 R_RenderFrame
 
 @@@@@@@@@@@@@@@@@@@@@
-*/
-void R_RenderFrame (refdef_t *fd)
-{
+"""
+def R_RenderFrame (fd): #refdef_t *
+
+	pass
+	"""
 	R_RenderView( fd );
 	R_SetLightLevel ();
 	R_SetGL2D ();
-}
+	"""
 
+"""
 
 void R_Register( void )
 {
@@ -1101,9 +1109,11 @@ qboolean R_SetMode (void)
 ===============
 R_Init
 ===============
-*/
-int R_Init( void *hinstance, void *hWnd )
-{	
+"""
+def R_Init( hinstance, hWnd ): #void *, void *
+
+	pass
+	"""
 	char renderer_buffer[1000];
 	char vendor_buffer[1000];
 	int		err;
@@ -1392,15 +1402,17 @@ int R_Init( void *hinstance, void *hWnd )
 	err = qglGetError();
 	if ( err != GL_NO_ERROR )
 		ri.Con_Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
-}
+	"""
 
-/*
+"""
 ===============
 R_Shutdown
 ===============
-*/
-void R_Shutdown (void)
-{	
+"""
+def R_Shutdown ():
+
+	pass
+	"""	
 	ri.Cmd_RemoveCommand ("modellist");
 	ri.Cmd_RemoveCommand ("screenshot");
 	ri.Cmd_RemoveCommand ("imagelist");
@@ -1419,18 +1431,17 @@ void R_Shutdown (void)
 	** shutdown our QGL subsystem
 	*/
 	QGL_Shutdown();
-}
+	"""
 
-
-
-/*
+"""
 @@@@@@@@@@@@@@@@@@@@@
 R_BeginFrame
 @@@@@@@@@@@@@@@@@@@@@
-*/
-void R_BeginFrame( float camera_separation )
-{
+"""
+def R_BeginFrame( camera_separation ): #float
 
+	pass
+	"""
 	gl_state.camera_separation = camera_separation;
 
 	/*
@@ -1674,49 +1685,52 @@ void	Draw_FadeScreen (void);
 GetRefAPI
 
 @@@@@@@@@@@@@@@@@@@@@
-*/
-refexport_t GetRefAPI (refimport_t rimp )
-{
-	refexport_t	re;
+"""
+def GetRefAPI ( rimp ): #refimport_t (returns refexport_t)
 
-	ri = rimp;
+	global ri
 
-	re.api_version = API_VERSION;
+	re = ref.refexport_t()
 
-	re.BeginRegistration = R_BeginRegistration;
-	re.RegisterModel = R_RegisterModel;
-	re.RegisterSkin = R_RegisterSkin;
-	re.RegisterPic = Draw_FindPic;
-	re.SetSky = R_SetSky;
-	re.EndRegistration = R_EndRegistration;
+	ri = rimp
 
-	re.RenderFrame = R_RenderFrame;
+	re.api_version = ref.API_VERSION
 
-	re.DrawGetPicSize = Draw_GetPicSize;
-	re.DrawPic = Draw_Pic;
-	re.DrawStretchPic = Draw_StretchPic;
-	re.DrawChar = Draw_Char;
-	re.DrawTileClear = Draw_TileClear;
-	re.DrawFill = Draw_Fill;
-	re.DrawFadeScreen= Draw_FadeScreen;
+	re.BeginRegistration = gl_model.R_BeginRegistration
+	re.RegisterModel = gl_model.R_RegisterModel
+	#re.RegisterSkin = R_RegisterSkin
+	#re.RegisterPic = Draw_FindPic
+	#re.SetSky = R_SetSky
+	re.EndRegistration = gl_model.R_EndRegistration
 
-	re.DrawStretchRaw = Draw_StretchRaw;
+	re.RenderFrame = R_RenderFrame
+	
+	#re.DrawGetPicSize = Draw_GetPicSize
+	#re.DrawPic = Draw_Pic
+	#re.DrawStretchPic = Draw_StretchPic
+	#re.DrawChar = Draw_Char
+	#re.DrawTileClear = Draw_TileClear
+	#re.DrawFill = Draw_Fill
+	#re.DrawFadeScreen= Draw_FadeScreen
 
-	re.Init = R_Init;
-	re.Shutdown = R_Shutdown;
+	#re.DrawStretchRaw = Draw_StretchRaw
 
-	re.CinematicSetPalette = R_SetPalette;
-	re.BeginFrame = R_BeginFrame;
-	re.EndFrame = GLimp_EndFrame;
+	re.Init = R_Init
+	re.Shutdown = R_Shutdown
 
-	re.AppActivate = GLimp_AppActivate;
+	#re.CinematicSetPalette = R_SetPalette
 
-	Swap_Init ();
+	re.BeginFrame = R_BeginFrame
+	re.EndFrame = gl_glx.GLimp_EndFrame
 
-	return re;
-}
+	re.AppActivate = gl_glx.GLimp_AppActivate
+	
+	q_shared.Swap_Init ()
+
+	return re
 
 
+"""
 #ifndef REF_HARD_LINKED
 // this is only here so the functions in q_shared.c and q_shwin.c can link
 void Sys_Error (char *error, ...)
@@ -1744,3 +1758,4 @@ void Com_Printf (char *fmt, ...)
 }
 
 #endif
+"""

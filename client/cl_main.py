@@ -39,9 +39,10 @@ cvar_t	*adr6;
 cvar_t	*adr7;
 cvar_t	*adr8;
 
-cvar_t	*cl_stereo_separation;
-cvar_t	*cl_stereo;
-
+"""
+cl_stereo_separation = None #cvar_t *
+cl_stereo = None #cvar_t *
+"""
 cvar_t	*rcon_client_password;
 cvar_t	*rcon_address;
 
@@ -1409,9 +1410,12 @@ void CL_Precache_f (void)
 =================
 CL_InitLocal
 =================
-*/
-void CL_InitLocal (void)
-{
+"""
+def CL_InitLocal ():
+
+	global cl_stereo_separation, cl_stereo
+
+	"""
 	cls.state = ca_disconnected;
 	cls.realtime = Sys_Milliseconds ();
 
@@ -1427,11 +1431,13 @@ void CL_InitLocal (void)
 	adr7 = Cvar_Get( "adr7", "", CVAR_ARCHIVE );
 	adr8 = Cvar_Get( "adr8", "", CVAR_ARCHIVE );
 
-//
-// register our variables
-//
-	cl_stereo_separation = Cvar_Get( "cl_stereo_separation", "0.4", CVAR_ARCHIVE );
-	cl_stereo = Cvar_Get( "cl_stereo", "0", 0 );
+"""
+	#
+	# register our variables
+	#
+	cl_stereo_separation = cvar.Cvar_Get( "cl_stereo_separation", "0.4", q_shared.CVAR_ARCHIVE )
+	cl_stereo = cvar.Cvar_Get( "cl_stereo", "0", 0 )
+"""
 
 	cl_add_blend = Cvar_Get ("cl_blend", "1", 0);
 	cl_add_lights = Cvar_Get ("cl_lights", "1", 0);
@@ -1549,11 +1555,11 @@ void CL_InitLocal (void)
 	Cmd_AddCommand ("invdrop", NULL);
 	Cmd_AddCommand ("weapnext", NULL);
 	Cmd_AddCommand ("weapprev", NULL);
-}
+	"""
 
 
 
-/*
+"""
 ===============
 CL_WriteConfiguration
 
@@ -1810,18 +1816,17 @@ def CL_Init ():
 	net_message.maxsize = sizeof(net_message_buffer);
 
 	M_Init ();	
+	"""
+	cl_scrn.SCR_Init ()
+	cls.disable_screen = True	# don't draw yet
 	
-	SCR_Init ();
-	cls.disable_screen = true;	// don't draw yet
-
-	CDAudio_Init ();
-	CL_InitLocal ();
-	IN_Init ();
+	#CDAudio_Init ();
+	CL_InitLocal ()
+	#IN_Init ();
 
 	## Cbuf_AddText ("exec autoexec.cfg\n");
-	FS_ExecAutoexec ();
-	Cbuf_Execute ();
-"""
+	#FS_ExecAutoexec ();
+	#cmd.Cbuf_Execute ()
 
 
 """

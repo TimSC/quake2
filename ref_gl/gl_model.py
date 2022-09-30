@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+
+"""
 // models.c -- model loading and caching
 
 #include "gl_local.h"
@@ -1101,9 +1103,11 @@ R_BeginRegistration
 
 Specifies the model that will be used as the world
 @@@@@@@@@@@@@@@@@@@@@
-*/
-void R_BeginRegistration (char *model)
-{
+"""
+def R_BeginRegistration (model): #char *
+	
+	pass
+	"""
 	char	fullname[MAX_QPATH];
 	cvar_t	*flushmap;
 
@@ -1120,17 +1124,19 @@ void R_BeginRegistration (char *model)
 	r_worldmodel = Mod_ForName(fullname, true);
 
 	r_viewcluster = -1;
-}
+	"""
 
 
-/*
+"""
 @@@@@@@@@@@@@@@@@@@@@
 R_RegisterModel
 
 @@@@@@@@@@@@@@@@@@@@@
-*/
-struct model_s *R_RegisterModel (char *name)
-{
+"""
+def R_RegisterModel (name): # char * (returns struct model_s *)
+	
+	pass
+	"""
 	model_t	*mod;
 	int		i;
 	dsprite_t	*sprout;
@@ -1164,17 +1170,19 @@ struct model_s *R_RegisterModel (char *name)
 		}
 	}
 	return mod;
-}
 
+	"""
 
-/*
+"""
 @@@@@@@@@@@@@@@@@@@@@
 R_EndRegistration
 
 @@@@@@@@@@@@@@@@@@@@@
-*/
-void R_EndRegistration (void)
-{
+"""
+def R_EndRegistration ():
+
+	pass
+	"""
 	int		i;
 	model_t	*mod;
 
@@ -1189,9 +1197,9 @@ void R_EndRegistration (void)
 	}
 
 	GL_FreeUnusedImages ();
-}
+	"""
 
-
+"""
 //=============================================================================
 
 
@@ -1221,3 +1229,4 @@ void Mod_FreeAll (void)
 			Mod_Free (&mod_known[i]);
 	}
 }
+"""
