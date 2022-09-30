@@ -100,8 +100,9 @@ class client_state_t(object):
 
 		int			timedemo_frames;
 		int			timedemo_start;
-
-		qboolean	refresh_prepped;	// false if on new level or new ref dll
+		"""
+		self.refresh_prepped = False # false if on new level or new ref dll
+		"""
 		qboolean	sound_prepped;		// ambient sounds can start
 		qboolean	force_refdef;		// vid has changed, so we can't use a paused refdef
 
@@ -226,9 +227,11 @@ class client_static_t(object):
 		float		frametime;			// seconds since last frame
 
 		# screen rendering information
-		float		disable_screen;		// showing loading plaque between levels
-										// or changing rendering dlls
-										// if time gets > 30 seconds ahead, break it
+		"""
+		self.disable_screen = 0.0 			# float, showing loading plaque between levels
+										# or changing rendering dlls
+										# if time gets > 30 seconds ahead, break it
+		"""
 		int			disable_servercount;	// when we receive a frame and cl.servercount
 										// > cls.disable_servercount, clear disable_screen
 

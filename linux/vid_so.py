@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,11 +16,16 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+
 // Main windowed and fullscreen graphics interface module. This module
 // is used for both the software and OpenGL rendering versions of the
 // Quake refresh engine.
-
+"""
+import os
+from qcommon import cvar, common, cmd
+from client import snd_dma, cl_main
+from game import q_shared
+"""
 #include <assert.h>
 #include <dlfcn.h> // ELF dl loader
 #include <sys/stat.h>
@@ -34,13 +39,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Structure containing functions exported from refresh DLL
 refexport_t	re;
 
-// Console variables that we need to access from this module
-cvar_t		*vid_gamma;
-cvar_t		*vid_ref;			// Name of Refresh DLL loaded
-cvar_t		*vid_xpos;			// X coordinate of window position
-cvar_t		*vid_ypos;			// Y coordinate of window position
-cvar_t		*vid_fullscreen;
-
+"""
+# Console variables that we need to access from this module
+vid_gamma = None       #cvar_t		*
+vid_ref = None         #cvar_t		*, Name of Refresh DLL loaded
+vid_xpos = None        #cvar_t		*, X coordinate of window position
+vid_ypos = None        #cvar_t		*, Y coordinate of window position
+vid_fullscreen = None  #cvar_t		*
+"""
 // Global variables used internally by this module
 viddef_t	viddef;				// global video state; used by other modules
 void		*reflib_library;		// Handle to refresh DLL 
@@ -119,12 +125,14 @@ Console command to re-start the video mode and refresh DLL. We do this
 simply by setting the modified flag for the vid_ref variable, which will
 cause the entire video mode and refresh DLL to be reset on the next frame.
 ============
-*/
-void VID_Restart_f (void)
-{
-	vid_ref->modified = true;
-}
+"""
+def VID_Restart_f ():
 
+	global vid_ref
+
+	vid_ref.modified = True
+
+"""
 /*
 ** VID_GetModeInfo
 */
@@ -199,9 +207,11 @@ void VID_FreeReflib (void)
 ==============
 VID_LoadRefresh
 ==============
-*/
-qboolean VID_LoadRefresh( char *name )
-{
+"""
+def VID_LoadRefresh(name): #char * (returns qboolean)
+
+
+	"""
 	refimport_t	ri;
 	GetRefAPI_t	GetRefAPI;
 	char	fn[MAX_OSPATH];
@@ -344,10 +354,11 @@ qboolean VID_LoadRefresh( char *name )
 
 	Com_Printf( "------------------------------------\n");
 	reflib_active = true;
-	return true;
-}
+	"""
+	return True
 
-/*
+
+"""
 ============
 VID_CheckChanges
 
@@ -355,30 +366,36 @@ This function gets called once just before drawing each frame, and it's sole pur
 is to check to see if any of the video mode parameters have changed, and if they have to 
 update the rendering DLL and/or video mode to match.
 ============
-*/
-void VID_CheckChanges (void)
-{
+"""
+def VID_CheckChanges ():
+
+	global vid_ref, vid_fullscreen
+
+	"""
 	char name[100];
 	cvar_t *sw_mode;
+	"""
 
-	if ( vid_ref->modified )
-	{
-		S_StopAllSounds();
-	}
+	if vid_ref.modified:
+	
+		snd_dma.S_StopAllSounds()
+	
+	while vid_ref.modified:
+	
+		#
+		# refresh has changed
+		#
+		vid_ref.modified = False
+		vid_fullscreen.modified = True
+		cl_main.cl.refresh_prepped = False
+		cl_main.cls.disable_screen = True
 
-	while (vid_ref->modified)
-	{
-		/*
-		** refresh has changed
-		*/
-		vid_ref->modified = false;
-		vid_fullscreen->modified = true;
-		cl.refresh_prepped = false;
-		cls.disable_screen = true;
+		name = "ref_{}.so".format(vid_ref.string)
 
-		sprintf( name, "ref_%s.so", vid_ref->string );
-		if ( !VID_LoadRefresh( name ) )
-		{
+		if not VID_LoadRefresh( name ):
+		
+			pass
+			"""
 			if ( strcmp (vid_ref->string, "soft") == 0 ||
 				strcmp (vid_ref->string, "softx") == 0 ) {
 Com_Printf("Refresh failed\n");
@@ -401,41 +418,43 @@ Com_Printf("Trying mode 0\n");
 			{
 				Con_ToggleConsole_f();
 			}
-		}
-		cls.disable_screen = false;
-	}
+"""
+		cl_main.cls.disable_screen = False
+	
 
-}
 
-/*
+
+"""
 ============
 VID_Init
 ============
-*/
-void VID_Init (void)
-{
-	/* Create the video variables so we know how to start the graphics drivers */
-	// if DISPLAY is defined, try X
-	if (getenv("DISPLAY"))
-		vid_ref = Cvar_Get ("vid_ref", "softx", CVAR_ARCHIVE);
-	else
-		vid_ref = Cvar_Get ("vid_ref", "soft", CVAR_ARCHIVE);
-	vid_xpos = Cvar_Get ("vid_xpos", "3", CVAR_ARCHIVE);
-	vid_ypos = Cvar_Get ("vid_ypos", "22", CVAR_ARCHIVE);
-	vid_fullscreen = Cvar_Get ("vid_fullscreen", "0", CVAR_ARCHIVE);
-	vid_gamma = Cvar_Get( "vid_gamma", "1", CVAR_ARCHIVE );
+"""
+def VID_Init ():
 
-	/* Add some console commands that we want to handle */
-	Cmd_AddCommand ("vid_restart", VID_Restart_f);
+	global vid_gamma, vid_ref, vid_xpos, vid_ypos, vid_fullscreen
 
-	/* Disable the 3Dfx splash screen */
-	putenv("FX_GLIDE_NO_SPLASH=0");
-		
-	/* Start the graphics mode and load refresh DLL */
-	VID_CheckChanges();
-}
+	# Create the video variables so we know how to start the graphics drivers
+	## if DISPLAY is defined, try X
+	if os.getenv("DISPLAY") is not None:
+		vid_ref = cvar.Cvar_Get ("vid_ref", "softx", q_shared.CVAR_ARCHIVE)
+	else:
+		vid_ref = cvar.Cvar_Get ("vid_ref", "soft", q_shared.CVAR_ARCHIVE)
+	vid_xpos = cvar.Cvar_Get ("vid_xpos", "3", q_shared.CVAR_ARCHIVE)
+	vid_ypos = cvar.Cvar_Get ("vid_ypos", "22", q_shared.CVAR_ARCHIVE)
+	vid_fullscreen = cvar.Cvar_Get ("vid_fullscreen", "0", q_shared.CVAR_ARCHIVE)
+	vid_gamma = cvar.Cvar_Get( "vid_gamma", "1", q_shared.CVAR_ARCHIVE )
 
-/*
+	# Add some console commands that we want to handle
+	cmd.Cmd_AddCommand ("vid_restart", VID_Restart_f)
+
+	# Disable the 3Dfx splash screen 
+	os.environ['FX_GLIDE_NO_SPLASH'] = "0"
+	
+	# Start the graphics mode and load refresh DLL 
+	VID_CheckChanges()
+
+
+"""
 ============
 VID_Shutdown
 ============
@@ -514,4 +533,4 @@ void Do_Key_Event(int key, qboolean down)
 {
 	Key_Event(key, down, Sys_Milliseconds());
 }
-
+"""

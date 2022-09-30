@@ -19,8 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cvar, common
 from game import q_shared
-from client import console, snd_dma, cl_scrn, client
-from linux import q_shlinux
+from client import console, snd_dma, cl_scrn, client, cl_view
+from linux import q_shlinux, vid_so
 
 """
 // cl_main.c  -- client main loop
@@ -1798,14 +1798,14 @@ def CL_Init ():
 
 	#if defined __linux__ || defined __sgi
 	snd_dma.S_Init ()
-	#VID_Init ()
+	vid_so.VID_Init ()
 	#else
 	#VID_Init ();
 	#S_Init ();	// sound must be initialized after window is created
 	#endif
-"""	
-	V_Init ();
-	
+
+	cl_view.V_Init ()
+	"""
 	net_message.data = net_message_buffer;
 	net_message.maxsize = sizeof(net_message_buffer);
 
