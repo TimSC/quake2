@@ -1424,9 +1424,9 @@ Qcommon_Init
 def Qcommon_Init (): #int argc, char **argv
 
 	pygame.init()
-	global screen, host_speeds, log_stats, developer, timescale, fixedtime, logfile_active, showtrace, dedicated
+	global host_speeds, log_stats, developer, timescale, fixedtime, logfile_active, showtrace, dedicated
 
-	screen = pygame.display.set_mode((1000,600), 0, 32)
+	#screen = pygame.display.set_mode((1000,600), 0, 32)
 
 	#char	*s;
 

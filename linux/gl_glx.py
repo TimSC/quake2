@@ -17,8 +17,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import pygame
 from ref_gl import gl_rmain
 from game import q_shared
+
+screen = None
 """
 ** GLW_IMP.C
 **
@@ -149,8 +152,8 @@ static void install_grabs(void)
 
 		if (!XF86DGAQueryVersion(dpy, &MajorVersion, &MinorVersion)) { 
 			// unable to query, probalby not supported
-			ri.Con_Printf( q_shared.PRINT_ALL, "Failed to detect XF86DGA Mouse\n" );
-			ri.Cvar_Set( "in_dgamouse", "0" );
+			gl_rmain.ri.Con_Printf( q_shared.PRINT_ALL, "Failed to detect XF86DGA Mouse\n" );
+			gl_rmain.ri.Cvar_Set( "in_dgamouse", "0" );
 		} else {
 			dgamouse = true;
 			XF86DGADirectVideo(dpy, DefaultScreen(dpy), XF86DGADirectMouse);
@@ -215,21 +218,21 @@ void RW_IN_Init(in_state_t *in_state_p)
 	in_state = in_state_p;
 
 	// mouse variables
-	m_filter = ri.Cvar_Get ("m_filter", "0", 0);
-    in_mouse = ri.Cvar_Get ("in_mouse", "1", CVAR_ARCHIVE);
-    in_dgamouse = ri.Cvar_Get ("in_dgamouse", "1", CVAR_ARCHIVE);
-	freelook = ri.Cvar_Get( "freelook", "0", 0 );
-	lookstrafe = ri.Cvar_Get ("lookstrafe", "0", 0);
-	sensitivity = ri.Cvar_Get ("sensitivity", "3", 0);
-	m_pitch = ri.Cvar_Get ("m_pitch", "0.022", 0);
-	m_yaw = ri.Cvar_Get ("m_yaw", "0.022", 0);
-	m_forward = ri.Cvar_Get ("m_forward", "1", 0);
-	m_side = ri.Cvar_Get ("m_side", "0.8", 0);
+	m_filter = gl_rmain.ri.Cvar_Get ("m_filter", "0", 0);
+    in_mouse = gl_rmain.ri.Cvar_Get ("in_mouse", "1", CVAR_ARCHIVE);
+    in_dgamouse = gl_rmain.ri.Cvar_Get ("in_dgamouse", "1", CVAR_ARCHIVE);
+	freelook = gl_rmain.ri.Cvar_Get( "freelook", "0", 0 );
+	lookstrafe = gl_rmain.ri.Cvar_Get ("lookstrafe", "0", 0);
+	sensitivity = gl_rmain.ri.Cvar_Get ("sensitivity", "3", 0);
+	m_pitch = gl_rmain.ri.Cvar_Get ("m_pitch", "0.022", 0);
+	m_yaw = gl_rmain.ri.Cvar_Get ("m_yaw", "0.022", 0);
+	m_forward = gl_rmain.ri.Cvar_Get ("m_forward", "1", 0);
+	m_side = gl_rmain.ri.Cvar_Get ("m_side", "0.8", 0);
 
-	ri.Cmd_AddCommand ("+mlook", RW_IN_MLookDown);
-	ri.Cmd_AddCommand ("-mlook", RW_IN_MLookUp);
+	gl_rmain.ri.Cmd_AddCommand ("+mlook", RW_IN_MLookDown);
+	gl_rmain.ri.Cmd_AddCommand ("-mlook", RW_IN_MLookUp);
 
-	ri.Cmd_AddCommand ("force_centerview", Force_CenterView_f);
+	gl_rmain.ri.Cmd_AddCommand ("force_centerview", Force_CenterView_f);
 
 	mx = my = 0.0;
 	mouse_avail = true;
@@ -593,6 +596,7 @@ static void InitSig(void)
 """
 def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qboolean (returns rserr_t)
 
+	global screen
 	"""
 	int width, height;
 	int attrib[] = {
@@ -612,25 +616,28 @@ def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qbool
 	int actualWidth, actualHeight;
 	int i;
 
-	r_fakeFullscreen = ri.Cvar_Get( "r_fakeFullscreen", "0", CVAR_ARCHIVE);
+	r_fakeFullscreen = gl_rmain.ri.Cvar_Get( "r_fakeFullscreen", "0", CVAR_ARCHIVE);
 	"""
 	gl_rmain.ri.Con_Printf( q_shared.PRINT_ALL, "Initializing OpenGL display\n")
+	
+	if fullscreen:
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "...setting fullscreen mode {}:".format(mode) )
+	else:
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "...setting mode {}:".format(mode) )
 	"""
-	if (fullscreen)
-		ri.Con_Printf (q_shared.PRINT_ALL, "...setting fullscreen mode %d:", mode );
-	else
-		ri.Con_Printf (q_shared.PRINT_ALL, "...setting mode %d:", mode );
-
-	if ( !ri.Vid_GetModeInfo( &width, &height, mode ) )
+	if ( !gl_rmain.ri.Vid_GetModeInfo( &width, &height, mode ) )
 	{
-		ri.Con_Printf( q_shared.PRINT_ALL, " invalid mode\n" );
+		gl_rmain.ri.Con_Printf( q_shared.PRINT_ALL, " invalid mode\n" );
 		return rserr_invalid_mode;
 	}
-
-	ri.Con_Printf( q_shared.PRINT_ALL, " %d %d\n", width, height );
-
-	// destroy the existing window
-	GLimp_Shutdown ();
+	"""
+	gl_rmain.ri.Con_Printf( q_shared.PRINT_ALL, " {} {}\n".format(width, height) )
+	
+	# destroy the existing window
+	#GLimp_Shutdown ();
+	
+	pygame.display.quit()
+	"""
 
 	// Mesa VooDoo hacks
 	if (fullscreen)
@@ -651,7 +658,7 @@ def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qbool
 	if (!XF86VidModeQueryVersion(dpy, &MajorVersion, &MinorVersion)) { 
 		vidmode_ext = false;
 	} else {
-		ri.Con_Printf(q_shared.PRINT_ALL, "Using XFree86-VidModeExtension Version %d.%d\n",
+		gl_rmain.ri.Con_Printf(q_shared.PRINT_ALL, "Using XFree86-VidModeExtension Version %d.%d\n",
 			MajorVersion, MinorVersion);
 		vidmode_ext = true;
 	}
@@ -719,7 +726,14 @@ def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qbool
 						0, visinfo->depth, InputOutput,
 						visinfo->visual, mask, &attr);
 	XMapWindow(dpy, win);
+	"""
 
+	flags = pygame.OPENGL
+	if fullscreen:
+		flags |= pygame.FULLSCREEN
+	screen = pygame.display.set_mode((width, height), flags)
+
+	"""
 	if (vidmode_active) {
 		XMoveWindow(dpy, win, 0, 0);
 		XRaiseWindow(dpy, win);
@@ -734,12 +748,15 @@ def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qbool
 	ctx = qglXCreateContext(dpy, visinfo, NULL, True);
 
 	qglXMakeCurrent(dpy, win, ctx);
+	"""
+	width, height = pygame.display.get_window_size()
+	"""
 
 	*pwidth = width;
 	*pheight = height;
 
 	// let the sound and input subsystems know about the new window
-	ri.Vid_NewWindow (width, height);
+	gl_rmain.ri.Vid_NewWindow (width, height);
 
 	qglXMakeCurrent(dpy, win, ctx);
 """
@@ -757,8 +774,11 @@ def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qbool
 ** for the window.  The state structure is also nulled out.
 **
 */
-void GLimp_Shutdown( void )
-{
+"""
+def GLimp_Shutdown():
+
+	pygame.display.quit()
+	"""
 	uninstall_grabs();
 	mouse_active = false;
 	dgamouse = false;
@@ -776,8 +796,9 @@ void GLimp_Shutdown( void )
 	dpy = NULL;
 	win = 0;
 	ctx = NULL;
-}
+	"""
 
+"""
 /*
 ** GLimp_Init
 **
@@ -791,14 +812,14 @@ def GLimp_Init( hinstance, wndproc ): #void *, void * (returns int)
 
 	return True
 
-"""
-/*
-** GLimp_BeginFrame
-*/
-void GLimp_BeginFrame( float camera_seperation )
-{
-}
 
+#
+# GLimp_BeginFrame
+#
+def GLimp_BeginFrame( camera_seperation ): #float
+	pass
+
+"""
 /*
 ** GLimp_EndFrame
 ** 
@@ -809,10 +830,9 @@ void GLimp_BeginFrame( float camera_seperation )
 """
 def GLimp_EndFrame ():
 
-	pass
 	#qglFlush();
 	#qglXSwapBuffers(dpy, win);
-
+	pygame.display.flip()
 
 """
 /*

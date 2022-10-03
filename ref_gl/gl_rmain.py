@@ -17,10 +17,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import OpenGL.GL as GL
+from OpenGL.GL import glGetString
 from enum import Enum
 from client import ref
 from ref_gl import gl_model
-from linux import gl_glx
+from linux import gl_glx, qgl_linux
 from game import q_shared
 from qcommon import cvar, cmd, files, qcommon
 
@@ -80,7 +82,7 @@ class glstate_t(object):
 
 class viddef_t(object):
 	def __init__(self):
-		self.width, self.height = None, None # coordinates from main game
+		self.width, self.height = 800, 600 # coordinates from main game
 
 vid = viddef_t()
 
@@ -877,7 +879,7 @@ def R_RenderView (fd): #refdef_t *
 	global r_norefresh
 
 	if r_norefresh.value:
-		return;
+		return
 	"""
 	r_newrefdef = *fd;
 
@@ -915,7 +917,7 @@ def R_RenderView (fd): #refdef_t *
 
 	R_Flash();
 
-	if (r_speeds->value)
+	if (r_speeds.value)
 	{
 		ri.Con_Printf (q_shared.PRINT_ALL, "%4i wpoly %4i epoly %i tex %i lmaps\n",
 			c_brush_polys, 
@@ -1186,7 +1188,7 @@ R_Init
 """
 def R_Init( hinstance, hWnd ): #void *, void *
 
-	global gl_state
+	global gl_state, gl_ext_pointparameters, gl_ext_palettedtexture, gl_ext_multitexture
 
 	"""
 	char renderer_buffer[1000];
@@ -1232,19 +1234,19 @@ def R_Init( hinstance, hWnd ): #void *, void *
 	
 	"""
 	ri.Vid_MenuInit();
-
-	/*
-	** get our various GL strings
-	*/
-	gl_config.vendor_string = qglGetString (GL_VENDOR);
-	ri.Con_Printf (q_shared.PRINT_ALL, "GL_VENDOR: %s\n", gl_config.vendor_string );
-	gl_config.renderer_string = qglGetString (GL_RENDERER);
-	ri.Con_Printf (q_shared.PRINT_ALL, "GL_RENDERER: %s\n", gl_config.renderer_string );
-	gl_config.version_string = qglGetString (GL_VERSION);
-	ri.Con_Printf (q_shared.PRINT_ALL, "GL_VERSION: %s\n", gl_config.version_string );
-	gl_config.extensions_string = qglGetString (GL_EXTENSIONS);
-	ri.Con_Printf (q_shared.PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
-
+	"""
+	#
+	# get our various GL strings
+	#
+	gl_config.vendor_string = glGetString (GL.GL_VENDOR)
+	ri.Con_Printf (q_shared.PRINT_ALL, "GL_VENDOR: {}\n".format(gl_config.vendor_string) )
+	gl_config.renderer_string = glGetString (GL.GL_RENDERER)
+	ri.Con_Printf (q_shared.PRINT_ALL, "GL_RENDERER: {}\n".format(gl_config.renderer_string) )
+	gl_config.version_string = glGetString (GL.GL_VERSION)
+	ri.Con_Printf (q_shared.PRINT_ALL, "GL_VERSION: {}\n".format(gl_config.version_string) )
+	gl_config.extensions = set(glGetString (GL.GL_EXTENSIONS).decode('utf-8').split(" "))
+	ri.Con_Printf (q_shared.PRINT_ALL, "GL_EXTENSIONS: {}\n".format(gl_config.extensions) )
+	"""
 	strcpy( renderer_buffer, gl_config.renderer_string );
 	strlwr( renderer_buffer );
 
@@ -1325,26 +1327,27 @@ def R_Init( hinstance, hWnd ): #void *, void *
 		gl_config.allow_cds = true;
 	}
 
-	if ( gl_config.allow_cds )
-		ri.Con_Printf( q_shared.PRINT_ALL, "...allowing CDS\n" );
-	else
-		ri.Con_Printf( q_shared.PRINT_ALL, "...disabling CDS\n" );
-
-	/*
-	** grab extensions
-	*/
-	if ( strstr( gl_config.extensions_string, "GL_EXT_compiled_vertex_array" ) || 
-		 strstr( gl_config.extensions_string, "GL_SGI_compiled_vertex_array" ) )
-	{
-		ri.Con_Printf( q_shared.PRINT_ALL, "...enabling GL_EXT_compiled_vertex_array\n" );
-		qglLockArraysEXT = ( void * ) qwglGetProcAddress( "glLockArraysEXT" );
-		qglUnlockArraysEXT = ( void * ) qwglGetProcAddress( "glUnlockArraysEXT" );
-	}
-	else
-	{
-		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_EXT_compiled_vertex_array not found\n" );
-	}
-
+	"""
+	if gl_config.allow_cds:
+		ri.Con_Printf( q_shared.PRINT_ALL, "...allowing CDS\n" )
+	else:
+		ri.Con_Printf( q_shared.PRINT_ALL, "...disabling CDS\n" )
+	
+	#
+	# grab extensions
+	#
+	if "GL_EXT_compiled_vertex_array" in gl_config.extensions or \
+		 "GL_SGI_compiled_vertex_array" in gl_config.extensions:
+	
+		ri.Con_Printf( q_shared.PRINT_ALL, "...enabling GL_EXT_compiled_vertex_array\n" )
+		qgl_linux.qglLockArraysEXT = True #( void * ) qwglGetProcAddress( "glLockArraysEXT" )
+		qgl_linux.qglUnlockArraysEXT = True #( void * ) qwglGetProcAddress( "glUnlockArraysEXT" )
+	
+	else:
+	
+		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_EXT_compiled_vertex_array not found\n" )
+	
+	"""
 #ifdef _WIN32
 	if ( strstr( gl_config.extensions_string, "WGL_EXT_swap_control" ) )
 	{
@@ -1356,25 +1359,25 @@ def R_Init( hinstance, hWnd ): #void *, void *
 		ri.Con_Printf( q_shared.PRINT_ALL, "...WGL_EXT_swap_control not found\n" );
 	}
 #endif
-
-	if ( strstr( gl_config.extensions_string, "GL_EXT_point_parameters" ) )
-	{
-		if ( gl_ext_pointparameters->value )
-		{
-			qglPointParameterfEXT = ( void (APIENTRY *)( GLenum, GLfloat ) ) qwglGetProcAddress( "glPointParameterfEXT" );
-			qglPointParameterfvEXT = ( void (APIENTRY *)( GLenum, const GLfloat * ) ) qwglGetProcAddress( "glPointParameterfvEXT" );
-			ri.Con_Printf( q_shared.PRINT_ALL, "...using GL_EXT_point_parameters\n" );
-		}
-		else
-		{
-			ri.Con_Printf( q_shared.PRINT_ALL, "...ignoring GL_EXT_point_parameters\n" );
-		}
-	}
-	else
-	{
+	"""
+	if "GL_EXT_point_parameters" in gl_config.extensions:
+	
+		if gl_ext_pointparameters.value:
+		
+			qgl_linux.qglPointParameterfEXT = True #( void (APIENTRY *)( GLenum, GLfloat ) ) qwglGetProcAddress( "glPointParameterfEXT" )
+			qgl_linux.qglPointParameterfvEXT = True #( void (APIENTRY *)( GLenum, const GLfloat * ) ) qwglGetProcAddress( "glPointParameterfvEXT" )
+			ri.Con_Printf( q_shared.PRINT_ALL, "...using GL_EXT_point_parameters\n" )
+		
+		else:
+		
+			ri.Con_Printf( q_shared.PRINT_ALL, "...ignoring GL_EXT_point_parameters\n" )
+		
+	
+	else:
+	
 		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_EXT_point_parameters not found\n" );
-	}
-
+	
+	"""
 #ifdef __linux__
 	if ( strstr( gl_config.extensions_string, "3DFX_set_global_palette" ))
 	{
@@ -1382,7 +1385,7 @@ def R_Init( hinstance, hWnd ): #void *, void *
 		{
 			ri.Con_Printf( q_shared.PRINT_ALL, "...using 3DFX_set_global_palette\n" );
 			qgl3DfxSetPaletteEXT = ( void ( APIENTRY * ) (GLuint *) )qwglGetProcAddress( "gl3DfxSetPaletteEXT" );
-			qglColorTableEXT = Fake_glColorTableEXT;
+			qgl_linux.qglColorTableEXT = Fake_glColorTableEXT;
 		}
 		else
 		{
@@ -1394,47 +1397,47 @@ def R_Init( hinstance, hWnd ): #void *, void *
 		ri.Con_Printf( q_shared.PRINT_ALL, "...3DFX_set_global_palette not found\n" );
 	}
 #endif
-
-	if ( !qglColorTableEXT &&
-		strstr( gl_config.extensions_string, "GL_EXT_paletted_texture" ) && 
-		strstr( gl_config.extensions_string, "GL_EXT_shared_texture_palette" ) )
-	{
-		if ( gl_ext_palettedtexture->value )
-		{
-			ri.Con_Printf( q_shared.PRINT_ALL, "...using GL_EXT_shared_texture_palette\n" );
-			qglColorTableEXT = ( void ( APIENTRY * ) ( int, int, int, int, int, const void * ) ) qwglGetProcAddress( "glColorTableEXT" );
-		}
-		else
-		{
-			ri.Con_Printf( q_shared.PRINT_ALL, "...ignoring GL_EXT_shared_texture_palette\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_EXT_shared_texture_palette not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_ARB_multitexture" ) )
-	{
-		if ( gl_ext_multitexture->value )
-		{
+	"""
+	if qgl_linux.qglColorTableEXT is None and \
+		"GL_EXT_paletted_texture" in gl_config.extensions and \
+		"GL_EXT_shared_texture_palette" in gl_config.extensions:
+	
+		if gl_ext_palettedtexture.value:
+		
+			ri.Con_Printf( q_shared.PRINT_ALL, "...using GL_EXT_shared_texture_palette\n" )
+			qgl_linux.qglColorTableEXT = True #( void ( APIENTRY * ) ( int, int, int, int, int, const void * ) ) qwglGetProcAddress( "glColorTableEXT" )
+		
+		else:
+		
+			ri.Con_Printf( q_shared.PRINT_ALL, "...ignoring GL_EXT_shared_texture_palette\n" )
+		
+	
+	else:
+	
+		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_EXT_shared_texture_palette not found\n" )
+	
+	
+	if "GL_ARB_multitexture" in gl_config.extensions:
+	
+		if gl_ext_multitexture.value:
+		
 			ri.Con_Printf( q_shared.PRINT_ALL, "...using GL_ARB_multitexture\n" );
-			qglMTexCoord2fSGIS = ( void * ) qwglGetProcAddress( "glMultiTexCoord2fARB" );
-			qglActiveTextureARB = ( void * ) qwglGetProcAddress( "glActiveTextureARB" );
-			qglClientActiveTextureARB = ( void * ) qwglGetProcAddress( "glClientActiveTextureARB" );
-			GL_TEXTURE0 = GL_TEXTURE0_ARB;
-			GL_TEXTURE1 = GL_TEXTURE1_ARB;
-		}
-		else
-		{
+			qgl_linux.qglMTexCoord2fSGIS = True #( void * ) qwglGetProcAddress( "glMultiTexCoord2fARB" );
+			qgl_linux.qglActiveTextureARB = True #( void * ) qwglGetProcAddress( "glActiveTextureARB" );
+			qgl_linux.qglClientActiveTextureARB = True #( void * ) qwglGetProcAddress( "glClientActiveTextureARB" );
+			#GL_TEXTURE0 = GL_TEXTURE0_ARB;
+			#GL_TEXTURE1 = GL_TEXTURE1_ARB;
+		
+		else:
+		
 			ri.Con_Printf( q_shared.PRINT_ALL, "...ignoring GL_ARB_multitexture\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_ARB_multitexture not found\n" );
-	}
-
+		
+	
+	else:
+	
+		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_ARB_multitexture not found\n" )
+	
+	"""
 	if ( strstr( gl_config.extensions_string, "GL_SGIS_multitexture" ) )
 	{
 		if ( qglActiveTextureARB )
@@ -1485,8 +1488,7 @@ R_Shutdown
 """
 def R_Shutdown ():
 
-	pass
-	"""	
+	"""
 	ri.Cmd_RemoveCommand ("modellist");
 	ri.Cmd_RemoveCommand ("screenshot");
 	ri.Cmd_RemoveCommand ("imagelist");
@@ -1495,12 +1497,12 @@ def R_Shutdown ():
 	Mod_FreeAll ();
 
 	GL_ShutdownImages ();
-
-	/*
-	** shut down OS specific OpenGL stuff like contexts, etc.
-	*/
-	GLimp_Shutdown();
-
+	"""
+	#
+	# shut down OS specific OpenGL stuff like contexts, etc.
+	#
+	gl_glx.GLimp_Shutdown();
+	"""
 	/*
 	** shutdown our QGL subsystem
 	*/
@@ -1514,7 +1516,6 @@ R_BeginFrame
 """
 def R_BeginFrame( camera_separation ): #float
 
-	pass
 	"""
 	gl_state.camera_separation = camera_separation;
 
@@ -1560,9 +1561,9 @@ def R_BeginFrame( camera_separation ): #float
 			putenv( envbuffer );
 		}
 	}
-
-	GLimp_BeginFrame( camera_separation );
-
+	"""
+	gl_glx.GLimp_BeginFrame( camera_separation )
+	"""
 	/*
 	** go into 2D mode
 	*/
