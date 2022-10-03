@@ -25,9 +25,9 @@ from game import q_shared
 // draw.c
 
 #include "gl_local.h"
-
-image_t		*draw_chars;
-
+"""
+draw_chars = None #image_t *
+"""
 extern	qboolean	scrap_dirty;
 void Scrap_Upload (void);
 
@@ -98,24 +98,23 @@ def Draw_Char (x, y, num): #int, int, int
 =============
 Draw_FindPic
 =============
-*/
-image_t	*Draw_FindPic (char *name)
-{
-	image_t *gl;
-	char	fullname[MAX_QPATH];
+"""
+def Draw_FindPic (name): #char * (returns image_t	*)
 
-	if (name[0] != '/' && name[0] != '\\')
-	{
-		Com_sprintf (fullname, sizeof(fullname), "pics/%s.pcx", name);
-		gl = GL_FindImage (fullname, it_pic);
-	}
-	else
-		gl = GL_FindImage (name+1, it_pic);
+	#image_t *gl;
+	#char	fullname[MAX_QPATH];
 
-	return gl;
-}
+	if name[0] != '/' and name[0] != '\\':
+	
+		fullname = "pics/{}.pcx".format(name)
+		gl = gl_image.GL_FindImage (fullname, gl_image.imagetype_t.it_pic)
+	
+	else:
+		gl = gl_image.GL_FindImage (name[1:], gl_image.imagetype_t.it_pic)
 
-/*
+	return gl
+
+"""
 =============
 Draw_GetPicSize
 =============
@@ -143,17 +142,15 @@ Draw_StretchPic
 """
 def Draw_StretchPic (x, y, w, h, pic): #int, int, int, int, char *
 
-	pass
+	#image_t *gl;
+
+	gl = Draw_FindPic (pic)
+	if gl is None:
+	
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Can't find pic: {}\n".format(pic))
+		return
+	
 	"""
-	image_t *gl;
-
-	gl = Draw_FindPic (pic);
-	if (!gl)
-	{
-		gl_rmain.ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
-		return;
-	}
-
 	if (scrap_dirty)
 		Scrap_Upload ();
 
@@ -174,10 +171,9 @@ def Draw_StretchPic (x, y, w, h, pic): #int, int, int, int, char *
 
 	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
 		qglEnable (GL_ALPHA_TEST);
-}
+	"""
 
-
-
+"""
 =============
 Draw_Pic
 =============

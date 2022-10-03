@@ -39,9 +39,9 @@ int		mod_numknown;
 
 // the inline * models from the current map are kept seperate
 model_t	mod_inline[MAX_MOD_KNOWN];
-
-int		registration_sequence;
-
+"""
+registration_sequence = 0 #int		
+"""
 /*
 ===============
 Mod_PointInLeaf

@@ -73,7 +73,7 @@ class glstate_t(object):
 		self.lightmap_textures = None #int
 
 		self.currenttextures = [None, None] #int[2]
-		self.currenttmu = None #int
+		self.currenttmu = 0 #int
 
 		self.camera_separation = None #float
 		self.stereo_enabled = None #qboolean
@@ -1471,11 +1471,10 @@ def R_Init( hinstance, hWnd ): #void *, void *
 #if 0 // commented out until H3D pays us the money they owe us
 	GL_DrawStereoPattern();
 #endif
-
-	GL_InitImages ();
-	Mod_Init ();
-	R_InitParticleTexture ();
 	"""
+	gl_image.GL_InitImages ()
+	#Mod_Init ();
+	#R_InitParticleTexture ();
 	gl_draw.Draw_InitLocal ()
 	"""
 

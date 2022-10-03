@@ -18,14 +18,54 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
+import OpenGL.GL as GL
+from enum import Enum
 from game import q_shared
-from ref_gl import gl_rmain
+from ref_gl import gl_rmain, gl_model
 from qcommon import qfiles
-"""
+from linux import qgl_linux
+
+class imagetype_t(Enum):
+
+	it_skin = 0
+	it_sprite = 1
+	it_wall = 2
+	it_pic = 3
+	it_sky = 4
+
+class image_t(object):
+
+	def __init__(self):
+
+		self.name = None #char	[MAX_QPATH], game path, including extension
+		self.type = imagetype_t.it_skin #imagetype_t
+		self.width, self.height = None, None #int, source image
+		self.upload_width, self.upload_height = None, None #int, after power of two and picmip
+		self.registration_sequence = None #int, 0 = free
+		self.texturechain = None #struct msurface_s	*, for sort-by-texture world drawing
+		self.texnum = None #int, gl texture binding
+		self.sl, self.tl, self.sh, self.th = 0.0, 0.0, 0.0, 0.0 #float, 0,0 - 1,1 unless part of the scrap
+		self.scrap = False #qboolean
+		self.has_alpha = False #qboolean
+
+		self.paletted = False #qboolean
+
+TEXNUM_LIGHTMAPS	= 1024
+TEXNUM_SCRAPS		= 1152
+TEXNUM_IMAGES		= 1153
+
+MAX_GLTEXTURES	= 1024
+
 #include "gl_local.h"
 
-image_t		gltextures[MAX_GLTEXTURES];
-int			numgltextures;
+gltextures = [] #image_t[MAX_GLTEXTURES];
+for i in range(MAX_GLTEXTURES):
+	gltextures.append(image_t())
+
+numgltextures = 0 #int
+
+"""
+
 int			base_textureid;		// gltextures[i] = base_textureid+i
 
 static byte			 intensitytable[256];
@@ -47,8 +87,10 @@ int		gl_alpha_format = 4;
 int		gl_tex_solid_format = 3;
 int		gl_tex_alpha_format = 4;
 
-int		gl_filter_min = GL_LINEAR_MIPMAP_NEAREST;
-int		gl_filter_max = GL_LINEAR;
+"""
+gl_filter_min = GL.GL_LINEAR_MIPMAP_NEAREST #int
+gl_filter_max = GL.GL_LINEAR #int
+"""
 
 void GL_SetTexturePalette( unsigned palette[256] )
 {
@@ -138,19 +180,19 @@ void GL_TexEnv( GLenum mode )
 		lastmodes[gl_state.currenttmu] = mode;
 	}
 }
+"""
+def GL_Bind (texnum): #int
 
-void GL_Bind (int texnum)
-{
-	extern	image_t	*draw_chars;
+	#extern	image_t	*draw_chars;
 
-	if (gl_nobind->value && draw_chars)		// performance evaluation option
-		texnum = draw_chars->texnum;
-	if ( gl_state.currenttextures[gl_state.currenttmu] == texnum)
-		return;
-	gl_state.currenttextures[gl_state.currenttmu] = texnum;
-	qglBindTexture (GL_TEXTURE_2D, texnum);
-}
+	if gl_rmain.gl_nobind.value and gl_draw.draw_chars is not None:		# performance evaluation option
+		texnum = gl_draw.draw_chars.texnum
+	if gl_rmain.gl_state.currenttextures[gl_rmain.gl_state.currenttmu] == texnum:
+		return
+	gl_rmain.gl_state.currenttextures[gl_rmain.gl_state.currenttmu] = texnum
+	GL.glBindTexture (GL.GL_TEXTURE_2D, texnum)
 
+"""
 void GL_MBind( GLenum target, int texnum )
 {
 	GL_SelectTexture( target );
@@ -900,9 +942,13 @@ void GL_BuildPalettedTexture( unsigned char *paletted_texture, unsigned char *sc
 
 int		upload_width, upload_height;
 qboolean uploaded_paletted;
+"""
+def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (returns qboolean)
 
-qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
-{
+	print ("GL_Upload32")
+
+	return None, None, None, None #has_alpha, upload_width, upload_height, paletted
+	"""
 	int			samples;
 	unsigned	scaled[256*256];
 	unsigned char paletted_texture[256*256];
@@ -1083,7 +1129,7 @@ done: ;
 		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 	}
 
-	return (samples == gl_alpha_format);
+	return (samples == gl_alpha_format); #has_alpha, upload_width, upload_height, paletted
 }
 
 /*
@@ -1109,162 +1155,174 @@ static qboolean IsPowerOf2( int value )
 	}
 }
 */
+"""
+def GL_Upload8 (data, width, height, mipmap, is_sky ): #byte *, int, int, qboolean, qboolean (returns qboolean)
 
-qboolean GL_Upload8 (byte *data, int width, int height,  qboolean mipmap, qboolean is_sky )
-{
+	sizeTrans = 512*256
+	trans = []
+	for i in range(sizeTrans):
+		trans.append(0)
+	"""
 	unsigned	trans[512*256];
 	int			i, s;
 	int			p;
+	"""
 
-	s = width*height;
+	s = width*height
 
-	if (s > sizeof(trans)/4)
-		gl_rmain.ri.Sys_Error (ERR_DROP, "GL_Upload8: too large");
+	if s > sizeTrans:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "GL_Upload8: too large")
 
-	if ( qglColorTableEXT && 
-		 gl_ext_palettedtexture->value && 
-		 is_sky )
-	{
-		qglTexImage2D( GL_TEXTURE_2D,
+	if ( qgl_linux.qglColorTableEXT and 
+		 gl_rmain.gl_ext_palettedtexture.value and 
+		 is_sky ):
+	
+		GL.glTexImage2D( GL.GL_TEXTURE_2D,
 					  0,
-					  GL_COLOR_INDEX8_EXT,
+					  GL.GL_COLOR_INDEX8_EXT,
 					  width,
 					  height,
 					  0,
-					  GL_COLOR_INDEX,
-					  GL_UNSIGNED_BYTE,
-					  data );
+					  GL.GL_COLOR_INDEX,
+					  GL.GL_UNSIGNED_BYTE,
+					  data )
 
-		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_max);
-		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
-	}
-	else
-	{
-		for (i=0 ; i<s ; i++)
-		{
-			p = data[i];
-			trans[i] = d_8to24table[p];
+		GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, gl_filter_max)
+		GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, gl_filter_max)
+	
+		return False, width, height, True #has_alpha, upload_width, upload_height, paletted
 
-			if (p == 255)
-			{	// transparent, so scan around for another color
-				// to avoid alpha fringes
-				// FIXME: do a full flood fill so mips work...
-				if (i > width && data[i-width] != 255)
-					p = data[i-width];
-				else if (i < s-width && data[i+width] != 255)
-					p = data[i+width];
-				else if (i > 0 && data[i-1] != 255)
-					p = data[i-1];
-				else if (i < s-1 && data[i+1] != 255)
-					p = data[i+1];
-				else
-					p = 0;
-				// copy rgb components
-				((byte *)&trans[i])[0] = ((byte *)&d_8to24table[p])[0];
-				((byte *)&trans[i])[1] = ((byte *)&d_8to24table[p])[1];
-				((byte *)&trans[i])[2] = ((byte *)&d_8to24table[p])[2];
-			}
-		}
+	else:
+	
+		for i in range (s):
+		
+			p = data[i]
+			trans[i] = d_8to24table[p]
 
-		return GL_Upload32 (trans, width, height, mipmap);
-	}
-}
+			if p == 255:
+				# transparent, so scan around for another color
+				# to avoid alpha fringes
+				# FIXME: do a full flood fill so mips work...
+				if i > width and data[i-width] != 255:
+					p = data[i-width]
+				elif i < s-width and data[i+width] != 255:
+					p = data[i+width]
+				elif i > 0 and data[i-1] != 255:
+					p = data[i-1]
+				elif i < s-1 and data[i+1] != 255:
+					p = data[i+1]
+				else:
+					p = 0
+				# copy rgb components
+				#((byte *)&trans[i])[0] = ((byte *)&d_8to24table[p])[0];
+				#((byte *)&trans[i])[1] = ((byte *)&d_8to24table[p])[1];
+				#((byte *)&trans[i])[2] = ((byte *)&d_8to24table[p])[2];
+			
+		
+
+		return GL_Upload32 (trans, width, height, mipmap)
 
 
-/*
+"""
 ================
 GL_LoadPic
 
 This is also used as an entry point for the generated r_notexture
 ================
-*/
-image_t *GL_LoadPic (char *name, byte *pic, int width, int height, imagetype_t type, int bits)
-{
-	image_t		*image;
-	int			i;
+"""
+def GL_LoadPic (name, pic, width, height, imgType, bits): #char *, byte *, int, int, imagetype_t, int (returns image_t *)
 
-	// find a free image_t
-	for (i=0, image=gltextures ; i<numgltextures ; i++,image++)
-	{
-		if (!image->texnum)
-			break;
-	}
-	if (i == numgltextures)
-	{
-		if (numgltextures == MAX_GLTEXTURES)
-			gl_rmain.ri.Sys_Error (ERR_DROP, "MAX_GLTEXTURES");
-		numgltextures++;
-	}
-	image = &gltextures[i];
+	global gltextures, numgltextures, TEXNUM_IMAGES
+	#image_t		*image;
+	#int			i;
 
-	if (strlen(name) >= sizeof(image->name))
-		gl_rmain.ri.Sys_Error (ERR_DROP, "Draw_LoadPic: \"%s\" is too long", name);
-	strcpy (image->name, name);
-	image->registration_sequence = registration_sequence;
+	# find a free image_t
+	i = 0
+	while i < numgltextures:
+	
+		image = gltextures[i]
+		if image.texnum == 0:
+			break
+	
+	if i == numgltextures:
+	
+		if numgltextures == MAX_GLTEXTURES:
+			gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MAX_GLTEXTURES")
+		numgltextures+=1
+	
+	image = gltextures[i]
 
-	image->width = width;
-	image->height = height;
-	image->type = type;
+	if len(name) >= q_shared.MAX_QPATH:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "Draw_LoadPic: \"{}\" is too long".format(name))
+	image.name = name
+	image.registration_sequence = gl_model.registration_sequence
 
-	if (type == it_skin && bits == 8)
-		R_FloodFillSkin(pic, width, height);
+	image.width = width
+	image.height = height
+	image.type = imgType
 
-	// load little pics into the scrap
-	if (image->type == it_pic && bits == 8
-		&& image->width < 64 && image->height < 64)
-	{
-		int		x, y;
-		int		i, j, k;
-		int		texnum;
+	if imgType == imagetype_t.it_skin and bits == 8:
+		R_FloodFillSkin(pic, width, height)
 
-		texnum = Scrap_AllocBlock (image->width, image->height, &x, &y);
+	# load little pics into the scrap
+	if (image.type == imagetype_t.it_pic and bits == 8
+		and image.width < 64 and image.height < 64
+		and False): #FIXME disabled for now, port later
+	
+		pass
+		"""
+		#int		x, y;
+		#int		i, j, k;
+		#int		texnum;
+
+		texnum = Scrap_AllocBlock (image->width, image->height, &x, &y)
 		if (texnum == -1)
-			goto nonscrap;
-		scrap_dirty = true;
+			goto nonscrap
+		scrap_dirty = true
 
-		// copy the texels into the scrap block
-		k = 0;
+		# copy the texels into the scrap block
+		k = 0
 		for (i=0 ; i<image->height ; i++)
 			for (j=0 ; j<image->width ; j++, k++)
-				scrap_texels[texnum][(y+i)*BLOCK_WIDTH + x + j] = pic[k];
-		image->texnum = TEXNUM_SCRAPS + texnum;
-		image->scrap = true;
-		image->has_alpha = true;
-		image->sl = (x+0.01)/(float)BLOCK_WIDTH;
-		image->sh = (x+image->width-0.01)/(float)BLOCK_WIDTH;
-		image->tl = (y+0.01)/(float)BLOCK_WIDTH;
-		image->th = (y+image->height-0.01)/(float)BLOCK_WIDTH;
-	}
-	else
-	{
-nonscrap:
-		image->scrap = false;
-		image->texnum = TEXNUM_IMAGES + (image - gltextures);
-		GL_Bind(image->texnum);
-		if (bits == 8)
-			image->has_alpha = GL_Upload8 (pic, width, height, (image->type != it_pic && image->type != it_sky), image->type == it_sky );
-		else
-			image->has_alpha = GL_Upload32 ((unsigned *)pic, width, height, (image->type != it_pic && image->type != it_sky) );
-		image->upload_width = upload_width;		// after power of 2 and scales
-		image->upload_height = upload_height;
-		image->paletted = uploaded_paletted;
-		image->sl = 0;
-		image->sh = 1;
-		image->tl = 0;
-		image->th = 1;
-	}
+				scrap_texels[texnum][(y+i)*BLOCK_WIDTH + x + j] = pic[k]
+		image->texnum = TEXNUM_SCRAPS + texnum
+		image->scrap = true
+		image->has_alpha = true
+		image->sl = (x+0.01)/(float)BLOCK_WIDTH
+		image->sh = (x+image->width-0.01)/(float)BLOCK_WIDTH
+		image->tl = (y+0.01)/(float)BLOCK_WIDTH
+		image->th = (y+image->height-0.01)/(float)BLOCK_WIDTH
+		"""
+	
+	else:
+	
+		#nonscrap:
+		image.scrap = False
+		image.texnum = TEXNUM_IMAGES + i
+		GL_Bind(image.texnum)
 
-	return image;
-}
+		if bits == 8:
+			image.has_alpha, image.upload_width, image.upload_height, image.paletted = \
+				GL_Upload8 (pic, width, height, (image.type != imagetype_t.it_pic and image.type != imagetype_t.it_sky), image.type == imagetype_t.it_sky )
+		else:
+			image.has_alpha, image.upload_width, image.upload_height, image.paletted = \
+				GL_Upload32 (pic, width, height, (image.type != imagetype_t.it_pic and image.type != imagetype_t.it_sky) )
 
+		image.sl = 0
+		image.sh = 1
+		image.tl = 0
+		image.th = 1
+	
+	return image
 
-/*
+"""
 ================
 GL_LoadWal
 ================
-*/
-image_t *GL_LoadWal (char *name)
-{
+"""
+def GL_LoadWal (name): #char * (returns image_t *)
+	pass
+	"""
 	miptex_t	*mt;
 	int			width, height, ofs;
 	image_t		*image;
@@ -1293,68 +1351,61 @@ GL_FindImage
 
 Finds or loads the given image
 ===============
-*/
-image_t	*GL_FindImage (char *name, imagetype_t type)
-{
+"""
+def GL_FindImage (name, imgType): #char *, imagetype_t (returns image_t *)
+
+	global numgltextures, gltextures
+
+	"""
 	image_t	*image;
 	int		i, len;
 	byte	*pic, *palette;
 	int		width, height;
+	"""
 
-	if (!name)
-		return NULL;	//	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: NULL name");
-	len = strlen(name);
-	if (len<5)
-		return NULL;	//	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad name: %s", name);
+	if name is None:
+		return None	#	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: NULL name");
+	if len(name)<5:
+		return None	#	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad name: %s", name);
 
-	// look for it
-	for (i=0, image=gltextures ; i<numgltextures ; i++,image++)
-	{
-		if (!strcmp(name, image->name))
-		{
-			image->registration_sequence = registration_sequence;
-			return image;
-		}
-	}
+	# look for it
+	for i in range(numgltextures):
+		image = gltextures[i]
 
-	//
-	// load the pic from disk
-	//
-	pic = NULL;
-	palette = NULL;
-	if (!strcmp(name+len-4, ".pcx"))
-	{
-		LoadPCX (name, &pic, &palette, &width, &height);
-		if (!pic)
-			return NULL; // gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
-		image = GL_LoadPic (name, pic, width, height, type, 8);
-	}
-	else if (!strcmp(name+len-4, ".wal"))
-	{
-		image = GL_LoadWal (name);
-	}
-	else if (!strcmp(name+len-4, ".tga"))
-	{
-		LoadTGA (name, &pic, &width, &height);
-		if (!pic)
-			return NULL; // gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
-		image = GL_LoadPic (name, pic, width, height, type, 32);
-	}
-	else
-		return NULL;	//	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad extension on: %s", name);
+		if name == image.name:
+		
+			image.registration_sequence = gl_model.registration_sequence
+			return image
 
+	#
+	# load the pic from disk
+	#
+	if name[-4:] == ".pcx":
+	
+		pic, pal, width, height = LoadPCX (name)
+		if pic is None:
+			return None # gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
+		image = GL_LoadPic (name, pic, width, height, imgType, 8)
+	
+	elif name[-4:] == ".wal":
+	
+		image = GL_LoadWal (name)
+	
+	elif name[-4:] == ".tga":
+	
+		return None #FIXME finish port
+		#LoadTGA (name, &pic, &width, &height);
+		#if (!pic)
+		#	return None # gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
+		#image = GL_LoadPic (name, pic, width, height, type, 32);
+	
+	else:
+		return None	#	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad extension on: %s", name)
 
-	if (pic)
-		free(pic);
-	if (palette)
-		free(palette);
-
-	return image;
-}
+	return image
 
 
-
-/*
+"""
 ===============
 R_RegisterSkin
 ===============
@@ -1433,14 +1484,15 @@ def Draw_GetPalette ():
 ===============
 GL_InitImages
 ===============
-*/
-void	GL_InitImages (void)
-{
+"""
+def GL_InitImages ():
+	
+	"""
 	int		i, j;
 	float	g = vid_gamma->value;
-
-	registration_sequence = 1;
-
+	"""
+	gl_model.registration_sequence = 1
+	"""
 	// init intensity conversions
 	intensity = gl_rmain.ri.Cvar_Get ("intensity", "2", 0);
 
