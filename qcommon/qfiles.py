@@ -66,35 +66,122 @@ class dpackheader_t(object):
 
 
 MAX_FILES_IN_PACK = 4096
-"""
 
-/*
+
+"""
 ========================================================================
 
 PCX files are used for as many images as possible
 
 ========================================================================
-*/
+"""
 
-typedef struct
-{
-    char	manufacturer;
-    char	version;
-    char	encoding;
-    char	bits_per_pixel;
-    unsigned short	xmin,ymin,xmax,ymax;
-    unsigned short	hres,vres;
-    unsigned char	palette[48];
-    char	reserved;
-    char	color_planes;
-    unsigned short	bytes_per_line;
-    unsigned short	palette_type;
-    char	filler[58];
-    unsigned char	data;			// unbounded
-} pcx_t;
+class pcx_t (object):
 
+	def __init__(self):
 
-/*
+		self.manufacturer = None #char
+		self.version = None #char
+		self.encoding = None #char
+		self.bits_per_pixel = None #char
+		self.xmin,ymin,xmax,ymax = None,None,None,None #unsigned short
+		self.hres,vres = None,None #unsigned short
+		self.palette=[] #unsigned char[48]
+		self.reserved = None #char
+		self.color_planes = None #char
+		self.bytes_per_line = None #unsigned short
+		self.palette_type = None #unsigned short
+		self.filler = [] #char[58]
+		self.data = None
+
+	def Read(self, buff):
+
+		self.manufacturer, self.version, self.encoding, self.bits_per_pixel = struct.unpack("<BBBB", buff[:4])
+		self.xmin = struct.unpack("<H", buff[4:6])[0]
+		self.ymin = struct.unpack("<H", buff[6:8])[0]
+		self.xmax = struct.unpack("<H", buff[8:10])[0]
+		self.ymax = struct.unpack("<H", buff[10:12])[0]
+		self.hres = struct.unpack("<H", buff[12:14])[0]
+		self.vres = struct.unpack("<H", buff[14:16])[0]
+
+		self.palette = buff[16:64]
+
+		self.reserved, self.color_planes = struct.unpack("<BB", buff[64:66])
+
+		self.bytes_per_line = struct.unpack("<H", buff[66:68])[0]
+		self.palette_type = struct.unpack("<H", buff[68:70])[0]
+		
+		self.filler = buff[70:128]
+		self.data = buff[128:]
+
+		if (self.manufacturer != 0x0a
+			or self.version != 5
+			or self.encoding != 1
+			or self.bits_per_pixel != 8
+			or self.xmax >= 640
+			or self.ymax >= 480):
+		
+			return False
+		return True
+
+	def Decompress(self, buff):
+
+		ok = self.Read(buff)
+		if not ok: return None, None, None, None
+
+		pic = bytearray((self.ymax+1) * (self.xmax+1))
+		
+		palette = buff[-256*3:]
+		width = self.xmax+1
+		height = self.ymax+1
+
+		y = 0
+		cursor = 0
+		picCursor = 0
+		for y in range(self.ymax+1):
+			picCursor = y * self.xmax
+		
+			x = 0
+			while x <= self.xmax:
+				
+				dataByte = self.data[cursor]
+				cursor += 1
+
+				if (dataByte & 0xC0) == 0xC0:
+				
+					runLength = dataByte & 0x3F
+					dataByte = self.data[cursor]
+					cursor += 1
+				
+				else:
+					runLength = 1
+
+				for r in range(runLength):
+					pic[picCursor + x] = dataByte
+					x += 1
+		
+		return pic, palette, width, height
+		
+	def DecodeToPixels(self, buff):
+		from PIL import Image
+
+		pic, palette, width, height = self.Decompress(buff)
+		if pic is None:
+			return None
+
+		pall = []
+		for i in range(0, len(palette), 3):
+			pall.append(struct.unpack("<BBB", palette[i:i+3]))
+
+		im = Image.new("RGB", (self.xmax, self.ymax))
+		px = im.load()
+		for y in range(self.ymax):
+			for x in range(self.xmax):
+				px[x, y] = pall[pic[y*self.xmax + x]]
+
+		return im
+
+"""
 ========================================================================
 
 .MD2 triangle model file format

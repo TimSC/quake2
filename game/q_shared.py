@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-	
+import struct
 """
 // q_shared.h -- included first by ALL program modules
 
@@ -2131,8 +2131,12 @@ float	(*_LittleFloat) (float l);
 
 short	BigShort(short l){return _BigShort(l);}
 short	LittleShort(short l) {return _LittleShort(l);}
-int		BigLong (int l) {return _BigLong(l);}
-int		LittleLong (int l) {return _LittleLong(l);}
+"""
+def BigLong (l): #int, (returns int)
+	return struct.unpack(">I", l)[0]
+def LittleLong (l): #int, (returns int)
+	return struct.unpack("<I", l)[0]
+"""
 float	BigFloat (float l) {return _BigFloat(l);}
 float	LittleFloat (float l) {return _LittleFloat(l);}
 

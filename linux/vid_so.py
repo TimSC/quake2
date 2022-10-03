@@ -45,11 +45,16 @@ vid_ref = None         #cvar_t		*, Name of Refresh DLL loaded
 vid_xpos = None        #cvar_t		*, X coordinate of window position
 vid_ypos = None        #cvar_t		*, Y coordinate of window position
 vid_fullscreen = None  #cvar_t		*
-"""
-// Global variables used internally by this module
-viddef_t	viddef;				// global video state; used by other modules
-void		*reflib_library;		// Handle to refresh DLL 
-"""
+
+class viddef_t(object):
+
+	def __init__(self):
+		self.width, self.height = 800, 600 #unsigned, coordinates from main game
+
+# Global variables used internally by this module
+viddef = viddef_t() # global video state; used by other modules
+#void		*reflib_library;		// Handle to refresh DLL 
+
 reflib_active = 0 #qboolean
 """
 #define VID_NUM_MODES ( sizeof( vid_modes ) / sizeof( vid_modes[0] ) )

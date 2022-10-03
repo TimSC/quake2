@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import OpenGL.GL as GL
+import OpenGL.GLU as GLU
 from OpenGL.GL import glGetString
 from enum import Enum
 from client import ref
@@ -25,6 +26,7 @@ from ref_gl import gl_model
 from linux import gl_glx, qgl_linux
 from game import q_shared
 from qcommon import cvar, cmd, files, qcommon
+from ref_gl import gl_draw, gl_image
 
 REF_VERSION = "GL 0.01"
 
@@ -1203,9 +1205,8 @@ def R_Init( hinstance, hWnd ): #void *, void *
 	}
 	"""
 	ri.Con_Printf (q_shared.PRINT_ALL, "ref_gl version: {}\n".format(REF_VERSION))
-	"""
-	Draw_GetPalette ();
-	"""
+	
+	gl_image.Draw_GetPalette ()
 	R_Register()
 	"""
 	# initialize our QGL dynamic bindings
@@ -1474,7 +1475,9 @@ def R_Init( hinstance, hWnd ): #void *, void *
 	GL_InitImages ();
 	Mod_Init ();
 	R_InitParticleTexture ();
-	Draw_InitLocal ();
+	"""
+	gl_draw.Draw_InitLocal ()
+	"""
 
 	err = qglGetError();
 	if ( err != GL_NO_ERROR )
@@ -1563,22 +1566,22 @@ def R_BeginFrame( camera_separation ): #float
 	}
 	"""
 	gl_glx.GLimp_BeginFrame( camera_separation )
-	"""
-	/*
-	** go into 2D mode
-	*/
-	qglViewport (0,0, vid.width, vid.height);
-	qglMatrixMode(GL_PROJECTION);
-	qglLoadIdentity ();
-	qglOrtho  (0, vid.width, vid.height, 0, -99999, 99999);
-	qglMatrixMode(GL_MODELVIEW);
-	qglLoadIdentity ();
-	qglDisable (GL_DEPTH_TEST);
-	qglDisable (GL_CULL_FACE);
-	qglDisable (GL_BLEND);
-	qglEnable (GL_ALPHA_TEST);
-	qglColor4f (1,1,1,1);
 
+	#
+	# go into 2D mode
+	#
+	GL.glViewport (0,0, vid.width, vid.height)
+	GL.glMatrixMode(GL.GL_PROJECTION)
+	GL.glLoadIdentity ()
+	GL.glOrtho  (0, vid.width, vid.height, 0, -99999, 99999)
+	GL.glMatrixMode(GL.GL_MODELVIEW)
+	GL.glLoadIdentity ()
+	GL.glDisable (GL.GL_DEPTH_TEST)
+	GL.glDisable (GL.GL_CULL_FACE)
+	GL.glDisable (GL.GL_BLEND)
+	GL.glEnable (GL.GL_ALPHA_TEST)
+	GL.glColor4f (1,1,1,1)
+	"""
 	/*
 	** draw buffer stuff
 	*/
@@ -1782,15 +1785,15 @@ def GetRefAPI ( rimp ): #refimport_t (returns refexport_t)
 
 	re.RenderFrame = R_RenderFrame
 	
-	#re.DrawGetPicSize = Draw_GetPicSize
-	#re.DrawPic = Draw_Pic
-	#re.DrawStretchPic = Draw_StretchPic
-	#re.DrawChar = Draw_Char
-	#re.DrawTileClear = Draw_TileClear
-	#re.DrawFill = Draw_Fill
-	#re.DrawFadeScreen= Draw_FadeScreen
+	re.DrawGetPicSize = gl_draw.Draw_GetPicSize
+	re.DrawPic = gl_draw.Draw_Pic
+	re.DrawStretchPic = gl_draw.Draw_StretchPic
+	re.DrawChar = gl_draw.Draw_Char
+	re.DrawTileClear = gl_draw.Draw_TileClear
+	re.DrawFill = gl_draw.Draw_Fill
+	re.DrawFadeScreen= gl_draw.Draw_FadeScreen
 
-	#re.DrawStretchRaw = Draw_StretchRaw
+	re.DrawStretchRaw = gl_draw.Draw_StretchRaw
 
 	re.Init = R_Init
 	re.Shutdown = R_Shutdown

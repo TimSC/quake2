@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+import struct
+import OpenGL.GL as GL
+from ref_gl import gl_rmain, gl_image
+from game import q_shared
+"""
 // draw.c
 
 #include "gl_local.h"
@@ -32,15 +36,16 @@ void Scrap_Upload (void);
 ===============
 Draw_InitLocal
 ===============
-*/
-void Draw_InitLocal (void)
-{
-	// load console characters (don't bilerp characters)
+"""
+def Draw_InitLocal ():
+	pass
+	"""
+	# load console characters (don't bilerp characters)
 	draw_chars = GL_FindImage ("pics/conchars.pcx", it_pic);
 	GL_Bind( draw_chars->texnum );
 	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-}
+
 
 
 
@@ -52,9 +57,11 @@ Draws one 8*8 graphics character with 0 being transparent.
 It can be clipped to the top of the screen to allow the console to be
 smoothly scrolled off.
 ================
-*/
-void Draw_Char (int x, int y, int num)
-{
+"""
+def Draw_Char (x, y, num): #int, int, int
+
+	pass
+	"""
 	int				row, col;
 	float			frow, fcol, size;
 
@@ -112,9 +119,11 @@ image_t	*Draw_FindPic (char *name)
 =============
 Draw_GetPicSize
 =============
-*/
-void Draw_GetPicSize (int *w, int *h, char *pic)
-{
+"""
+def Draw_GetPicSize (w, h, pic): #int *, int *, char *
+
+	return None, None
+	"""
 	image_t *gl;
 
 	gl = Draw_FindPic (pic);
@@ -125,21 +134,23 @@ void Draw_GetPicSize (int *w, int *h, char *pic)
 	}
 	*w = gl->width;
 	*h = gl->height;
-}
+	"""
 
-/*
+"""
 =============
 Draw_StretchPic
 =============
-*/
-void Draw_StretchPic (int x, int y, int w, int h, char *pic)
-{
+"""
+def Draw_StretchPic (x, y, w, h, pic): #int, int, int, int, char *
+
+	pass
+	"""
 	image_t *gl;
 
 	gl = Draw_FindPic (pic);
 	if (!gl)
 	{
-		ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
+		gl_rmain.ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
 		return;
 	}
 
@@ -166,19 +177,21 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 }
 
 
-/*
+
 =============
 Draw_Pic
 =============
-*/
-void Draw_Pic (int x, int y, char *pic)
-{
+"""
+def Draw_Pic (x, y, pic): #int, int, char *
+
+	pass
+	"""
 	image_t *gl;
 
 	gl = Draw_FindPic (pic);
 	if (!gl)
 	{
-		ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
+		gl_rmain.ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
 		return;
 	}
 	if (scrap_dirty)
@@ -201,24 +214,26 @@ void Draw_Pic (int x, int y, char *pic)
 
 	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) )  && !gl->has_alpha)
 		qglEnable (GL_ALPHA_TEST);
-}
+	"""
 
-/*
+"""
 =============
 Draw_TileClear
 
 This repeats a 64*64 tile graphic to fill the screen around a sized down
 refresh window.
 =============
-*/
-void Draw_TileClear (int x, int y, int w, int h, char *pic)
-{
+"""
+def Draw_TileClear (x, y, w, h, pic): #int, int, int, int, char *
+
+	pass
+	"""
 	image_t	*image;
 
 	image = Draw_FindPic (pic);
 	if (!image)
 	{
-		ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
+		gl_rmain.ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
 		return;
 	}
 
@@ -248,37 +263,41 @@ Draw_Fill
 
 Fills a box of pixels with a single color
 =============
-*/
-void Draw_Fill (int x, int y, int w, int h, int c)
-{
+"""
+def Draw_Fill (x, y, w, h, c): #int, int, int, int, int
+
+	"""
 	union
 	{
 		unsigned	c;
 		byte		v[4];
 	} color;
+	"""
 
-	if ( (unsigned)c > 255)
-		ri.Sys_Error (ERR_FATAL, "Draw_Fill: bad color");
+	if c > 255:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_FATAL, "Draw_Fill: bad color")
 
-	qglDisable (GL_TEXTURE_2D);
+	GL.glDisable (GL.GL_TEXTURE_2D)
 
-	color.c = d_8to24table[c];
-	qglColor3f (color.v[0]/255.0,
-		color.v[1]/255.0,
-		color.v[2]/255.0);
+	color = gl_image.d_8to24table[c]
 
-	qglBegin (GL_QUADS);
+	GL.glColor3f (color[0]/255.0,
+		color[1]/255.0,
+		color[2]/255.0)
 
-	qglVertex2f (x,y);
-	qglVertex2f (x+w, y);
-	qglVertex2f (x+w, y+h);
-	qglVertex2f (x, y+h);
+	GL.glBegin (GL.GL_QUADS)
 
-	qglEnd ();
-	qglColor3f (1,1,1);
-	qglEnable (GL_TEXTURE_2D);
-}
+	GL.glVertex2f (x,y)
+	GL.glVertex2f (x+w, y)
+	GL.glVertex2f (x+w, y+h)
+	GL.glVertex2f (x, y+h)
 
+	GL.glEnd ()
+	GL.glColor3f (1,1,1)
+	GL.glEnable (GL.GL_TEXTURE_2D)
+
+
+"""
 //=============================================================================
 
 /*
@@ -286,9 +305,11 @@ void Draw_Fill (int x, int y, int w, int h, int c)
 Draw_FadeScreen
 
 ================
-*/
-void Draw_FadeScreen (void)
-{
+"""
+def Draw_FadeScreen ():
+
+	pass
+	"""
 	qglEnable (GL_BLEND);
 	qglDisable (GL_TEXTURE_2D);
 	qglColor4f (0, 0, 0, 0.8);
@@ -303,9 +324,9 @@ void Draw_FadeScreen (void)
 	qglColor4f (1,1,1,1);
 	qglEnable (GL_TEXTURE_2D);
 	qglDisable (GL_BLEND);
-}
+	"""
 
-
+"""
 //====================================================================
 
 
@@ -315,9 +336,11 @@ Draw_StretchRaw
 =============
 */
 extern unsigned	r_rawpalette[256];
+"""
+def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, int, byte *
 
-void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data)
-{
+	pass
+	"""
 	unsigned	image32[256*256];
 	unsigned char image8[256*256];
 	int			i, j, trows;
@@ -412,4 +435,4 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 	if ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) 
 		qglEnable (GL_ALPHA_TEST);
 }
-
+"""

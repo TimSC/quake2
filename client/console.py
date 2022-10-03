@@ -17,7 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cmd, cvar, common
+from qcommon import cmd, cvar, common, qcommon
+from linux import vid_so
+from client import cl_scrn
 """
 // console.c
 
@@ -69,7 +71,7 @@ void DrawString (int x, int y, char *s)
 {
 	while (*s)
 	{
-		re.DrawChar (x, y, *s);
+		vid_so.re.DrawChar (x, y, *s);
 		x+=8;
 		s++;
 	}
@@ -79,7 +81,7 @@ void DrawAltString (int x, int y, char *s)
 {
 	while (*s)
 	{
-		re.DrawChar (x, y, *s ^ 0x80);
+		vid_so.re.DrawChar (x, y, *s ^ 0x80);
 		x+=8;
 		s++;
 	}
@@ -99,10 +101,9 @@ Con_ToggleConsole_f
 """
 def Con_ToggleConsole_f ():
 
-	pass
-	"""
-	SCR_EndLoadingPlaque ();	// get rid of loading plaque
 
+	cl_scren.SCR_EndLoadingPlaque ()	# get rid of loading plaque
+	"""
 	if (cl.attractloop)
 	{
 		Cbuf_AddText ("killserver\n");
@@ -290,7 +291,7 @@ def Con_CheckResize ():
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	char	tbuf[CON_TEXTSIZE];
 
-	width = (viddef.width >> 3) - 2;
+	width = (vid_so.viddef.width >> 3) - 2;
 
 	if (width == con.linewidth)
 		return;
@@ -526,7 +527,7 @@ void Con_DrawInput (void)
 	y = con.vislines-16;
 
 	for (i=0 ; i<con.linewidth ; i++)
-		re.DrawChar ( (i+1)<<3, con.vislines - 22, text[i]);
+		vid_so.re.DrawChar ( (i+1)<<3, con.vislines - 22, text[i]);
 
 // remove cursor
 	key_lines[edit_line][key_linepos] = 0;
@@ -539,9 +540,11 @@ Con_DrawNotify
 
 Draws the last few lines of output transparently over the game top
 ================
-*/
-void Con_DrawNotify (void)
-{
+"""
+def Con_DrawNotify ():
+
+	pass
+	"""
 	int		x, v;
 	char	*text;
 	int		i;
@@ -563,7 +566,7 @@ void Con_DrawNotify (void)
 		text = con.text + (i % con.totallines)*con.linewidth;
 		
 		for (x = 0 ; x < con.linewidth ; x++)
-			re.DrawChar ( (x+1)<<3, v, text[x]);
+			vid_so.re.DrawChar ( (x+1)<<3, v, text[x]);
 
 		v += 8;
 	}
@@ -583,22 +586,22 @@ void Con_DrawNotify (void)
 		}
 
 		s = chat_buffer;
-		if (chat_bufferlen > (viddef.width>>3)-(skip+1))
-			s += chat_bufferlen - ((viddef.width>>3)-(skip+1));
+		if (chat_bufferlen > (vid_so.viddef.width>>3)-(skip+1))
+			s += chat_bufferlen - ((vid_so.viddef.width>>3)-(skip+1));
 		x = 0;
 		while(s[x])
 		{
-			re.DrawChar ( (x+skip)<<3, v, s[x]);
+			vid_so.re.DrawChar ( (x+skip)<<3, v, s[x]);
 			x++;
 		}
-		re.DrawChar ( (x+skip)<<3, v, 10+((cls.realtime>>8)&1));
+		vid_so.re.DrawChar ( (x+skip)<<3, v, 10+((cls.realtime>>8)&1));
 		v += 8;
 	}
 	
 	if (v)
 	{
 		SCR_AddDirtyPoint (0,0);
-		SCR_AddDirtyPoint (viddef.width-1, v);
+		SCR_AddDirtyPoint (vid_so.viddef.width-1, v);
 	}
 }
 
@@ -608,9 +611,10 @@ Con_DrawConsole
 
 Draws the console with the solid background
 ================
-*/
-void Con_DrawConsole (float frac)
-{
+"""
+def Con_DrawConsole (frac): #float
+
+	"""
 	int				i, j, x, y, n;
 	int				rows;
 	char			*text;
@@ -618,24 +622,26 @@ void Con_DrawConsole (float frac)
 	int				lines;
 	char			version[64];
 	char			dlbar[1024];
+	"""
 
-	lines = viddef.height * frac;
-	if (lines <= 0)
-		return;
+	lines = vid_so.viddef.height * frac
+	if lines <= 0:
+		return
 
-	if (lines > viddef.height)
-		lines = viddef.height;
+	if lines > vid_so.viddef.height:
+		lines = vid_so.viddef.height
 
-// draw the background
-	re.DrawStretchPic (0, -viddef.height+lines, viddef.width, viddef.height, "conback");
-	SCR_AddDirtyPoint (0,0);
-	SCR_AddDirtyPoint (viddef.width-1,lines-1);
+	# draw the background
+	vid_so.re.DrawStretchPic (0, -vid_so.viddef.height+lines, vid_so.viddef.width, vid_so.viddef.height, "conback")
+	cl_scrn.SCR_AddDirtyPoint (0,0)
+	cl_scrn.SCR_AddDirtyPoint (vid_so.viddef.width-1,lines-1)
 
-	Com_sprintf (version, sizeof(version), "v%4.2f", VERSION);
-	for (x=0 ; x<5 ; x++)
-		re.DrawChar (viddef.width-44+x*8, lines-12, 128 + version[x] );
-
-// draw the text
+	
+	version = "v{:4.2f}".format(qcommon.VERSION)
+	for x in range(5):
+		vid_so.re.DrawChar (vid_so.viddef.width-44+x*8, lines-12, 128 + ord(version[x]) )
+	"""
+	# draw the text
 	con.vislines = lines;
 	
 #if 0
@@ -648,12 +654,12 @@ void Con_DrawConsole (float frac)
 	y = lines - 30;
 #endif
 
-// draw from the bottom up
+	# draw from the bottom up
 	if (con.display != con.current)
 	{
 	// draw arrows to show the buffer is backscrolled
 		for (x=0 ; x<con.linewidth ; x+=4)
-			re.DrawChar ( (x+1)<<3, y, '^');
+			vid_so.re.DrawChar ( (x+1)<<3, y, '^');
 	
 		y -= 8;
 		rows--;
@@ -670,12 +676,12 @@ void Con_DrawConsole (float frac)
 		text = con.text + (row % con.totallines)*con.linewidth;
 
 		for (x=0 ; x<con.linewidth ; x++)
-			re.DrawChar ( (x+1)<<3, y, text[x]);
+			vid_so.re.DrawChar ( (x+1)<<3, y, text[x]);
 	}
 
 //ZOID
-	// draw the download bar
-	// figure out width
+	# draw the download bar
+	# figure out width
 	if (cls.download) {
 		if ((text = strrchr(cls.downloadname, '/')) != NULL)
 			text++;
@@ -714,12 +720,12 @@ void Con_DrawConsole (float frac)
 		// draw it
 		y = con.vislines-12;
 		for (i = 0; i < strlen(dlbar); i++)
-			re.DrawChar ( (i+1)<<3, y, dlbar[i]);
+			vid_so.re.DrawChar ( (i+1)<<3, y, dlbar[i]);
 	}
 //ZOID
 
-// draw the input prompt, user text, and cursor if desired
+	# draw the input prompt, user text, and cursor if desired
 	Con_DrawInput ();
-}
+
 
 """
