@@ -100,11 +100,11 @@ MAX_SOUNDS = 256		# so they cannot be blindly increased
 ERR_FATAL			= 0		# exit the entire game with a popup window
 ERR_DROP			= 1		# print to console and disconnect from game
 ERR_DISCONNECT		= 2		# don't kill server
-"""
-#define	PRINT_ALL			0
-#define PRINT_DEVELOPER		1		// only print when "developer 1"
-#define PRINT_ALERT			2		
 
+PRINT_ALL			= 0
+PRINT_DEVELOPER		= 1		# only print when "developer 1"
+PRINT_ALERT			= 2		
+"""
 
 // destination class for gi.multicast()
 typedef enum

@@ -419,13 +419,11 @@ def FS_LoadFile (path): #char * (returns int)
 =============
 FS_FreeFile
 =============
-*/
-void FS_FreeFile (void *buffer)
-{
-	Z_Free (buffer);
-}
+"""
+def FS_FreeFile (buff): #void *
+	pass
 
-/*
+"""
 =================
 FS_LoadPackFile
 
@@ -538,16 +536,18 @@ FS_Gamedir
 
 Called to find where to write a file (demos, savegames, etc)
 ============
-*/
-char *FS_Gamedir (void)
-{
-	if (*fs_gamedir)
-		return fs_gamedir;
-	else
-		return qcommon.BASEDIRNAME;
-}
+"""
+def FS_Gamedir (): #(returns char *)
 
-/*
+	global fs_gamedir
+
+	if fs_gamedir is not None:
+		return fs_gamedir
+	else:
+		return qcommon.BASEDIRNAME
+
+
+"""
 =============
 FS_ExecAutoexec
 =============

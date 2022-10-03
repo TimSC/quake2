@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Quake refresh engine.
 """
 import os
-from qcommon import cvar, common, cmd
+from qcommon import cvar, common, cmd, files
 from client import snd_dma, cl_main, ref
 from game import q_shared
 """
@@ -86,8 +86,10 @@ DLL GLUE
 */
 
 #define	MAXPRINTMSG	4096
-void VID_Printf (int print_level, char *fmt, ...)
-{
+"""
+def VID_Printf (print_level, msg):
+
+	"""
 	va_list		argptr;
 	char		msg[MAXPRINTMSG];
 	static qboolean	inupdate;
@@ -95,15 +97,16 @@ void VID_Printf (int print_level, char *fmt, ...)
 	va_start (argptr,fmt);
 	vsprintf (msg,fmt,argptr);
 	va_end (argptr);
+	"""
+	if print_level == q_shared.PRINT_ALL:
+		common.Com_Printf (str(msg))
+	else:
+		common.Com_DPrintf (str(msg))
 
-	if (print_level == PRINT_ALL)
-		Com_Printf ("%s", msg);
-	else
-		Com_DPrintf ("%s", msg);
-}
 
-void VID_Error (int err_level, char *fmt, ...)
-{
+def VID_Error (err_level, msg):
+
+	"""
 	va_list		argptr;
 	char		msg[MAXPRINTMSG];
 	static qboolean	inupdate;
@@ -111,10 +114,10 @@ void VID_Error (int err_level, char *fmt, ...)
 	va_start (argptr,fmt);
 	vsprintf (msg,fmt,argptr);
 	va_end (argptr);
+	"""
+	common.Com_Error (err_level, str(msg))
 
-	Com_Error (err_level,"%s", msg);
-}
-
+"""
 //==========================================================================
 
 /*
@@ -282,25 +285,25 @@ def VID_LoadRefresh(name): #char * (returns qboolean)
 	}
 
   Com_Printf( "LoadLibrary(\"%s\")\n", fn );
-
-	ri.Cmd_AddCommand = Cmd_AddCommand;
-	ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
-	ri.Cmd_Argc = Cmd_Argc;
-	ri.Cmd_Argv = Cmd_Argv;
-	ri.Cmd_ExecuteText = Cbuf_ExecuteText;
-	ri.Con_Printf = VID_Printf;
-	ri.Sys_Error = VID_Error;
-	ri.FS_LoadFile = FS_LoadFile;
-	ri.FS_FreeFile = FS_FreeFile;
-	ri.FS_Gamedir = FS_Gamedir;
-	ri.Cvar_Get = Cvar_Get;
-	ri.Cvar_Set = Cvar_Set;
-	ri.Cvar_SetValue = Cvar_SetValue;
-	ri.Vid_GetModeInfo = VID_GetModeInfo;
-	ri.Vid_MenuInit = VID_MenuInit;
-	ri.Vid_NewWindow = VID_NewWindow;
-
 	"""
+	ri.Cmd_AddCommand = cmd.Cmd_AddCommand
+	ri.Cmd_RemoveCommand = cmd.Cmd_RemoveCommand
+	ri.Cmd_Argc = cmd.Cmd_Argc
+	ri.Cmd_Argv = cmd.Cmd_Argv
+	ri.Cmd_ExecuteText = cmd.Cbuf_ExecuteText
+	ri.Con_Printf = VID_Printf
+	ri.Sys_Error = VID_Error
+	ri.FS_LoadFile = files.FS_LoadFile
+	ri.FS_FreeFile = files.FS_FreeFile
+	ri.FS_Gamedir = files.FS_Gamedir
+	ri.Cvar_Get = cvar.Cvar_Get
+	ri.Cvar_Set = cvar.Cvar_Set
+	ri.Cvar_SetValue = cvar.Cvar_SetValue
+	#ri.Vid_GetModeInfo = VID_GetModeInfo
+	#ri.Vid_MenuInit = VID_MenuInit
+	#ri.Vid_NewWindow = VID_NewWindow
+
+
 	if name == "gl" or True: #Force to gl for python port
 		from ref_gl import gl_rmain
 		re = gl_rmain.GetRefAPI(ri)

@@ -284,20 +284,19 @@ cvar_t *Cvar_FullSet (char *var_name, char *value, int flags)
 ============
 Cvar_SetValue
 ============
-*/
-void Cvar_SetValue (char *var_name, float value)
-{
-	char	val[32];
+"""
+def Cvar_SetValue (var_name, value): #char *, float
 
-	if (value == (int)value)
-		Com_sprintf (val, sizeof(val), "%i",(int)value);
-	else
-		Com_sprintf (val, sizeof(val), "%f",value);
-	Cvar_Set (var_name, val);
-}
+	#char	val[32];
+
+	#if (value == (int)value)
+	#	Com_sprintf (val, sizeof(val), "%i",(int)value);
+	#else
+	#	Com_sprintf (val, sizeof(val), "%f",value);
+	Cvar_Set (var_name, str(value))
 
 
-/*
+"""
 ============
 Cvar_GetLatchedVars
 

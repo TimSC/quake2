@@ -17,7 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+from ref_gl import gl_rmain
+from game import q_shared
 """
 ** GLW_IMP.C
 **
@@ -148,7 +149,7 @@ static void install_grabs(void)
 
 		if (!XF86DGAQueryVersion(dpy, &MajorVersion, &MinorVersion)) { 
 			// unable to query, probalby not supported
-			ri.Con_Printf( PRINT_ALL, "Failed to detect XF86DGA Mouse\n" );
+			ri.Con_Printf( q_shared.PRINT_ALL, "Failed to detect XF86DGA Mouse\n" );
 			ri.Cvar_Set( "in_dgamouse", "0" );
 		} else {
 			dgamouse = true;
@@ -589,8 +590,10 @@ static void InitSig(void)
 /*
 ** GLimp_SetMode
 */
-int GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
-{
+"""
+def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qboolean (returns rserr_t)
+
+	"""
 	int width, height;
 	int attrib[] = {
 		GLX_RGBA,
@@ -610,21 +613,21 @@ int GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
 	int i;
 
 	r_fakeFullscreen = ri.Cvar_Get( "r_fakeFullscreen", "0", CVAR_ARCHIVE);
-
-	ri.Con_Printf( PRINT_ALL, "Initializing OpenGL display\n");
-
+	"""
+	gl_rmain.ri.Con_Printf( q_shared.PRINT_ALL, "Initializing OpenGL display\n")
+	"""
 	if (fullscreen)
-		ri.Con_Printf (PRINT_ALL, "...setting fullscreen mode %d:", mode );
+		ri.Con_Printf (q_shared.PRINT_ALL, "...setting fullscreen mode %d:", mode );
 	else
-		ri.Con_Printf (PRINT_ALL, "...setting mode %d:", mode );
+		ri.Con_Printf (q_shared.PRINT_ALL, "...setting mode %d:", mode );
 
 	if ( !ri.Vid_GetModeInfo( &width, &height, mode ) )
 	{
-		ri.Con_Printf( PRINT_ALL, " invalid mode\n" );
+		ri.Con_Printf( q_shared.PRINT_ALL, " invalid mode\n" );
 		return rserr_invalid_mode;
 	}
 
-	ri.Con_Printf( PRINT_ALL, " %d %d\n", width, height );
+	ri.Con_Printf( q_shared.PRINT_ALL, " %d %d\n", width, height );
 
 	// destroy the existing window
 	GLimp_Shutdown ();
@@ -648,7 +651,7 @@ int GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
 	if (!XF86VidModeQueryVersion(dpy, &MajorVersion, &MinorVersion)) { 
 		vidmode_ext = false;
 	} else {
-		ri.Con_Printf(PRINT_ALL, "Using XFree86-VidModeExtension Version %d.%d\n",
+		ri.Con_Printf(q_shared.PRINT_ALL, "Using XFree86-VidModeExtension Version %d.%d\n",
 			MajorVersion, MinorVersion);
 		vidmode_ext = true;
 	}
@@ -739,10 +742,12 @@ int GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
 	ri.Vid_NewWindow (width, height);
 
 	qglXMakeCurrent(dpy, win, ctx);
+"""
+	return gl_rmain.rserr_t.rserr_ok, width, height
 
-	return rserr_ok;
-}
 
+
+"""
 /*
 ** GLimp_Shutdown
 **
@@ -779,13 +784,14 @@ void GLimp_Shutdown( void )
 ** This routine is responsible for initializing the OS specific portions
 ** of OpenGL.  
 */
-int GLimp_Init( void *hinstance, void *wndproc )
-{
-	InitSig();
+"""
+def GLimp_Init( hinstance, wndproc ): #void *, void * (returns int)
 
-	return true;
-}
+	#InitSig();
 
+	return True
+
+"""
 /*
 ** GLimp_BeginFrame
 */
