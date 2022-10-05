@@ -17,9 +17,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import io
 import math
 import struct
 import OpenGL.GL as GL
+import pygame
 from enum import Enum
 from game import q_shared
 from ref_gl import gl_rmain, gl_model
@@ -66,7 +68,6 @@ for i in range(MAX_GLTEXTURES):
 numgltextures = 0 #int
 
 """
-
 int			base_textureid;		// gltextures[i] = base_textureid+i
 """
 intensitytable = bytearray(256) #static byte[256]
@@ -902,28 +903,33 @@ GL_MipMap
 
 Operates in place, quartering the size of the texture
 ================
-*/
-void GL_MipMap (byte *in, int width, int height)
-{
-	int		i, j;
-	byte	*out;
+"""
+def GL_MipMap (pic, width, height): #byte *, int, int
 
-	width <<=2;
-	height >>= 1;
-	out = in;
-	for (i=0 ; i<height ; i++, in+=width)
-	{
-		for (j=0 ; j<width ; j+=8, out+=4, in+=8)
-		{
-			out[0] = (in[0] + in[4] + in[width+0] + in[width+4])>>2;
-			out[1] = (in[1] + in[5] + in[width+1] + in[width+5])>>2;
-			out[2] = (in[2] + in[6] + in[width+2] + in[width+6])>>2;
-			out[3] = (in[3] + in[7] + in[width+3] + in[width+7])>>2;
-		}
-	}
-}
+	#int		i, j;
+	#byte	*out;
 
-/*
+	width <<=2
+	height >>= 1
+	c = 0
+	out = 0
+	for i in range(height):
+	
+		for j in range(0, width, 8):
+		
+			pic[out+0] = (pic[c+0] + pic[c+4] + pic[c+width+0] + pic[c+width+4])>>2
+			pic[out+1] = (pic[c+1] + pic[c+5] + pic[c+width+1] + pic[c+width+5])>>2
+			pic[out+2] = (pic[c+2] + pic[c+6] + pic[c+width+2] + pic[c+width+6])>>2
+			pic[out+3] = (pic[c+3] + pic[c+7] + pic[c+width+3] + pic[c+width+7])>>2
+
+			out += 4
+			c += 8
+		
+		c += width
+	
+
+
+"""
 ===============
 GL_Upload32
 
@@ -1076,7 +1082,7 @@ def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (
 		scaled = GL_ResampleTexture (data, width, height, scaled_width, scaled_height)
 
 	GL_LightScaleTexture (scaled, scaled_width, scaled_height, not mipmap )
-	
+
 	if qgl_linux.qglColorTableEXT and gl_rmain.gl_ext_palettedtexture.value and samples == gl_solid_format \
 		and False: #FIXME Disable for now, reintroduce later in porting
 	
@@ -1392,9 +1398,9 @@ def GL_FindImage (name, imgType): #char *, imagetype_t (returns image_t *)
 	"""
 
 	if name is None:
-		return None	#	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: NULL name");
+		return None	##	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: NULL name");
 	if len(name)<5:
-		return None	#	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad name: %s", name);
+		return None	##	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad name: %s", name);
 
 	# look for it
 	for i in range(numgltextures):
@@ -1412,7 +1418,7 @@ def GL_FindImage (name, imgType): #char *, imagetype_t (returns image_t *)
 	
 		pic, pal, width, height = LoadPCX (name)
 		if pic is None:
-			return None # gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
+			return None ## gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
 		image = GL_LoadPic (name, pic, width, height, imgType, 8)
 	
 	elif name[-4:] == ".wal":
@@ -1420,15 +1426,27 @@ def GL_FindImage (name, imgType): #char *, imagetype_t (returns image_t *)
 		image = GL_LoadWal (name)
 	
 	elif name[-4:] == ".tga":
-	
-		return None #FIXME finish port
+
+		# use some help from pygame
+		length, raw = gl_rmain.ri.FS_LoadFile (name)
+		if raw is None:
+		
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_DEVELOPER, "Bad tga file {}\n".format(name))
+			return
+		
+		pgimg = pygame.image.load(io.BytesIO(raw))
+		width, height = pgimg.get_size()
+		image = bytearray(pgimg.get_view("0"))
+		image = GL_LoadPic (name, pgpix, width, height, imgType, 8)
+
+		# this is the original quake 2 approach:
 		#LoadTGA (name, &pic, &width, &height);
 		#if (!pic)
-		#	return None # gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
+		#	return None ## gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: can't load %s", name);
 		#image = GL_LoadPic (name, pic, width, height, type, 32);
 	
 	else:
-		return None	#	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad extension on: %s", name)
+		return None	##	gl_rmain.ri.Sys_Error (ERR_DROP, "GL_FindImage: bad extension on: %s", name)
 
 	return image
 
