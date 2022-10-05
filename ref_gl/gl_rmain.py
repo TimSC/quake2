@@ -1122,7 +1122,7 @@ def R_Register():
 	vid_gamma = ri.Cvar_Get( "vid_gamma", "1.0", q_shared.CVAR_ARCHIVE )
 	vid_ref = ri.Cvar_Get( "vid_ref", "soft", q_shared.CVAR_ARCHIVE )
 
-	#ri.Cmd_AddCommand( "imagelist", GL_ImageList_f )
+	ri.Cmd_AddCommand( "imagelist", gl_image.GL_ImageList_f )
 	#ri.Cmd_AddCommand( "screenshot", GL_ScreenShot_f )
 	#ri.Cmd_AddCommand( "modellist", Mod_Modellist_f )
 	#ri.Cmd_AddCommand( "gl_strings", GL_Strings_f )

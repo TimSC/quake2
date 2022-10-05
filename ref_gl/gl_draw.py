@@ -38,18 +38,15 @@ Draw_InitLocal
 ===============
 """
 def Draw_InitLocal ():
-	pass
-	"""
+	global draw_chars
+
 	# load console characters (don't bilerp characters)
-	draw_chars = GL_FindImage ("pics/conchars.pcx", it_pic);
-	GL_Bind( draw_chars->texnum );
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	draw_chars = gl_image.GL_FindImage ("pics/conchars.pcx", gl_image.imagetype_t.it_pic)
+	gl_image.GL_Bind( draw_chars.texnum )
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
 
-
-
-
-/*
+"""
 ================
 Draw_Char
 
@@ -60,41 +57,37 @@ smoothly scrolled off.
 """
 def Draw_Char (x, y, num): #int, int, int
 
-	pass
-	"""
-	int				row, col;
-	float			frow, fcol, size;
+	#int				row, col;
+	#float			frow, fcol, size;
 
-	num &= 255;
-	
-	if ( (num&127) == 32 )
-		return;		// space
+	num &= 255
+	if (num&127) == 32:
+		return		# space
 
-	if (y <= -8)
-		return;			// totally off screen
+	if y <= -8:
+		return			# totally off screen
 
-	row = num>>4;
-	col = num&15;
+	row = num>>4
+	col = num&15
 
-	frow = row*0.0625;
-	fcol = col*0.0625;
-	size = 0.0625;
+	frow = row*0.0625
+	fcol = col*0.0625
+	size = 0.0625
 
-	GL_Bind (draw_chars->texnum);
+	gl_image.GL_Bind (draw_chars.texnum)
 
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (fcol, frow);
-	qglVertex2f (x, y);
-	qglTexCoord2f (fcol + size, frow);
-	qglVertex2f (x+8, y);
-	qglTexCoord2f (fcol + size, frow + size);
-	qglVertex2f (x+8, y+8);
-	qglTexCoord2f (fcol, frow + size);
-	qglVertex2f (x, y+8);
-	qglEnd ();
-}
+	GL.glBegin (GL.GL_QUADS)
+	GL.glTexCoord2f (fcol, frow)
+	GL.glVertex2f (x, y)
+	GL.glTexCoord2f (fcol + size, frow)
+	GL.glVertex2f (x+8, y)
+	GL.glTexCoord2f (fcol + size, frow + size)
+	GL.glVertex2f (x+8, y+8)
+	GL.glTexCoord2f (fcol, frow + size)
+	GL.glVertex2f (x, y+8)
+	GL.glEnd ()
 
-/*
+"""
 =============
 Draw_FindPic
 =============
@@ -119,21 +112,14 @@ def Draw_FindPic (name): #char * (returns image_t	*)
 Draw_GetPicSize
 =============
 """
-def Draw_GetPicSize (w, h, pic): #int *, int *, char *
+def Draw_GetPicSize (pic): #int *, int *, char *
 
-	return None, None
-	"""
-	image_t *gl;
-
-	gl = Draw_FindPic (pic);
-	if (!gl)
-	{
-		*w = *h = -1;
-		return;
-	}
-	*w = gl->width;
-	*h = gl->height;
-	"""
+	gl = Draw_FindPic (pic)
+	if gl is None:
+	
+		return -1, -1
+	
+	return gl.width, gl.height
 
 """
 =============

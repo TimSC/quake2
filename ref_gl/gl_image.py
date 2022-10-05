@@ -276,7 +276,7 @@ void GL_TextureMode( char *string )
 
 	if (i == NUM_GL_MODES)
 	{
-		gl_rmain.ri.Con_Printf (PRINT_ALL, "bad filter name\n");
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad filter name\n");
 		return;
 	}
 
@@ -312,7 +312,7 @@ void GL_TextureAlphaMode( char *string )
 
 	if (i == NUM_GL_ALPHA_MODES)
 	{
-		gl_rmain.ri.Con_Printf (PRINT_ALL, "bad alpha texture mode name\n");
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad alpha texture mode name\n");
 		return;
 	}
 
@@ -336,7 +336,7 @@ void GL_TextureSolidMode( char *string )
 
 	if (i == NUM_GL_SOLID_MODES)
 	{
-		gl_rmain.ri.Con_Printf (PRINT_ALL, "bad solid texture mode name\n");
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad solid texture mode name\n");
 		return;
 	}
 
@@ -347,53 +347,48 @@ void GL_TextureSolidMode( char *string )
 ===============
 GL_ImageList_f
 ===============
-*/
-void	GL_ImageList_f (void)
-{
+"""
+def GL_ImageList_f ():
+
+	"""
 	int		i;
 	image_t	*image;
 	int		texels;
-	const char *palstrings[2] =
-	{
-		"RGB",
-		"PAL"
-	};
+	"""
+	palstrings = ["RGB", "PAL"]
 
-	gl_rmain.ri.Con_Printf (PRINT_ALL, "------------------\n");
-	texels = 0;
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "------------------\n")
+	texels = 0
 
-	for (i=0, image=gltextures ; i<numgltextures ; i++, image++)
-	{
-		if (image->texnum <= 0)
-			continue;
-		texels += image->upload_width*image->upload_height;
-		switch (image->type)
-		{
-		case it_skin:
-			gl_rmain.ri.Con_Printf (PRINT_ALL, "M");
-			break;
-		case it_sprite:
-			gl_rmain.ri.Con_Printf (PRINT_ALL, "S");
-			break;
-		case it_wall:
-			gl_rmain.ri.Con_Printf (PRINT_ALL, "W");
-			break;
-		case it_pic:
-			gl_rmain.ri.Con_Printf (PRINT_ALL, "P");
-			break;
-		default:
-			gl_rmain.ri.Con_Printf (PRINT_ALL, " ");
-			break;
-		}
+	for i in range(numgltextures):
+	
+		image=gltextures[i]
+		if image.texnum <= 0:
+			continue
+		texels += image.upload_width*image.upload_height;
+		if image.type == imagetype_t.it_skin:
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "M");
 
-		gl_rmain.ri.Con_Printf (PRINT_ALL,  " %3i %3i %s: %s\n",
-			image->upload_width, image->upload_height, palstrings[image->paletted], image->name);
-	}
-	gl_rmain.ri.Con_Printf (PRINT_ALL, "Total texel count (not counting mipmaps): %i\n", texels);
-}
+		elif image.type == imagetype_t.it_sprite:
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "S");
+
+		elif image.type == imagetype_t.it_wall:
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "W");
+
+		elif image.type == imagetype_t.it_pic:
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "P");
+
+		else:
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, " ");
+
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL,  " {:3d} {:3d} {}: {}\n".format(
+			image.upload_width, image.upload_height, palstrings[image.paletted], image.name))
+	
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Total texel count (not counting mipmaps): {}\n".format(texels))
 
 
-/*
+
+"""
 =============================================================================
 
   scrap allocation
@@ -503,7 +498,7 @@ def LoadPCX (filename): #char *, byte **, byte **, int *, int *
 		gl_rmain.ri.Con_Printf (q_shared.PRINT_DEVELOPER, "PCX file {} was malformed".format(filename))
 
 	if pic is None:
-		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Bad pcx file {}\n".format(filename))
+		gl_rmain.ri.Con_Printf (q_shared.q_shared.PRINT_ALL, "Bad pcx file {}\n".format(filename))
 		return None, None, None, None
 
 	return pic, palette, width, height
@@ -1027,7 +1022,7 @@ def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (
 	elif samples == gl_alpha_format:
 	    comp = gl_tex_alpha_format
 	else:
-	    gl_rmain.ri.Con_Printf (PRINT_ALL,
+	    gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL,
 			   "Unknown number of texture components {}\n".format(
 			   samples))
 	    comp = samples
@@ -1071,6 +1066,7 @@ def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (
 				GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, data)
 			
 			GL_Upload32Finish(mipmap)
+			has_alpha = samples == gl_alpha_format
 			return has_alpha, upload_width, upload_height, uploaded_paletted
 
 		else:
@@ -1274,6 +1270,7 @@ def GL_LoadPic (name, pic, width, height, imgType, bits): #char *, byte *, int, 
 		image = gltextures[i]
 		if image.texnum == 0:
 			break
+		i += 1
 	
 	if i == numgltextures:
 	
@@ -1361,7 +1358,7 @@ def GL_LoadWal (name): #char * (returns image_t *)
 	gl_rmain.ri.FS_LoadFile (name, (void **)&mt);
 	if (!mt)
 	{
-		gl_rmain.ri.Con_Printf (PRINT_ALL, "GL_FindImage: can't load %s\n", name);
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_FindImage: can't load %s\n", name);
 		return r_notexture;
 	}
 
