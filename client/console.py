@@ -35,26 +35,26 @@ class console_t(object):
 
 	def __init__(self):
 
-		initialized = False #qboolean
+		self.initialized = False #qboolean
 
-		text = None #char	[CON_TEXTSIZE];
-		current = None #int, line where next message will be printed
-		x = None #int, offset in current line for next print
-		display = None #int, bottom of console displays this line
+		self.text = None #char	[CON_TEXTSIZE];
+		self.current = None #int, line where next message will be printed
+		self.x = None #int, offset in current line for next print
+		self.display = None #int, bottom of console displays this line
 
-		ormask = None #int, high bit mask for colored characters
+		self.ormask = None #int, high bit mask for colored characters
 
-		linewidth = None #int, characters across screen
-		totallines = None #int, total lines in console scrollback
+		self.linewidth = None #int, characters across screen
+		self.totallines = None #int, total lines in console scrollback
 
-		cursorspeed = None #float
+		self.cursorspeed = None #float
 
-		vislines = None #int		
+		self.vislines = None #int		
 
-		times = [] #float	[NUM_CON_TIMES], cls.realtime time the line was generated
+		self.times = [] #float	[NUM_CON_TIMES], cls.realtime time the line was generated
 									# for transparent notify lines
 		for i in range(NUM_CON_TIMES):
-			times.append(None)
+			self.times.append(None)
 
 con = console_t()
 
@@ -102,7 +102,7 @@ Con_ToggleConsole_f
 def Con_ToggleConsole_f ():
 
 
-	cl_scren.SCR_EndLoadingPlaque ()	# get rid of loading plaque
+	cl_scrn.SCR_EndLoadingPlaque ()	# get rid of loading plaque
 	"""
 	if (cl.attractloop)
 	{

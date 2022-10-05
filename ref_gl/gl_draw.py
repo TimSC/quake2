@@ -150,28 +150,27 @@ def Draw_StretchPic (x, y, w, h, pic): #int, int, int, int, char *
 		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Can't find pic: {}\n".format(pic))
 		return
 	
-	"""
-	if (scrap_dirty)
-		Scrap_Upload ();
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-		qglDisable (GL_ALPHA_TEST);
+	if gl_image.scrap_dirty:
+		Scrap_Upload ()
+	
+	#if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
+	#	qglDisable (GL_ALPHA_TEST);
 
-	GL_Bind (gl->texnum);
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (gl->sl, gl->tl);
-	qglVertex2f (x, y);
-	qglTexCoord2f (gl->sh, gl->tl);
-	qglVertex2f (x+w, y);
-	qglTexCoord2f (gl->sh, gl->th);
-	qglVertex2f (x+w, y+h);
-	qglTexCoord2f (gl->sl, gl->th);
-	qglVertex2f (x, y+h);
-	qglEnd ();
+	gl_image.GL_Bind (gl.texnum)
+	GL.glBegin (GL.GL_QUADS)
+	GL.glTexCoord2f (gl.sl, gl.tl)
+	GL.glVertex2f (x, y)
+	GL.glTexCoord2f (gl.sh, gl.tl)
+	GL.glVertex2f (x+w, y)
+	GL.glTexCoord2f (gl.sh, gl.th)
+	GL.glVertex2f (x+w, y+h)
+	GL.glTexCoord2f (gl.sl, gl.th)
+	GL.glVertex2f (x, y+h)
+	GL.glEnd ()
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-		qglEnable (GL_ALPHA_TEST);
-	"""
+	#if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
+	#	qglEnable (GL_ALPHA_TEST);
 
 """
 =============

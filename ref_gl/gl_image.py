@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import math
 import struct
 import OpenGL.GL as GL
 from enum import Enum
@@ -67,10 +68,10 @@ numgltextures = 0 #int
 """
 
 int			base_textureid;		// gltextures[i] = base_textureid+i
-
-static byte			 intensitytable[256];
-static unsigned char gammatable[256];
-
+"""
+intensitytable = bytearray(256) #static byte[256]
+gammatable = bytearray(256) #static unsigned char[256]
+"""
 cvar_t		*intensity;
 """
 d_8to24table = [] #unsigned [256];
@@ -80,14 +81,14 @@ for i in range(256):
 qboolean GL_Upload8 (byte *data, int width, int height,  qboolean mipmap, qboolean is_sky );
 qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap);
 
-
-int		gl_solid_format = 3;
-int		gl_alpha_format = 4;
-
-int		gl_tex_solid_format = 3;
-int		gl_tex_alpha_format = 4;
-
 """
+gl_solid_format = 3 #int
+gl_alpha_format = 4 #int
+
+gl_tex_solid_format = 3 #int
+gl_tex_alpha_format = 4 #int
+
+
 gl_filter_min = GL.GL_LINEAR_MIPMAP_NEAREST #int
 gl_filter_max = GL.GL_LINEAR #int
 """
@@ -409,8 +410,9 @@ void	GL_ImageList_f (void)
 
 int			scrap_allocated[MAX_SCRAPS][BLOCK_WIDTH];
 byte		scrap_texels[MAX_SCRAPS][BLOCK_WIDTH*BLOCK_HEIGHT];
-qboolean	scrap_dirty;
-
+"""
+scrap_dirty = False #qboolean
+"""
 // returns a texture number and the position inside it
 int Scrap_AllocBlock (int w, int h, int *x, int *y)
 {
@@ -492,6 +494,8 @@ def LoadPCX (filename): #char *, byte **, byte **, int *, int *
 	# parse the PCX file
 	#
 	pcx = qfiles.pcx_t()
+	pcx.DecodeToPixels(raw)
+	
 	try:
 		pic, palette, width, height = pcx.Decompress(raw)
 	except IndexError:
@@ -801,92 +805,103 @@ void R_FloodFillSkin( byte *skin, int skinwidth, int skinheight )
 ================
 GL_ResampleTexture
 ================
-*/
-void GL_ResampleTexture (unsigned *in, int inwidth, int inheight, unsigned *out,  int outwidth, int outheight)
-{
+"""
+def GL_ResampleTexture (inPic, inwidth, inheight, outwidth, outheight): #unsigned *, int, int, unsigned *, int, int
+
+	"""
 	int		i, j;
 	unsigned	*inrow, *inrow2;
 	unsigned	frac, fracstep;
 	unsigned	p1[1024], p2[1024];
 	byte		*pix1, *pix2, *pix3, *pix4;
+	"""
 
-	fracstep = inwidth*0x10000/outwidth;
+	if inwidth*inheight*4 != len(inPic):
+		raise ValueError("img parameters don't match buffer size")
 
-	frac = fracstep>>2;
-	for (i=0 ; i<outwidth ; i++)
-	{
-		p1[i] = 4*(frac>>16);
-		frac += fracstep;
-	}
-	frac = 3*(fracstep>>2);
-	for (i=0 ; i<outwidth ; i++)
-	{
-		p2[i] = 4*(frac>>16);
-		frac += fracstep;
-	}
+	p1, p2 = [], []
 
-	for (i=0 ; i<outheight ; i++, out += outwidth)
-	{
-		inrow = in + inwidth*(int)((i+0.25)*inheight/outheight);
-		inrow2 = in + inwidth*(int)((i+0.75)*inheight/outheight);
-		frac = fracstep >> 1;
-		for (j=0 ; j<outwidth ; j++)
-		{
-			pix1 = (byte *)inrow + p1[j];
-			pix2 = (byte *)inrow + p2[j];
-			pix3 = (byte *)inrow2 + p1[j];
-			pix4 = (byte *)inrow2 + p2[j];
-			((byte *)(out+j))[0] = (pix1[0] + pix2[0] + pix3[0] + pix4[0])>>2;
-			((byte *)(out+j))[1] = (pix1[1] + pix2[1] + pix3[1] + pix4[1])>>2;
-			((byte *)(out+j))[2] = (pix1[2] + pix2[2] + pix3[2] + pix4[2])>>2;
-			((byte *)(out+j))[3] = (pix1[3] + pix2[3] + pix3[3] + pix4[3])>>2;
-		}
-	}
-}
+	fracstep = inwidth * 0x10000 // outwidth
 
-/*
+	frac = fracstep>>2
+	for i in range(outwidth):
+	
+		p1.append(4*(frac>>16))
+		frac += fracstep
+	
+	frac = 3*(fracstep>>2)
+	for i in range(outwidth):
+	
+		p2.append(4*(frac>>16))
+		frac += fracstep
+
+	out = bytearray(outwidth*outheight*4)
+	outCursor = 0
+	for i in range(outheight):
+	
+		inrow = 4*inwidth*int(((i+0.25)*inheight/outheight))
+		inrow2 = 4*inwidth*int(((i+0.75)*inheight/outheight))
+		#frac = fracstep >> 1
+
+		for j in range(outwidth):
+		
+			pix1 = inrow + p1[j]
+			pix2 = inrow + p2[j]
+			pix3 = inrow2 + p1[j]
+			pix4 = inrow2 + p2[j]
+			outPxOffset = outCursor + j*4
+			out[outPxOffset+0] = (inPic[pix1+0] + inPic[pix2+0] + inPic[pix3+0] + inPic[pix4+0])>>2
+			out[outPxOffset+1] = (inPic[pix1+1] + inPic[pix2+1] + inPic[pix3+1] + inPic[pix4+1])>>2
+			out[outPxOffset+2] = (inPic[pix1+2] + inPic[pix2+2] + inPic[pix3+2] + inPic[pix4+2])>>2
+			out[outPxOffset+3] = (inPic[pix1+3] + inPic[pix2+3] + inPic[pix3+3] + inPic[pix4+3])>>2
+		
+		outCursor += outwidth*4
+
+	return out
+
+"""
 ================
 GL_LightScaleTexture
 
 Scale up the pixel values in a texture to increase the
 lighting range
 ================
-*/
-void GL_LightScaleTexture (unsigned *in, int inwidth, int inheight, qboolean only_gamma )
-{
-	if ( only_gamma )
-	{
-		int		i, c;
-		byte	*p;
+"""
+def GL_LightScaleTexture (inPic, inwidth, inheight, only_gamma ): #unsigned *, int, int, qboolean
 
-		p = (byte *)in;
+	global gammatable, intensitytable
 
-		c = inwidth*inheight;
-		for (i=0 ; i<c ; i++, p+=4)
-		{
-			p[0] = gammatable[p[0]];
-			p[1] = gammatable[p[1]];
-			p[2] = gammatable[p[2]];
-		}
-	}
-	else
-	{
-		int		i, c;
-		byte	*p;
+	if only_gamma:
+	
+		#int		i, c;
+		#byte	*p;
 
-		p = (byte *)in;
+		p = 0
+		c = inwidth*inheight
+		for i in range(c):
+		
+			inPic[p+0] = gammatable[inPic[p+0]]
+			inPic[p+1] = gammatable[inPic[p+1]]
+			inPic[p+2] = gammatable[inPic[p+2]]
+			p+=4
+	
+	else:
+	
+		#int		i, c;
+		#byte	*p;
 
-		c = inwidth*inheight;
-		for (i=0 ; i<c ; i++, p+=4)
-		{
-			p[0] = gammatable[intensitytable[p[0]]];
-			p[1] = gammatable[intensitytable[p[1]]];
-			p[2] = gammatable[intensitytable[p[2]]];
-		}
-	}
-}
+		p = 0
+		c = inwidth*inheight
+		for i in range(c):
+		
+			inPic[p+0] = gammatable[intensitytable[inPic[p+0]]]
+			inPic[p+1] = gammatable[intensitytable[inPic[p+1]]]
+			inPic[p+2] = gammatable[intensitytable[inPic[p+2]]]
+			p+=4
+	
 
-/*
+
+"""
 ================
 GL_MipMap
 
@@ -945,9 +960,7 @@ qboolean uploaded_paletted;
 """
 def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (returns qboolean)
 
-	print ("GL_Upload32")
-
-	return None, None, None, None #has_alpha, upload_width, upload_height, paletted
+	scaledSize = 256*256
 	"""
 	int			samples;
 	unsigned	scaled[256*256];
@@ -956,67 +969,71 @@ def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (
 	int			i, c;
 	byte		*scan;
 	int comp;
+	"""
+	uploaded_paletted = False
 
-	uploaded_paletted = false;
+	if width*height*4 != len(data):
+		raise ValueError("img parameters don't match buffer size")
 
-	for (scaled_width = 1 ; scaled_width < width ; scaled_width<<=1)
-		;
-	if (gl_round_down->value && scaled_width > width && mipmap)
-		scaled_width >>= 1;
-	for (scaled_height = 1 ; scaled_height < height ; scaled_height<<=1)
-		;
-	if (gl_round_down->value && scaled_height > height && mipmap)
-		scaled_height >>= 1;
+	# round to power of 2 pixels
+	scaled_width = 1
+	while scaled_width < width: scaled_width<<=1
+	if gl_rmain.gl_round_down.value and scaled_width > width and mipmap:
+		scaled_width >>= 1
+	scaled_height = 1
+	while scaled_height < height: scaled_height<<=1
+	if gl_rmain.gl_round_down.value and scaled_height > height and mipmap:
+		scaled_height >>= 1
 
-	// let people sample down the world textures for speed
-	if (mipmap)
-	{
-		scaled_width >>= (int)gl_picmip->value;
-		scaled_height >>= (int)gl_picmip->value;
-	}
+	# let people sample down the world textures for speed
+	if mipmap:
+	
+		scaled_width >>= int(gl_rmain.gl_picmip.value)
+		scaled_height >>= int(gl_rmain.gl_picmip.value)
+	
+	# don't ever bother with >256 textures
+	if scaled_width > 256:
+		scaled_width = 256
+	if scaled_height > 256:
+		scaled_height = 256
 
-	// don't ever bother with >256 textures
-	if (scaled_width > 256)
-		scaled_width = 256;
-	if (scaled_height > 256)
-		scaled_height = 256;
+	if scaled_width < 1:
+		scaled_width = 1
+	if scaled_height < 1:
+		scaled_height = 1
 
-	if (scaled_width < 1)
-		scaled_width = 1;
-	if (scaled_height < 1)
-		scaled_height = 1;
+	upload_width = scaled_width
+	upload_height = scaled_height
 
-	upload_width = scaled_width;
-	upload_height = scaled_height;
+	if scaled_width * scaled_height > scaledSize:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "GL_Upload32: too big")
 
-	if (scaled_width * scaled_height > sizeof(scaled)/4)
-		gl_rmain.ri.Sys_Error (ERR_DROP, "GL_Upload32: too big");
+	# scan the texture for any non-255 alpha
+	c = width*height
+	scan = 3
+	samples = gl_solid_format
+	for i in range(c):
+	
+		if data[scan] != 255:
+		
+			samples = gl_alpha_format
+			break
 
-	// scan the texture for any non-255 alpha
-	c = width*height;
-	scan = ((byte *)data) + 3;
-	samples = gl_solid_format;
-	for (i=0 ; i<c ; i++, scan += 4)
-	{
-		if ( *scan != 255 )
-		{
-			samples = gl_alpha_format;
-			break;
-		}
-	}
-
-	if (samples == gl_solid_format)
-	    comp = gl_tex_solid_format;
-	else if (samples == gl_alpha_format)
-	    comp = gl_tex_alpha_format;
-	else {
+		scan += 4
+	
+	
+	if samples == gl_solid_format:
+	    comp = gl_tex_solid_format
+	elif samples == gl_alpha_format:
+	    comp = gl_tex_alpha_format
+	else:
 	    gl_rmain.ri.Con_Printf (PRINT_ALL,
-			   "Unknown number of texture components %i\n",
-			   samples);
-	    comp = samples;
-	}
-
-#if 0
+			   "Unknown number of texture components {}\n".format(
+			   samples))
+	    comp = samples
+	
+	"""
+	#if 0
 	if (mipmap)
 		gluBuild2DMipmaps (GL_TEXTURE_2D, samples, width, height, GL_RGBA, GL_UNSIGNED_BYTE, trans);
 	else if (scaled_width == width && scaled_height == height)
@@ -1027,112 +1044,119 @@ def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (
 			scaled_width, scaled_height, GL_UNSIGNED_BYTE, scaled);
 		qglTexImage2D (GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
 	}
-#else
+	#else
+	"""
 
-	if (scaled_width == width && scaled_height == height)
-	{
-		if (!mipmap)
-		{
-			if ( qglColorTableEXT && gl_ext_palettedtexture->value && samples == gl_solid_format )
-			{
-				uploaded_paletted = true;
-				GL_BuildPalettedTexture( paletted_texture, ( unsigned char * ) data, scaled_width, scaled_height );
-				qglTexImage2D( GL_TEXTURE_2D,
+	if scaled_width == width and scaled_height == height:
+		
+		if not mipmap:
+		
+			if qgl_linux.qglColorTableEXT and gl_rmain.gl_ext_palettedtexture.value and samples == gl_solid_format \
+				and False: #FIXME Disable for now, reintroduce later in porting
+			
+				uploaded_paletted = True
+				paletted_texture = GL_BuildPalettedTexture( data, scaled_width, scaled_height )
+				GL.glTexImage2D( GL.GL_TEXTURE_2D,
 							  0,
-							  GL_COLOR_INDEX8_EXT,
+							  GL.GL_COLOR_INDEX8_EXT,
 							  scaled_width,
 							  scaled_height,
 							  0,
-							  GL_COLOR_INDEX,
-							  GL_UNSIGNED_BYTE,
-							  paletted_texture );
-			}
-			else
-			{
-				qglTexImage2D (GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-			}
-			goto done;
-		}
-		memcpy (scaled, data, width*height*4);
-	}
-	else
-		GL_ResampleTexture (data, width, height, scaled, scaled_width, scaled_height);
+							  GL.GL_COLOR_INDEX,
+							  GL.GL_UNSIGNED_BYTE,
+							  paletted_texture )
+			
+			else:
+			
+				GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, data)
+			
+			GL_Upload32Finish(mipmap)
+			return has_alpha, upload_width, upload_height, uploaded_paletted
 
-	GL_LightScaleTexture (scaled, scaled_width, scaled_height, !mipmap );
+		else:
+			scaled = data
+	
+	else:
+		scaled = GL_ResampleTexture (data, width, height, scaled_width, scaled_height)
 
-	if ( qglColorTableEXT && gl_ext_palettedtexture->value && ( samples == gl_solid_format ) )
-	{
-		uploaded_paletted = true;
-		GL_BuildPalettedTexture( paletted_texture, ( unsigned char * ) scaled, scaled_width, scaled_height );
-		qglTexImage2D( GL_TEXTURE_2D,
+	GL_LightScaleTexture (scaled, scaled_width, scaled_height, not mipmap )
+	
+	if qgl_linux.qglColorTableEXT and gl_rmain.gl_ext_palettedtexture.value and samples == gl_solid_format \
+		and False: #FIXME Disable for now, reintroduce later in porting
+	
+		uploaded_paletted = True
+		GL_BuildPalettedTexture( paletted_texture, scaled, scaled_width, scaled_height )
+		GL.glTexImage2D( GL.GL_TEXTURE_2D,
 					  0,
-					  GL_COLOR_INDEX8_EXT,
+					  GL.GL_COLOR_INDEX8_EXT,
 					  scaled_width,
 					  scaled_height,
 					  0,
-					  GL_COLOR_INDEX,
-					  GL_UNSIGNED_BYTE,
-					  paletted_texture );
-	}
-	else
-	{
-		qglTexImage2D( GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled );
-	}
+					  GL.GL_COLOR_INDEX,
+					  GL.GL_UNSIGNED_BYTE,
+					  paletted_texture )
+	
+	else:
+	
+		GL.glTexImage2D( GL.GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, scaled )
+	
 
-	if (mipmap)
-	{
-		int		miplevel;
+	if mipmap:
+	
+		#int		miplevel;
 
-		miplevel = 0;
-		while (scaled_width > 1 || scaled_height > 1)
-		{
-			GL_MipMap ((byte *)scaled, scaled_width, scaled_height);
-			scaled_width >>= 1;
-			scaled_height >>= 1;
-			if (scaled_width < 1)
-				scaled_width = 1;
-			if (scaled_height < 1)
-				scaled_height = 1;
-			miplevel++;
-			if ( qglColorTableEXT && gl_ext_palettedtexture->value && samples == gl_solid_format )
-			{
-				uploaded_paletted = true;
-				GL_BuildPalettedTexture( paletted_texture, ( unsigned char * ) scaled, scaled_width, scaled_height );
-				qglTexImage2D( GL_TEXTURE_2D,
+		miplevel = 0
+		while scaled_width > 1 or scaled_height > 1:
+		
+			GL_MipMap (scaled, scaled_width, scaled_height)
+			scaled_width >>= 1
+			scaled_height >>= 1
+			if scaled_width < 1:
+				scaled_width = 1
+			if scaled_height < 1:
+				scaled_height = 1
+			miplevel+=1
+			if qgl_linux.qglColorTableEXT and gl_rmain.gl_ext_palettedtexture.value and samples == gl_solid_format \
+				and False: #FIXME Disable for now, reintroduce later in porting
+
+				uploaded_paletted = True
+				GL_BuildPalettedTexture( paletted_texture, scaled, scaled_width, scaled_height )
+				GL.glTexImage2D( GL.GL_TEXTURE_2D,
 							  miplevel,
-							  GL_COLOR_INDEX8_EXT,
+							  GL.GL_COLOR_INDEX8_EXT,
 							  scaled_width,
 							  scaled_height,
 							  0,
-							  GL_COLOR_INDEX,
-							  GL_UNSIGNED_BYTE,
-							  paletted_texture );
-			}
-			else
-			{
-				qglTexImage2D (GL_TEXTURE_2D, miplevel, comp, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
-			}
-		}
-	}
-done: ;
-#endif
+							  GL.GL_COLOR_INDEX,
+							  GL.GL_UNSIGNED_BYTE,
+							  paletted_texture )
+			
+			else:
+			
+				GL.glTexImage2D (GL.GL_TEXTURE_2D, miplevel, comp, scaled_width, scaled_height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, scaled);
+			
+	#endif #from original c code
 
+	GL_Upload32Finish(mipmap)
+	has_alpha = samples == gl_alpha_format
+	return has_alpha, upload_width, upload_height, uploaded_paletted
 
-	if (mipmap)
-	{
-		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
-	}
-	else
-	{
-		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_max);
-		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
-	}
+def GL_Upload32Finish(mipmap):
 
-	return (samples == gl_alpha_format); #has_alpha, upload_width, upload_height, paletted
-}
+	global gl_filter_min, gl_filter_max
 
-/*
+	if mipmap:
+	
+		GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, gl_filter_min)
+		GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, gl_filter_max)
+	
+	else:
+	
+		GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, gl_filter_max)
+		GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, gl_filter_max)
+	
+
+"""
 ===============
 GL_Upload8
 
@@ -1159,9 +1183,9 @@ static qboolean IsPowerOf2( int value )
 def GL_Upload8 (data, width, height, mipmap, is_sky ): #byte *, int, int, qboolean, qboolean (returns qboolean)
 
 	sizeTrans = 512*256
-	trans = []
-	for i in range(sizeTrans):
-		trans.append(0)
+	#trans = []
+	#for i in range(sizeTrans):
+	#	trans.append(0)
 	"""
 	unsigned	trans[512*256];
 	int			i, s;
@@ -1193,11 +1217,17 @@ def GL_Upload8 (data, width, height, mipmap, is_sky ): #byte *, int, int, qboole
 		return False, width, height, True #has_alpha, upload_width, upload_height, paletted
 
 	else:
-	
+		trans = bytearray(s*4)
+
 		for i in range (s):
-		
+
 			p = data[i]
-			trans[i] = d_8to24table[p]
+			transOffset = i*4
+			col = bytearray(d_8to24table[p])
+			trans[transOffset+0] = col[0]
+			trans[transOffset+1] = col[1]
+			trans[transOffset+2] = col[2]
+			trans[transOffset+3] = col[3]
 
 			if p == 255:
 				# transparent, so scan around for another color
@@ -1214,11 +1244,12 @@ def GL_Upload8 (data, width, height, mipmap, is_sky ): #byte *, int, int, qboole
 				else:
 					p = 0
 				# copy rgb components
-				#((byte *)&trans[i])[0] = ((byte *)&d_8to24table[p])[0];
-				#((byte *)&trans[i])[1] = ((byte *)&d_8to24table[p])[1];
-				#((byte *)&trans[i])[2] = ((byte *)&d_8to24table[p])[2];
-			
-		
+				pcol = d_8to24table[p]
+				trans[transOffset+0] = pcol[0]
+				trans[transOffset+1] = pcol[1]
+				trans[transOffset+2] = pcol[2]
+
+			assert len(trans) == s*4
 
 		return GL_Upload32 (trans, width, height, mipmap)
 
@@ -1487,63 +1518,65 @@ GL_InitImages
 """
 def GL_InitImages ():
 	
+	global gammatable, intensitytable
 	"""
 	int		i, j;
-	float	g = vid_gamma->value;
+	float	g
 	"""
+	g = gl_rmain.vid_gamma.value
+
 	gl_model.registration_sequence = 1
+	
+	# init intensity conversions
+	intensity = gl_rmain.ri.Cvar_Get ("intensity", "2", 0)
+
+	if intensity.value <= 1:
+		gl_rmain.ri.Cvar_Set( "intensity", "1" )
+
+	gl_rmain.gl_state.inverse_intensity = 1 / intensity.value
+
+	Draw_GetPalette ()
+
 	"""
-	// init intensity conversions
-	intensity = gl_rmain.ri.Cvar_Get ("intensity", "2", 0);
-
-	if ( intensity->value <= 1 )
-		gl_rmain.ri.Cvar_Set( "intensity", "1" );
-
-	gl_state.inverse_intensity = 1 / intensity->value;
-
-	Draw_GetPalette ();
-
 	if ( qglColorTableEXT )
 	{
 		gl_rmain.ri.FS_LoadFile( "pics/16to8.dat", &gl_state.d_16to8table );
 		if ( !gl_state.d_16to8table )
 			gl_rmain.ri.Sys_Error( ERR_FATAL, "Couldn't load pics/16to8.pcx");
 	}
+	
 
 	if ( gl_config.renderer & ( GL_RENDERER_VOODOO | GL_RENDERER_VOODOO2 ) )
 	{
 		g = 1.0F;
 	}
+	"""
+	
+	for i in range(256):
+	
+		if g == 1.0:
+		
+			gammatable[i] = i
+		
+		else:
+		
+			#float inf
 
-	for ( i = 0; i < 256; i++ )
-	{
-		if ( g == 1 )
-		{
-			gammatable[i] = i;
-		}
-		else
-		{
-			float inf;
-
-			inf = 255 * pow ( (i+0.5)/255.5 , g ) + 0.5;
-			if (inf < 0)
-				inf = 0;
-			if (inf > 255)
-				inf = 255;
-			gammatable[i] = inf;
-		}
-	}
-
-	for (i=0 ; i<256 ; i++)
-	{
-		j = i*intensity->value;
-		if (j > 255)
-			j = 255;
-		intensitytable[i] = j;
-	}
-}
-
-/*
+			inf = 255 * math.pow ( (i+0.5)/255.5 , g ) + 0.5
+			if inf < 0:
+				inf = 0
+			if inf > 255:
+				inf = 255
+			gammatable[i] = inf
+		
+	for i in range(256):
+	
+		j = int(i*intensity.value)
+		if j > 255:
+			j = 255
+		intensitytable[i] = j
+	
+"""
 ===============
 GL_ShutdownImages
 ===============

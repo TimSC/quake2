@@ -139,7 +139,7 @@ class pcx_t (object):
 		cursor = 0
 		picCursor = 0
 		for y in range(self.ymax+1):
-			picCursor = y * self.xmax
+			picCursor = y * (self.xmax + 1)
 		
 			x = 0
 			while x <= self.xmax:
@@ -159,7 +159,7 @@ class pcx_t (object):
 				for r in range(runLength):
 					pic[picCursor + x] = dataByte
 					x += 1
-		
+
 		return pic, palette, width, height
 		
 	def DecodeToPixels(self, buff):
@@ -173,11 +173,11 @@ class pcx_t (object):
 		for i in range(0, len(palette), 3):
 			pall.append(struct.unpack("<BBB", palette[i:i+3]))
 
-		im = Image.new("RGB", (self.xmax, self.ymax))
+		im = Image.new("RGB", (self.xmax+1, self.ymax+1))
 		px = im.load()
-		for y in range(self.ymax):
-			for x in range(self.xmax):
-				px[x, y] = pall[pic[y*self.xmax + x]]
+		for y in range(self.ymax+1):
+			for x in range(self.xmax+1):
+				px[x, y] = pall[pic[y*(self.xmax+1) + x]]
 
 		return im
 
