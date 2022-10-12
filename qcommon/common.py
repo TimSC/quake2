@@ -61,10 +61,8 @@ showtrace = None #cvar_t	*
 dedicated = None #cvar_t	*
 """
 FILE	*logfile;
-
-int			server_state;
-
 """
+server_state = 0 #int
 
 # host_speeds times
 time_before_game = None #int
@@ -265,24 +263,24 @@ def Com_Quit ():
 	sys_linux.Sys_Quit()
 
 """
-
-/*
 ==================
 Com_ServerState
 ==================
-*/
-int Com_ServerState (void)
-{
-	return server_state;
-}
+"""
+def Com_ServerState (): #(returns int)
 
-/*
+	return server_state
+
+
+"""
 ==================
 Com_SetServerState
 ==================
 */
 void Com_SetServerState (int state)
 {
+	global server_state
+
 	server_state = state;
 }
 

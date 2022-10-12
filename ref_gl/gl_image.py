@@ -25,7 +25,7 @@ import pygame
 from enum import Enum
 from game import q_shared
 from ref_gl import gl_rmain, gl_model
-from qcommon import qfiles
+from qcommon import qfiles, qcommon
 from linux import qgl_linux
 
 class imagetype_t(Enum):
@@ -484,7 +484,7 @@ def LoadPCX (filename): #char *, byte **, byte **, int *, int *
 	if raw is None:
 	
 		gl_rmain.ri.Con_Printf (qcommon.PRINT_DEVELOPER, "Bad pcx file {}\n".format(filename))
-		return
+		return None, None, None, None
 	
 	#
 	# parse the PCX file

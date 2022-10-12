@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 #include <ctype.h>
 #ifdef _WIN32
 #include <io.h>
@@ -113,17 +114,20 @@ void M_PushMenu ( void (*draw) (void), const char *(*key) (int k) )
 
 	cls.key_dest = key_menu;
 }
+"""
+def M_ForceMenuOff ():
 
-void M_ForceMenuOff (void)
-{
+	pass
+	"""
 	m_drawfunc = 0;
 	m_keyfunc = 0;
 	cls.key_dest = key_game;
 	m_menudepth = 0;
 	Key_ClearStates ();
 	Cvar_Set ("paused", "0");
-}
+	"""
 
+"""
 void M_PopMenu (void)
 {
 	S_StartLocalSound( menu_out_sound );
@@ -4006,4 +4010,4 @@ void M_Keydown (int key)
 			S_StartLocalSound( ( char * ) s );
 }
 
-
+"""

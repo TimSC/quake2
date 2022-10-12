@@ -534,9 +534,10 @@ SCR_DrawConsole
 """
 def SCR_DrawConsole ():
 
+	global scr_con_current
+
 	console.Con_CheckResize ()
 
-	
 	if cl_main.cls.state == client.connstate_t.ca_disconnected or cl_main.cls.state == client.connstate_t.ca_connecting:
 		# forced full screen console
 		console.Con_DrawConsole (1.0)

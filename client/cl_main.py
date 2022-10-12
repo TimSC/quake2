@@ -631,7 +631,7 @@ void CL_Disconnect (void)
 	{
 		int	time;
 		
-		time = Sys_Milliseconds () - cl.timedemo_start;
+		time = q_shlinux.Sys_Milliseconds () - cl.timedemo_start;
 		if (time > 0)
 			Com_Printf ("%i frames, %3.1f seconds: %3.1f fps\n", cl.timedemo_frames,
 			time/1000.0, cl.timedemo_frames*1000.0 / time);
@@ -1413,12 +1413,12 @@ CL_InitLocal
 """
 def CL_InitLocal ():
 
-	global cl_stereo_separation, cl_stereo
+	global cl_stereo_separation, cl_stereo, cls
 
+
+	#cls.state = client.connstate_t.ca_disconnected
+	cls.realtime = q_shlinux.Sys_Milliseconds ()
 	"""
-	cls.state = ca_disconnected;
-	cls.realtime = Sys_Milliseconds ();
-
 	CL_InitInput ();
 
 	adr0 = Cvar_Get( "adr0", "", CVAR_ARCHIVE );
@@ -1769,13 +1769,13 @@ def CL_Frame (msec): #int
 		{
 			if ( !lasttimecalled )
 			{
-				lasttimecalled = Sys_Milliseconds();
+				lasttimecalled = q_shlinux.Sys_Milliseconds();
 				if ( log_stats_file )
 					fprintf( log_stats_file, "0\n" );
 			}
 			else
 			{
-				int now = Sys_Milliseconds();
+				int now = q_shlinux.Sys_Milliseconds();
 
 				if ( log_stats_file )
 					fprintf( log_stats_file, "%d\n", now - lasttimecalled );

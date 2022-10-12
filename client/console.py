@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cmd, cvar, common, qcommon
 from linux import vid_so
-from client import cl_scrn
+from client import cl_scrn, cl_main, client, keys, menu
 """
 // console.c
 
@@ -45,7 +45,7 @@ class console_t(object):
 		self.ormask = None #int, high bit mask for colored characters
 
 		self.linewidth = None #int, characters across screen
-		self.totallines = None #int, total lines in console scrollback
+		self.totallines = 0 #int, total lines in console scrollback
 
 		self.cursorspeed = None #float
 
@@ -87,20 +87,19 @@ void DrawAltString (int x, int y, char *s)
 	}
 }
 
+"""
+def Key_ClearTyping ():
 
-void Key_ClearTyping (void)
-{
-	key_lines[edit_line][1] = 0;	// clear any typing
-	key_linepos = 1;
-}
+	keys.key_lines[keys.edit_line] = keys.key_lines[keys.edit_line][0]	# clear any typing
+	keys.key_linepos = 1
 
-/*
+
+"""
 ================
 Con_ToggleConsole_f
 ================
 """
 def Con_ToggleConsole_f ():
-
 
 	cl_scrn.SCR_EndLoadingPlaque ()	# get rid of loading plaque
 	"""
@@ -110,32 +109,33 @@ def Con_ToggleConsole_f ():
 		return;
 	}
 
-	if (cls.state == ca_disconnected)
+	if (cl_main.cls.state == ca_disconnected)
 	{	// start the demo loop again
 		Cbuf_AddText ("d1\n");
 		return;
 	}
+	"""
+	Key_ClearTyping ()
+	Con_ClearNotify ()
 
-	Key_ClearTyping ();
-	Con_ClearNotify ();
+	if cl_main.cls.key_dest == client.keydest_t.key_console:
+	
+		menu.M_ForceMenuOff ()
+		cvar.Cvar_Set ("paused", "0")
+	
+	else:
+	
+		menu.M_ForceMenuOff ()
+		cl_main.cls.key_dest = client.keydest_t.key_console
 
-	if (cls.key_dest == key_console)
-	{
-		M_ForceMenuOff ();
-		Cvar_Set ("paused", "0");
-	}
-	else
-	{
-		M_ForceMenuOff ();
-		cls.key_dest = key_console;	
+		if cvar.Cvar_VariableValue ("maxclients") == 1\
+			and common.Com_ServerState ():
 
-		if (Cvar_VariableValue ("maxclients") == 1 
-			&& Com_ServerState ())
-			Cvar_Set ("paused", "1");
-	}
-}
+			cvar.Cvar_Set ("paused", "1")
+	
 
-/*
+
+"""
 ================
 Con_ToggleChat_f
 ================
@@ -146,16 +146,16 @@ def Con_ToggleChat_f ():
 	"""
 	Key_ClearTyping ();
 
-	if (cls.key_dest == key_console)
+	if (cl_main.cls.key_dest == client.keydest_t.key_console)
 	{
-		if (cls.state == ca_active)
+		if (cl_main.cls.state == ca_active)
 		{
 			M_ForceMenuOff ();
-			cls.key_dest = key_game;
+			cl_main.cls.key_dest = key_game;
 		}
 	}
 	else
-		cls.key_dest = key_console;
+		cl_main.cls.key_dest = client.keydest_t.key_console;
 	
 	Con_ClearNotify ();
 
@@ -262,7 +262,7 @@ def Con_MessageMode_f ():
 	pass
 	"""
 	chat_team = false;
-	cls.key_dest = key_message;
+	cl_main.cls.key_dest = key_message;
 
 
 /*
@@ -275,7 +275,7 @@ def Con_MessageMode2_f ():
 	pass
 	"""
 	chat_team = true;
-	cls.key_dest = key_message;
+	cl_main.cls.key_dest = key_message;
 
 
 /*
@@ -286,61 +286,61 @@ If the line width has changed, reformat the buffer.
 ================
 """
 def Con_CheckResize ():
-	pass
-	"""
-	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
-	char	tbuf[CON_TEXTSIZE];
-
-	width = (vid_so.viddef.width >> 3) - 2;
-
-	if (width == con.linewidth)
-		return;
-
-	if (width < 1)			// video hasn't been initialized yet
-	{
-		width = 38;
-		con.linewidth = width;
-		con.totallines = CON_TEXTSIZE / con.linewidth;
-		memset (con.text, ' ', CON_TEXTSIZE);
-	}
-	else
-	{
-		oldwidth = con.linewidth;
-		con.linewidth = width;
-		oldtotallines = con.totallines;
-		con.totallines = CON_TEXTSIZE / con.linewidth;
-		numlines = oldtotallines;
-
-		if (con.totallines < numlines)
-			numlines = con.totallines;
-
-		numchars = oldwidth;
 	
-		if (con.linewidth < numchars)
-			numchars = con.linewidth;
+	#int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
+	#char	tbuf[CON_TEXTSIZE];
 
-		memcpy (tbuf, con.text, CON_TEXTSIZE);
-		memset (con.text, ' ', CON_TEXTSIZE);
+	width = (vid_so.viddef.width >> 3) - 2
 
-		for (i=0 ; i<numlines ; i++)
-		{
-			for (j=0 ; j<numchars ; j++)
-			{
-				con.text[(con.totallines - 1 - i) * con.linewidth + j] =
-						tbuf[((con.current - i + oldtotallines) %
-							  oldtotallines) * oldwidth + j];
-			}
-		}
+	if width == con.linewidth:
+		return
 
-		Con_ClearNotify ();
-	}
+	if width < 1:			# video hasn't been initialized yet
+	
+		width = 38
+		con.linewidth = width
+		con.totallines = CON_TEXTSIZE // con.linewidth
+		con.text = "".join([' '] * CON_TEXTSIZE)
+	
+	else:
+	
+		oldwidth = con.linewidth
+		con.linewidth = width
+		oldtotallines = con.totallines
+		con.totallines = CON_TEXTSIZE // con.linewidth
+		numlines = oldtotallines
 
-	con.current = con.totallines - 1;
-	con.display = con.current;
-}
+		if con.totallines < numlines:
+			numlines = con.totallines
+
+		numchars = oldwidth
+	
+		if con.linewidth < numchars:
+			numchars = con.linewidth
+
+		#memcpy (tbuf, con.text, CON_TEXTSIZE)
+		con.text = "".join([' '] * CON_TEXTSIZE)
+
+		"""
+		for i in range(numlines):
+		
+			for j in range(numchars):
+			
+				con.text[(con.totallines - 1 - i) * con.linewidth + j] = \
+						tbuf[((con.current - i + oldtotallines) % \
+							  oldtotallines) * oldwidth + j]
+			
+		"""
+
+		Con_ClearNotify ()
+	
+
+	con.current = con.totallines - 1
+	con.display = con.current
 
 
-/*
+
+"""
 ================
 Con_Init
 ================
@@ -436,7 +436,7 @@ void Con_Print (char *txt)
 			Con_Linefeed ();
 		// mark time for transparent overlay
 			if (con.current >= 0)
-				con.times[con.current % NUM_CON_TIMES] = cls.realtime;
+				con.times[con.current % NUM_CON_TIMES] = cl_main.cls.realtime;
 		}
 
 		switch (c)
@@ -498,43 +498,43 @@ Con_DrawInput
 
 The input line scrolls horizontally if typing goes beyond the right edge
 ================
-*/
-void Con_DrawInput (void)
-{
-	int		y;
-	int		i;
-	char	*text;
+"""
+def Con_DrawInput ():
+   
+	#int		y;
+	#int		i;
+	#char	*text;
 
-	if (cls.key_dest == key_menu)
-		return;
-	if (cls.key_dest != key_console && cls.state == ca_active)
-		return;		// don't draw anything (always draw if not active)
+	if cl_main.cls.key_dest == client.keydest_t.key_menu:
+		return
+	if cl_main.cls.key_dest != client.keydest_t.key_console and cl_main.cls.state == client.connstate_t.ca_active:
+		return		# don't draw anything (always draw if not active)
 
-	text = key_lines[edit_line];
+	text = [keys.key_lines[keys.edit_line]]
 	
-// add the cursor frame
-	text[key_linepos] = 10+((int)(cls.realtime>>8)&1);
+	# add the cursor frame
+	text.append(chr(10+((int(cl_main.cls.realtime)>>8)&1)))
 	
-// fill out remainder with spaces
-	for (i=key_linepos+1 ; i< con.linewidth ; i++)
-		text[i] = ' ';
+	# fill out remainder with spaces
+	for i in range(keys.key_linepos+1, con.linewidth):
+		text.append(' ')
 		
-//	prestep if horizontally scrolling
-	if (key_linepos >= con.linewidth)
-		text += 1 + key_linepos - con.linewidth;
+	text = "".join(text)
+
+	# prestep if horizontally scrolling
+	if keys.key_linepos >= con.linewidth:
+		text = text[1 + keys.key_linepos - con.linewidth:]
 		
-// draw it
-	y = con.vislines-16;
+	# draw it
+	y = con.vislines-16
 
-	for (i=0 ; i<con.linewidth ; i++)
-		vid_so.re.DrawChar ( (i+1)<<3, con.vislines - 22, text[i]);
+	for i in range(con.linewidth):
+		vid_so.re.DrawChar ( (i+1)<<3, con.vislines - 22, ord(text[i]))
 
-// remove cursor
-	key_lines[edit_line][key_linepos] = 0;
-}
+	# remove cursor
+	#key_lines[edit_line][keys.key_linepos] = 0;
 
-
-/*
+"""
 ================
 Con_DrawNotify
 
@@ -560,7 +560,7 @@ def Con_DrawNotify ():
 		time = con.times[i % NUM_CON_TIMES];
 		if (time == 0)
 			continue;
-		time = cls.realtime - time;
+		time = cl_main.cls.realtime - time;
 		if (time > con_notifytime->value*1000)
 			continue;
 		text = con.text + (i % con.totallines)*con.linewidth;
@@ -572,7 +572,7 @@ def Con_DrawNotify ():
 	}
 
 
-	if (cls.key_dest == key_message)
+	if (cl_main.cls.key_dest == key_message)
 	{
 		if (chat_team)
 		{
@@ -594,7 +594,7 @@ def Con_DrawNotify ():
 			vid_so.re.DrawChar ( (x+skip)<<3, v, s[x]);
 			x++;
 		}
-		vid_so.re.DrawChar ( (x+skip)<<3, v, 10+((cls.realtime>>8)&1));
+		vid_so.re.DrawChar ( (x+skip)<<3, v, 10+((cl_main.cls.realtime>>8)&1));
 		v += 8;
 	}
 	
@@ -640,10 +640,10 @@ def Con_DrawConsole (frac): #float
 	version = "v{:4.2f}".format(qcommon.VERSION)
 	for x in range(5):
 		vid_so.re.DrawChar (vid_so.viddef.width-44+x*8, lines-12, 128 + ord(version[x]) )
-	"""
+
 	# draw the text
-	con.vislines = lines;
-	
+	con.vislines = lines
+	"""	
 #if 0
 	rows = (lines-8)>>3;		// rows of text to draw
 
@@ -682,11 +682,11 @@ def Con_DrawConsole (frac): #float
 //ZOID
 	# draw the download bar
 	# figure out width
-	if (cls.download) {
-		if ((text = strrchr(cls.downloadname, '/')) != NULL)
+	if (cl_main.cls.download) {
+		if ((text = strrchr(cl_main.cls.downloadname, '/')) != NULL)
 			text++;
 		else
-			text = cls.downloadname;
+			text = cl_main.cls.downloadname;
 
 		x = con.linewidth - ((con.linewidth * 7) / 40);
 		y = x - strlen(text) - 8;
@@ -702,10 +702,10 @@ def Con_DrawConsole (frac): #float
 		i = strlen(dlbar);
 		dlbar[i++] = '\x80';
 		// where's the dot go?
-		if (cls.downloadpercent == 0)
+		if (cl_main.cls.downloadpercent == 0)
 			n = 0;
 		else
-			n = y * cls.downloadpercent / 100;
+			n = y * cl_main.cls.downloadpercent / 100;
 			
 		for (j = 0; j < y; j++)
 			if (j == n)
@@ -715,7 +715,7 @@ def Con_DrawConsole (frac): #float
 		dlbar[i++] = '\x82';
 		dlbar[i] = 0;
 
-		sprintf(dlbar + strlen(dlbar), " %02d%%", cls.downloadpercent);
+		sprintf(dlbar + strlen(dlbar), " %02d%%", cl_main.cls.downloadpercent);
 
 		// draw it
 		y = con.vislines-12;
@@ -723,9 +723,9 @@ def Con_DrawConsole (frac): #float
 			vid_so.re.DrawChar ( (i+1)<<3, y, dlbar[i]);
 	}
 //ZOID
-
-	# draw the input prompt, user text, and cursor if desired
-	Con_DrawInput ();
-
-
 """
+	# draw the input prompt, user text, and cursor if desired
+	Con_DrawInput ()
+
+
+

@@ -223,13 +223,13 @@ class client_static_t(object):
 		self.state = connstate_t(connstate_t.ca_uninitialized)
 		
 		self.key_dest = keydest_t(keydest_t.key_game)
-		"""
-		int			framecount;
-		int			realtime;			// always increasing, no clamping, etc
-		float		frametime;			// seconds since last frame
+
+		#int			framecount;     # int
+		self.realtime = 0			    # int, always increasing, no clamping, etc
+		#float		frametime;			# float, seconds since last frame
 
 		# screen rendering information
-		"""
+
 		self.disable_screen = 0.0 			# float, showing loading plaque between levels
 										# or changing rendering dlls
 										# if time gets > 30 seconds ahead, break it
