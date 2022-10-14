@@ -464,7 +464,7 @@ def Key_Console (key): #int
 	
 	if key == K_ENTER or key == K_KP_ENTER:
 		# backslash text are commands, else chat
-		if key_lines[edit_line][1] == '\\' or key_lines[edit_line][1] == '/':
+		if len(key_lines[edit_line]) >= 2 and (key_lines[edit_line][1] == '\\' or key_lines[edit_line][1] == '/'):
 			cmd.Cbuf_AddText (key_lines[edit_line][2:])	# skip the >
 		else:
 			cmd.Cbuf_AddText (key_lines[edit_line][1:])	# valid command
@@ -488,6 +488,7 @@ def Key_Console (key): #int
 	if ( key == K_BACKSPACE ) or ( key == K_LEFTARROW ) or ( key == K_KP_LEFTARROW ) or ( ( key == 'h' ) and ( keydown[K_CTRL] ) ):
 
 		if key_linepos > 1:
+			key_lines[edit_line] = key_lines[edit_line][:-1]
 			key_linepos-=1
 		return
 
@@ -529,33 +530,29 @@ def Key_Console (key): #int
 		}
 		return;
 	}
-
-	if (key == K_PGUP || key == K_KP_PGUP )
-	{
-		con.display -= 2;
-		return;
-	}
-
-	if (key == K_PGDN || key == K_KP_PGDN ) 
-	{
-		con.display += 2;
-		if (con.display > con.current)
-			con.display = con.current;
-		return;
-	}
-
-	if (key == K_HOME || key == K_KP_HOME )
-	{
-		con.display = con.current - con.totallines + 10;
-		return;
-	}
-
-	if (key == K_END || key == K_KP_END )
-	{
-		con.display = con.current;
-		return;
-	}
 	"""
+	if key == K_PGUP or key == K_KP_PGUP:
+	
+		console.con.display -= 2
+		return
+	
+	if key == K_PGDN or key == K_KP_PGDN:
+	
+		console.con.display += 2
+		if console.con.display > console.con.current:
+			console.con.display = console.con.current
+		return
+	
+	if key == K_HOME or key == K_KP_HOME:
+	
+		console.con.display = console.con.current - console.con.totallines + 10
+		return
+
+	if key == K_END or key == K_KP_END:
+	
+		console.con.display = console.con.current
+		return
+	
 	if key < 32 or key > 127:
 		return # non printable
 	
