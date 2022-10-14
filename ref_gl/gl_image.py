@@ -210,24 +210,25 @@ void GL_MBind( GLenum target, int texnum )
 	}
 	GL_Bind( texnum );
 }
+"""
 
-typedef struct
-{
-	char *name;
-	int	minimize, maximize;
-} glmode_t;
+class glmode_t(object):
+	def __init__(self, nameIn=None, minimizeIn=None, maximizeIn=None):
 
-glmode_t modes[] = {
-	{"GL_NEAREST", GL_NEAREST, GL_NEAREST},
-	{"GL_LINEAR", GL_LINEAR, GL_LINEAR},
-	{"GL_NEAREST_MIPMAP_NEAREST", GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST},
-	{"GL_LINEAR_MIPMAP_NEAREST", GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR},
-	{"GL_NEAREST_MIPMAP_LINEAR", GL_NEAREST_MIPMAP_LINEAR, GL_NEAREST},
-	{"GL_LINEAR_MIPMAP_LINEAR", GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR}
-};
+		self.name = nameIn #char *
+		self.minimize, self.maximize = minimizeIn, maximizeIn #int
 
-#define NUM_GL_MODES (sizeof(modes) / sizeof (glmode_t))
+modes = [
+	glmode_t("GL_NEAREST", GL.GL_NEAREST, GL.GL_NEAREST),
+	glmode_t("GL_LINEAR", GL.GL_LINEAR, GL.GL_LINEAR),
+	glmode_t("GL_NEAREST_MIPMAP_NEAREST", GL.GL_NEAREST_MIPMAP_NEAREST, GL.GL_NEAREST),
+	glmode_t("GL_LINEAR_MIPMAP_NEAREST", GL.GL_LINEAR_MIPMAP_NEAREST, GL.GL_LINEAR),
+	glmode_t("GL_NEAREST_MIPMAP_LINEAR", GL.GL_NEAREST_MIPMAP_LINEAR, GL.GL_NEAREST),
+	glmode_t("GL_LINEAR_MIPMAP_LINEAR", GL.GL_LINEAR_MIPMAP_LINEAR, GL.GL_LINEAR)
+] #glmode_t[]
 
+NUM_GL_MODES = len(modes)
+"""
 typedef struct
 {
 	char *name;
@@ -263,46 +264,46 @@ gltmode_t gl_solid_modes[] = {
 ===============
 GL_TextureMode
 ===============
-*/
-void GL_TextureMode( char *string )
-{
-	int		i;
-	image_t	*glt;
+"""
+def GL_TextureMode( string ): #char *
 
-	for (i=0 ; i< NUM_GL_MODES ; i++)
-	{
-		if ( !Q_stricmp( modes[i].name, string ) )
+	#int		i;
+	#image_t	*glt;
+
+	foundMode = None
+	for mode in modes:
+	
+		if mode.name == string:
+			foundMode = mode
 			break;
-	}
+	
+	if foundMode is None:
+	
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad filter name\n")
+		return
+	
+	gl_filter_min = foundMode.minimize
+	gl_filter_max = foundMode.maximize
 
-	if (i == NUM_GL_MODES)
-	{
-		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad filter name\n");
-		return;
-	}
+	# change all the existing mipmap texture objects
+	for i in range(numgltextures):
+		glt = gltextures[i]
+	
+		if glt.type != imagetype_t.it_pic and glt.type != imagetype_t.it_sky:
+		
+			GL_Bind (glt.texnum)
+			GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, gl_filter_min)
+			GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, gl_filter_max)
 
-	gl_filter_min = modes[i].minimize;
-	gl_filter_max = modes[i].maximize;
-
-	// change all the existing mipmap texture objects
-	for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
-	{
-		if (glt->type != it_pic && glt->type != it_sky )
-		{
-			GL_Bind (glt->texnum);
-			qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-			qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
-		}
-	}
-}
-
-/*
+"""
 ===============
 GL_TextureAlphaMode
 ===============
-*/
-void GL_TextureAlphaMode( char *string )
-{
+"""
+def GL_TextureAlphaMode( string ): #char *
+
+	pass
+	"""
 	int		i;
 
 	for (i=0 ; i< NUM_GL_ALPHA_MODES ; i++)
@@ -318,15 +319,17 @@ void GL_TextureAlphaMode( char *string )
 	}
 
 	gl_tex_alpha_format = gl_alpha_modes[i].mode;
-}
 
-/*
+
+
 ===============
 GL_TextureSolidMode
 ===============
-*/
-void GL_TextureSolidMode( char *string )
-{
+"""
+def GL_TextureSolidMode( string ): #char *
+
+	pass
+	"""
 	int		i;
 
 	for (i=0 ; i< NUM_GL_SOLID_MODES ; i++)
@@ -342,9 +345,8 @@ void GL_TextureSolidMode( char *string )
 	}
 
 	gl_tex_solid_format = gl_solid_modes[i].mode;
-}
 
-/*
+
 ===============
 GL_ImageList_f
 ===============
@@ -1104,7 +1106,7 @@ def GL_Upload32 (data, width, height, mipmap): #unsigned *, int, int, qboolean (
 	
 
 	if mipmap:
-	
+
 		#int		miplevel;
 
 		miplevel = 0

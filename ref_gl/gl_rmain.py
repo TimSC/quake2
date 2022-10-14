@@ -26,7 +26,7 @@ from ref_gl import gl_model
 from linux import gl_glx, qgl_linux
 from game import q_shared
 from qcommon import cvar, cmd, files, qcommon
-from ref_gl import gl_draw, gl_image
+from ref_gl import gl_draw, gl_image, gl_rmisc
 
 REF_VERSION = "GL 0.01"
 
@@ -762,9 +762,11 @@ void MYgluPerspective( GLdouble fovy, GLdouble aspect,
 =============
 R_SetupGL
 =============
-*/
-void R_SetupGL (void)
-{
+"""
+def R_SetupGL ():
+
+	pass
+	"""
 	float	screenaspect;
 //	float	yfov;
 	int		x, x2, y2, y, w, h;
@@ -825,9 +827,11 @@ void R_SetupGL (void)
 =============
 R_Clear
 =============
-*/
-void R_Clear (void)
-{
+"""
+def R_Clear ():
+	pass
+
+	"""
 	if (gl_ztrick->value)
 	{
 		static int trickframe;
@@ -903,7 +907,9 @@ def R_RenderView (fd): #refdef_t *
 
 	R_SetFrustum ();
 
-	R_SetupGL ();
+	"""
+	R_SetupGL ()
+	"""
 
 	R_MarkLeaves ();	// done here so we know if we're in water
 
@@ -933,22 +939,22 @@ def R_RenderView (fd): #refdef_t *
 
 
 def	R_SetGL2D ():
-	pass
-	"""
-	# set 2D virtual screen size
-	qglViewport (0,0, vid.width, vid.height);
-	qglMatrixMode(GL_PROJECTION);
-	qglLoadIdentity ();
-	qglOrtho  (0, vid.width, vid.height, 0, -99999, 99999);
-	qglMatrixMode(GL_MODELVIEW);
-	qglLoadIdentity ();
-	qglDisable (GL_DEPTH_TEST);
-	qglDisable (GL_CULL_FACE);
-	qglDisable (GL_BLEND);
-	qglEnable (GL_ALPHA_TEST);
-	qglColor4f (1,1,1,1);
-}
 
+	# set 2D virtual screen size
+	GL.glViewport (0,0, vid.width, vid.height)
+	GL.glMatrixMode(GL.GL_PROJECTION)
+	GL.glLoadIdentity ()
+	GL.glOrtho  (0, vid.width, vid.height, 0, -99999, 99999)
+	GL.glMatrixMode(GL.GL_MODELVIEW)
+	GL.glLoadIdentity ()
+	GL.glDisable (GL.GL_DEPTH_TEST)
+	GL.glDisable (GL.GL_CULL_FACE)
+	GL.glDisable (GL.GL_BLEND)
+	GL.glEnable (GL.GL_ALPHA_TEST)
+	GL.glColor4f (1,1,1,1)
+
+
+"""
 static void GL_DrawColoredStereoLinePair( float r, float g, float b, float y )
 {
 	qglColor3f( r, g, b );
@@ -1518,6 +1524,8 @@ R_BeginFrame
 """
 def R_BeginFrame( camera_separation ): #float
 
+	global gl_texturemode, gl_texturealphamode, gl_texturesolidmode
+
 	"""
 	gl_state.camera_separation = camera_separation;
 
@@ -1581,9 +1589,9 @@ def R_BeginFrame( camera_separation ): #float
 	GL.glEnable (GL.GL_ALPHA_TEST)
 	GL.glColor4f (1,1,1,1)
 	"""
-	/*
-	** draw buffer stuff
-	*/
+	#
+	# draw buffer stuff
+	#
 	if ( gl_drawbuffer->modified )
 	{
 		gl_drawbuffer->modified = false;
@@ -1596,40 +1604,40 @@ def R_BeginFrame( camera_separation ): #float
 				qglDrawBuffer( GL_BACK );
 		}
 	}
+	"""
+	#
+	# texturemode stuff
+	#
+	if gl_texturemode.modified:
+	
+		gl_image.GL_TextureMode( gl_texturemode.string )
+		gl_texturemode.modified = False
+	
 
-	/*
-	** texturemode stuff
-	*/
-	if ( gl_texturemode->modified )
-	{
-		GL_TextureMode( gl_texturemode->string );
-		gl_texturemode->modified = false;
-	}
+	if gl_texturealphamode.modified:
+	
+		gl_image.GL_TextureAlphaMode( gl_texturealphamode.string )
+		gl_texturealphamode.modified = False
+	
 
-	if ( gl_texturealphamode->modified )
-	{
-		GL_TextureAlphaMode( gl_texturealphamode->string );
-		gl_texturealphamode->modified = false;
-	}
+	if gl_texturesolidmode.modified:
+	
+		gl_image.GL_TextureSolidMode( gl_texturesolidmode.string )
+		gl_texturesolidmode.modified = False
 
-	if ( gl_texturesolidmode->modified )
-	{
-		GL_TextureSolidMode( gl_texturesolidmode->string );
-		gl_texturesolidmode->modified = false;
-	}
+	
+	#
+	# swapinterval stuff
+	#
+	gl_rmisc.GL_UpdateSwapInterval()
+	
+	#
+	# clear screen if desired
+	#
+	R_Clear ()
 
-	/*
-	** swapinterval stuff
-	*/
-	GL_UpdateSwapInterval();
 
-	//
-	// clear screen if desired
-	//
-	R_Clear ();
-}
-
-/*
+"""
 =============
 R_SetPalette
 =============
