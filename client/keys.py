@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import pygame
 from qcommon import cmd, common
 from game import q_shared
-from client import console, client, cl_main, cl_scrn
+from client import console, client, cl_main, cl_scrn, menu
 from linux import sys_linux, q_shlinux
 
 #
@@ -953,9 +953,9 @@ def Key_Event (key, down, timestamp): #int, qboolean, unsigned
 		if cl_main.cls.key_dest == client.keydest_t.key_message:
 			Key_Message (key)
 		elif cl_main.cls.key_dest == client.keydest_t.key_menu:
-			M_Keydown (key)
+			menu.M_Keydown (key)
 		elif cl_main.cls.key_dest in [client.keydest_t.key_game, client.keydest_t.key_console]:
-			M_Menu_Main_f ()
+			menu.M_Menu_Main_f ()
 		else:
 			common.Com_Error (q_shared.ERR_FATAL, "Bad cls.key_dest")
 

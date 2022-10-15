@@ -696,14 +696,14 @@ def SCR_AddDirtyPoint (x, y):
 	if (y > scr_dirty.y2)
 		scr_dirty.y2 = y;
 }
+"""
+def SCR_DirtyScreen ():
 
-void SCR_DirtyScreen (void)
-{
-	SCR_AddDirtyPoint (0, 0);
-	SCR_AddDirtyPoint (vid_so.viddef.width-1, vid_so.viddef.height-1);
-}
+	SCR_AddDirtyPoint (0, 0)
+	SCR_AddDirtyPoint (vid_so.viddef.width-1, vid_so.viddef.height-1)
 
-/*
+
+"""
 ==============
 SCR_TileClear
 

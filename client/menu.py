@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd
+from client import cl_main, client
 """
 #include <ctype.h>
 #ifdef _WIN32
@@ -29,11 +30,11 @@ from qcommon import cvar, cmd
 static int	m_main_cursor;
 
 #define NUM_CURSOR_FRAMES 15
-
-static char *menu_in_sound		= "misc/menu1.wav";
-static char *menu_move_sound	= "misc/menu2.wav";
-static char *menu_out_sound		= "misc/menu3.wav";
-
+"""
+menu_in_sound		= "misc/menu1.wav" #static char *
+menu_move_sound		= "misc/menu2.wav" #static char *
+menu_out_sound		= "misc/menu3.wav" #static char *
+"""
 void M_Menu_Main_f (void);
 	void M_Menu_Game_f (void);
 		void M_Menu_LoadGame_f (void);
@@ -52,28 +53,26 @@ void M_Menu_Main_f (void);
 	void M_Menu_Quit_f (void);
 
 	void M_Menu_Credits( void );
+"""
+m_entersound = True #qboolean	 play after drawing a frame, so caching
+								# won't disrupt the sound
 
-qboolean	m_entersound;		// play after drawing a frame, so caching
-								// won't disrupt the sound
-
-void	(*m_drawfunc) (void);
-const char *(*m_keyfunc) (int key);
-
+m_drawfunc = None #void	(*) (void);
+m_keyfunc = None # const char *(*) (int key);
+"""
 //=============================================================================
 /* Support Routines */
+"""
+MAX_MENU_DEPTH	= 8
 
-#define	MAX_MENU_DEPTH	8
+class menulayer_t(object):
+	def __init__(self, drawIn=None, keyIn=None):
+		draw = drawIn #void	(*draw) (void);
+		key = keyIn #const char *(*key) (int k);
 
-
-typedef struct
-{
-	void	(*draw) (void);
-	const char *(*key) (int k);
-} menulayer_t;
-
-menulayer_t	m_layers[MAX_MENU_DEPTH];
-int		m_menudepth;
-
+m_layers = [] #menulayer_t	[MAX_MENU_DEPTH];
+m_menudepth = 0
+"""
 static void M_Banner( char *name )
 {
 	int w, h;
@@ -81,69 +80,77 @@ static void M_Banner( char *name )
 	re.DrawGetPicSize (&w, &h, name );
 	re.DrawPic( viddef.width / 2 - w / 2, viddef.height / 2 - 110, name );
 }
+"""
+def M_PushMenu ( draw, key ): #void (*) (void), const char *(*) (int k)
 
-void M_PushMenu ( void (*draw) (void), const char *(*key) (int k) )
-{
+	global m_layers, m_drawfunc, m_keyfunc
+	"""
 	int		i;
 
 	if (Cvar_VariableValue ("maxclients") == 1 
 		&& Com_ServerState ())
 		Cvar_Set ("paused", "1");
+	"""
+	# if this menu is already present, drop back to that level
+	# to avoid stacking menus by hotkeys
+	found = False
+	for i, layer in enumerate(m_layers):
+		if layer.draw == draw and \
+			layer.key == key:
+		
+			#m_menudepth = i
+			found = i
 
-	// if this menu is already present, drop back to that level
-	// to avoid stacking menus by hotkeys
-	for (i=0 ; i<m_menudepth ; i++)
-		if (m_layers[i].draw == draw &&
-			m_layers[i].key == key)
-		{
-			m_menudepth = i;
-		}
+	if found is not None:
+		m_layers = m_layers[:i]
 
-	if (i == m_menudepth)
-	{
-		if (m_menudepth >= MAX_MENU_DEPTH)
-			Com_Error (ERR_FATAL, "M_PushMenu: MAX_MENU_DEPTH");
-		m_layers[m_menudepth].draw = m_drawfunc;
-		m_layers[m_menudepth].key = m_keyfunc;
-		m_menudepth++;
-	}
+	else:
+	
+		if m_menudepth >= MAX_MENU_DEPTH:
+			qcommon.Com_Error (ERR_FATAL, "M_PushMenu: MAX_MENU_DEPTH")
+		
+		m_layers.append(menulayer_t(m_drawfunc, m_keyfunc))
+		#m_menudepth++;
+	
+	m_drawfunc = draw
+	m_keyfunc = key
 
-	m_drawfunc = draw;
-	m_keyfunc = key;
+	m_entersound = True
 
-	m_entersound = true;
+	cl_main.cls.key_dest = client.keydest_t.key_menu
 
-	cls.key_dest = key_menu;
-}
-"""
+
 def M_ForceMenuOff ():
 
-	pass
-	"""
-	m_drawfunc = 0;
-	m_keyfunc = 0;
-	cls.key_dest = key_game;
-	m_menudepth = 0;
-	Key_ClearStates ();
-	Cvar_Set ("paused", "0");
-	"""
+	global m_layers, m_drawfunc, m_keyfunc
+
+	m_drawfunc = 0
+	m_keyfunc = 0
+	cl_main.cls.key_dest = client.keydest_t.key_game
+	#m_menudepth = 0
+	m_layers = []
+	#Key_ClearStates ()
+	cvar.Cvar_Set ("paused", "0")
+
+
+def M_PopMenu ():
+
+	global m_layers, m_drawfunc, m_keyfunc
+
+	S_StartLocalSound( menu_out_sound )
+	if len(m_layers) == 0:
+		common.Com_Error (ERR_FATAL, "M_PopMenu: depth < 1")
+	#m_menudepth--;
+
+	layer = m_layers.pop()
+	m_drawfunc = layer.draw
+	m_keyfunc = layer.key
+
+	if len(m_layers) == 0:
+		M_ForceMenuOff ()
+
 
 """
-void M_PopMenu (void)
-{
-	S_StartLocalSound( menu_out_sound );
-	if (m_menudepth < 1)
-		Com_Error (ERR_FATAL, "M_PopMenu: depth < 1");
-	m_menudepth--;
-
-	m_drawfunc = m_layers[m_menudepth].draw;
-	m_keyfunc = m_layers[m_menudepth].key;
-
-	if (!m_menudepth)
-		M_ForceMenuOff ();
-}
-
-
 const char *Default_MenuKey( menuframework_s *m, int key )
 {
 	const char *sound = NULL;
@@ -383,12 +390,15 @@ void M_DrawTextBox (int x, int y, int width, int lines)
 MAIN MENU
 
 =======================================================================
-*/
-#define	MAIN_ITEMS	5
+"""
+MAIN_ITEMS	= 5
 
 
-void M_Main_Draw (void)
-{
+def M_Main_Draw ():
+
+	print ("M_Main_Draw")
+	pass
+	"""
 	int i;
 	int w, h;
 	int ystart;
@@ -427,17 +437,19 @@ void M_Main_Draw (void)
 	strcat( litname, "_sel" );
 	re.DrawPic( xoffset, ystart + m_main_cursor * 40 + 13, litname );
 
-	M_DrawCursor( xoffset - 25, ystart + m_main_cursor * 40 + 11, (int)(cls.realtime / 100)%NUM_CURSOR_FRAMES );
+	M_DrawCursor( xoffset - 25, ystart + m_main_cursor * 40 + 11, (int)(cl_main.cls.realtime / 100)%NUM_CURSOR_FRAMES );
 
 	re.DrawGetPicSize( &w, &h, "m_main_plaque" );
 	re.DrawPic( xoffset - 30 - w, ystart, "m_main_plaque" );
 
 	re.DrawPic( xoffset - 30 - w, ystart + h + 5, "m_main_logo" );
-}
+	"""
 
+def M_Main_Key (key): #int (returns const char *)
 
-const char *M_Main_Key (int key)
-{
+	print ("M_Main_Key")
+	pass
+	"""
 	const char *sound = menu_move_sound;
 
 	switch (key)
@@ -487,14 +499,12 @@ const char *M_Main_Key (int key)
 	}
 
 	return NULL;
-}
+
 
 """
 def M_Menu_Main_f ():
 
-	pass
-
-	#M_PushMenu (M_Main_Draw, M_Main_Key);
+	M_PushMenu (M_Main_Draw, M_Main_Key)
 
 
 """
@@ -574,10 +584,8 @@ const char *Multiplayer_MenuKey( int key )
 """
 def M_Menu_Multiplayer_f():
 
-	pass
 	#Multiplayer_MenuInit()
-	#M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey )
-
+	M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey )
 
 """
 =======================================================================
@@ -1008,9 +1016,8 @@ static const char *Keys_MenuKey( int key )
 """
 def M_Menu_Keys_f ():
 
-	pass
 	#Keys_MenuInit();
-	#M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
+	M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
 
 
 
@@ -1164,7 +1171,7 @@ static void ConsoleFunc( void *unused )
 	Con_ClearNotify ();
 
 	M_ForceMenuOff ();
-	cls.key_dest = key_console;
+	cl_main.cls.key_dest = key_console;
 }
 
 static void UpdateSoundQualityFunc( void *unused )
@@ -1384,9 +1391,8 @@ const char *Options_MenuKey( int key )
 """
 def M_Menu_Options_f ():
 
-	pass
 	#Options_MenuInit();
-	#M_PushMenu ( Options_MenuDraw, Options_MenuKey );
+	M_PushMenu ( Options_MenuDraw, Options_MenuKey )
 
 
 """
@@ -1400,9 +1406,8 @@ VIDEO MENU
 
 def M_Menu_Video_f ():
 
-	pass
 	#VID_MenuInit()
-	#M_PushMenu( VID_MenuDraw, VID_MenuKey )
+	M_PushMenu( VID_MenuDraw, VID_MenuKey )
 
 
 """
@@ -1770,7 +1775,7 @@ void M_Credits_MenuDraw( void )
 	/*
 	** draw the credits
 	*/
-	for ( i = 0, y = viddef.height - ( ( cls.realtime - credits_start_time ) / 40.0F ); credits[i] && y < viddef.height; y += 10, i++ )
+	for ( i = 0, y = viddef.height - ( ( cl_main.cls.realtime - credits_start_time ) / 40.0F ); credits[i] && y < viddef.height; y += 10, i++ )
 	{
 		int j, stringoffset = 0;
 		int bold = false;
@@ -1803,7 +1808,7 @@ void M_Credits_MenuDraw( void )
 	}
 
 	if ( y < 0 )
-		credits_start_time = cls.realtime;
+		credits_start_time = cl_main.cls.realtime;
 }
 
 const char *M_Credits_Key( int key )
@@ -1826,7 +1831,7 @@ extern int Developer_searchpath (int who);
 """
 def M_Menu_Credits_f():
 
-	pass
+
 	"""
 
 	int		n;
@@ -1876,9 +1881,10 @@ def M_Menu_Credits_f():
 
 	}
 
-	credits_start_time = cls.realtime;
-	M_PushMenu( M_Credits_MenuDraw, M_Credits_Key);
+	credits_start_time = cl_main.cls.realtime;
 	"""
+	M_PushMenu( M_Credits_MenuDraw, M_Credits_Key)
+
 
 """
 =============================================================================
@@ -1910,7 +1916,7 @@ static void StartGame( void )
 	Cvar_SetValue( "gamerules", 0 );		//PGM
 
 	Cbuf_AddText ("loading ; killserver ; wait ; newgame\n");
-	cls.key_dest = key_game;
+	cl_main.cls.key_dest = client.keydest_t.key_game;
 }
 
 static void EasyGameFunc( void *data )
@@ -2030,10 +2036,9 @@ const char *Game_MenuKey( int key )
 """
 def M_Menu_Game_f ():
 
-	pass
-	#Game_MenuInit();
-	#M_PushMenu( Game_MenuDraw, Game_MenuKey );
-	#m_game_cursor = 1;
+	#Game_MenuInit()
+	M_PushMenu( Game_MenuDraw, Game_MenuKey )
+	m_game_cursor = 1
 
 """
 =============================================================================
@@ -2135,9 +2140,8 @@ const char *LoadGame_MenuKey( int key )
 """
 def M_Menu_LoadGame_f ():
 
-	pass
-	#LoadGame_MenuInit();
-	#M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey );
+	#LoadGame_MenuInit()
+	M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey )
 
 """
 =============================================================================
@@ -2205,12 +2209,11 @@ const char *SaveGame_MenuKey( int key )
 """
 def M_Menu_SaveGame_f ():
 
-	pass
 	#if (!Com_ServerState())
 	#	return;		# not playing a game
 
 	#SaveGame_MenuInit();
-	#M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey );
+	M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey )
 	#Create_Savestrings ();
 
 
@@ -3790,7 +3793,7 @@ void PlayerConfig_MenuDraw( void )
 	refdef.height = 168;
 	refdef.fov_x = 40;
 	refdef.fov_y = CalcFov( refdef.fov_x, refdef.width, refdef.height );
-	refdef.time = cls.realtime*0.001;
+	refdef.time = cl_main.cls.realtime*0.001;
 
 	if ( s_pmi[s_player_model_box.curvalue].skindisplaynames )
 	{
@@ -3920,7 +3923,7 @@ const char *M_Quit_Key (int key)
 
 	case 'Y':
 	case 'y':
-		cls.key_dest = key_console;
+		cl_main.cls.key_dest = key_console;
 		CL_Quit_f ();
 		break;
 
@@ -3944,8 +3947,7 @@ void M_Quit_Draw (void)
 """
 def M_Menu_Quit_f ():
 
-	pass
-	#M_PushMenu (M_Quit_Draw, M_Quit_Key);
+	M_PushMenu (M_Quit_Draw, M_Quit_Key)
 
 """
 
@@ -3989,45 +3991,42 @@ M_Draw
 """
 def M_Draw ():
 
-	pass
-	"""
-	if (cls.key_dest != key_menu)
-		return;
+	if cl_main.cls.key_dest != client.keydest_t.key_menu:
+		return
 
-	// repaint everything next frame
-	SCR_DirtyScreen ();
+	# repaint everything next frame
+	SCR_DirtyScreen ()
 
-	// dim everything behind it down
-	if (cl.cinematictime > 0)
-		re.DrawFill (0,0,viddef.width, viddef.height, 0);
-	else
-		re.DrawFadeScreen ();
+	# dim everything behind it down
+	if cl.cinematictime > 0:
+		re.DrawFill (0,0,viddef.width, viddef.height, 0)
+	else:
+		re.DrawFadeScreen ()
 
-	m_drawfunc ();
+	m_drawfunc ()
 
-	// delay playing the enter sound until after the
-	// menu has been drawn, to avoid delay while
-	// caching images
-	if (m_entersound)
-	{
-		S_StartLocalSound( menu_in_sound );
-		m_entersound = false;
-	}
-"""
+	# delay playing the enter sound until after the
+	# menu has been drawn, to avoid delay while
+	# caching images
+	if m_entersound:
+	
+		S_StartLocalSound( menu_in_sound )
+		m_entersound = False
+	
+
 
 
 """
 =================
 M_Keydown
 =================
-*/
-void M_Keydown (int key)
-{
-	const char *s;
-
-	if (m_keyfunc)
-		if ( ( s = m_keyfunc( key ) ) != 0 )
-			S_StartLocalSound( ( char * ) s );
-}
-
 """
+def M_Keydown (key): #int
+
+	#const char *s;
+
+	if m_keyfunc is not None:
+		s = m_keyfunc( key )
+		if s is not None:
+			S_StartLocalSound( s )
+
