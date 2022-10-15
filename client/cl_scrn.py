@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, qcommon, common
-from client import console, cl_main, client
+from client import console, cl_main, client, menu
 from linux import q_shlinux, vid_so
 from game import q_shared
 """
@@ -481,19 +481,22 @@ void SCR_DrawPause (void)
 ==============
 SCR_DrawLoading
 ==============
-*/
-void SCR_DrawLoading (void)
-{
-	int		w, h;
-		
-	if (!scr_draw_loading)
-		return;
+"""
+def SCR_DrawLoading ():
 
-	scr_draw_loading = false;
-	vid_so.re.DrawGetPicSize (&w, &h, "loading");
-	vid_so.re.DrawPic ((vid_so.viddef.width-w)/2, (vid_so.viddef.height-h)/2, "loading");
-}
+	global scr_draw_loading
 
+	#int		w, h;
+
+	if scr_draw_loading == 0:
+		return
+
+	scr_draw_loading = 0
+	w, h = vid_so.re.DrawGetPicSize ("loading")
+	vid_so.re.DrawPic ((vid_so.viddef.width-w)//2, (vid_so.viddef.height-h)//2, "loading")
+
+
+"""
 //=============================================================================
 
 /*
@@ -571,7 +574,8 @@ SCR_BeginLoadingPlaque
 """
 def SCR_BeginLoadingPlaque ():
 
-	pass
+	global scr_draw_loading
+
 	"""
 	S_StopAllSounds ();
 	cl.sound_prepped = false;		// don't play ambients
@@ -584,14 +588,16 @@ def SCR_BeginLoadingPlaque ():
 		return;	// if at console, don't bring up the plaque
 	if (cls.key_dest == key_console)
 		return;
-	if (cl.cinematictime > 0)
-		scr_draw_loading = 2;	// clear to balack first
-	else
-		scr_draw_loading = 1;
-	SCR_UpdateScreen ();
-	cls.disable_screen = Sys_Milliseconds ();
-	cls.disable_servercount = cl.servercount;
 	"""
+	if cl.cinematictime > 0:
+		scr_draw_loading = 2	# clear to black first
+	else:
+		scr_draw_loading = 1
+
+	SCR_UpdateScreen ()
+	cls.disable_screen = q_shlinux.Sys_Milliseconds ()
+	#cls.disable_servercount = cl.servercount;
+
 
 """
 ================
@@ -643,7 +649,7 @@ def SCR_TimeRefresh_f ():
 	if ( cls.state != ca_active )
 		return;
 
-	start = Sys_Milliseconds ();
+	start = q_shlinux.Sys_Milliseconds ();
 
 	if (Cmd_Argc() == 2)
 	{	// run without page flipping
@@ -667,7 +673,7 @@ def SCR_TimeRefresh_f ():
 		}
 	}
 
-	stop = Sys_Milliseconds ();
+	stop = q_shlinux.Sys_Milliseconds ();
 	time = (stop-start)/1000.0;
 	Com_Printf ("%f seconds (%f fps)\n", time, 128/time);
 """
@@ -1416,11 +1422,11 @@ def SCR_UpdateScreen ():
 			SCR_DrawPause ()
 			"""
 			SCR_DrawConsole ()
-			"""
-			M_Draw ()
+
+			menu.M_Draw ()
 
 			SCR_DrawLoading ()
-			"""
+
 		
 	
 	vid_so.re.EndFrame()

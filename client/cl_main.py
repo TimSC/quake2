@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cvar, common
 from game import q_shared
-from client import console, snd_dma, cl_scrn, client, cl_view
+from client import console, snd_dma, cl_scrn, client, cl_view, menu
 from linux import q_shlinux, vid_so
 
 """
@@ -1814,9 +1814,9 @@ def CL_Init ():
 	"""
 	net_message.data = net_message_buffer;
 	net_message.maxsize = sizeof(net_message_buffer);
-
-	M_Init ();	
 	"""
+	menu.M_Init ()
+
 	cl_scrn.SCR_Init ()
 	cls.disable_screen = True	# don't draw yet
 	

@@ -1482,12 +1482,19 @@ def R_Init( hinstance, hWnd ): #void *, void *
 	#Mod_Init ();
 	#R_InitParticleTexture ();
 	gl_draw.Draw_InitLocal ()
-	"""
 
-	err = qglGetError();
-	if ( err != GL_NO_ERROR )
-		ri.Con_Printf (q_shared.PRINT_ALL, "glGetError() = 0x%x\n", err);
-	"""
+
+	err = GL.glGetError()
+	if err != GL.GL_NO_ERROR:
+		ri.Con_Printf (q_shared.PRINT_ALL, "glGetError() = 0x{:x}\n".format(err))
+
+	# q2 extra code to catch opengl errors
+	GL.glDebugMessageCallback(GL.GLDEBUGPROC(onGlDebugMessage), None)
+
+
+def onGlDebugMessage(*args, **kwargs):
+    println('glGetError args = {0}, kwargs = {1}'.format(args, kwargs))
+
 
 """
 ===============

@@ -455,15 +455,15 @@ int Scrap_AllocBlock (int w, int h, int *x, int *y)
 
 int	scrap_uploads;
 
-void Scrap_Upload (void)
-{
-	scrap_uploads++;
-	GL_Bind(TEXNUM_SCRAPS);
-	GL_Upload8 (scrap_texels[0], BLOCK_WIDTH, BLOCK_HEIGHT, false, false );
-	scrap_dirty = false;
-}
+"""
+def Scrap_Upload ():
 
-/*
+	#scrap_uploads++;
+	#GL_Bind(TEXNUM_SCRAPS);
+	#GL_Upload8 (scrap_texels[0], BLOCK_WIDTH, BLOCK_HEIGHT, false, false );
+	scrap_dirty = False
+
+"""
 =================================================================
 
 PCX LOADING

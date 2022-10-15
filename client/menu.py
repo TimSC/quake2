@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from qcommon import cvar, cmd
 """
 #include <ctype.h>
 #ifdef _WIN32
@@ -488,13 +489,15 @@ const char *M_Main_Key (int key)
 	return NULL;
 }
 
+"""
+def M_Menu_Main_f ():
 
-void M_Menu_Main_f (void)
-{
-	M_PushMenu (M_Main_Draw, M_Main_Key);
-}
+	pass
 
-/*
+	#M_PushMenu (M_Main_Draw, M_Main_Key);
+
+
+"""
 =======================================================================
 
 MULTIPLAYER MENU
@@ -568,14 +571,15 @@ const char *Multiplayer_MenuKey( int key )
 {
 	return Default_MenuKey( &s_multiplayer_menu, key );
 }
+"""
+def M_Menu_Multiplayer_f():
 
-void M_Menu_Multiplayer_f( void )
-{
-	Multiplayer_MenuInit();
-	M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey );
-}
+	pass
+	#Multiplayer_MenuInit()
+	#M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey )
 
-/*
+
+"""
 =======================================================================
 
 KEYS MENU
@@ -1001,15 +1005,16 @@ static const char *Keys_MenuKey( int key )
 		return Default_MenuKey( &s_keys_menu, key );
 	}
 }
+"""
+def M_Menu_Keys_f ():
 
-void M_Menu_Keys_f (void)
-{
-	Keys_MenuInit();
-	M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
-}
+	pass
+	#Keys_MenuInit();
+	#M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
 
 
-/*
+
+"""
 =======================================================================
 
 CONTROLS MENU
@@ -1376,28 +1381,31 @@ const char *Options_MenuKey( int key )
 {
 	return Default_MenuKey( &s_options_menu, key );
 }
+"""
+def M_Menu_Options_f ():
 
-void M_Menu_Options_f (void)
-{
-	Options_MenuInit();
-	M_PushMenu ( Options_MenuDraw, Options_MenuKey );
-}
+	pass
+	#Options_MenuInit();
+	#M_PushMenu ( Options_MenuDraw, Options_MenuKey );
 
-/*
+
+"""
 =======================================================================
 
 VIDEO MENU
 
 =======================================================================
-*/
+"""
 
-void M_Menu_Video_f (void)
-{
-	VID_MenuInit();
-	M_PushMenu( VID_MenuDraw, VID_MenuKey );
-}
 
-/*
+def M_Menu_Video_f ():
+
+	pass
+	#VID_MenuInit()
+	#M_PushMenu( VID_MenuDraw, VID_MenuKey )
+
+
+"""
 =============================================================================
 
 END GAME MENU
@@ -1815,8 +1823,12 @@ const char *M_Credits_Key( int key )
 
 extern int Developer_searchpath (int who);
 
-void M_Menu_Credits_f( void )
-{
+"""
+def M_Menu_Credits_f():
+
+	pass
+	"""
+
 	int		n;
 	int		count;
 	char	*p;
@@ -1866,9 +1878,9 @@ void M_Menu_Credits_f( void )
 
 	credits_start_time = cls.realtime;
 	M_PushMenu( M_Credits_MenuDraw, M_Credits_Key);
-}
+	"""
 
-/*
+"""
 =============================================================================
 
 GAME MENU
@@ -2015,14 +2027,15 @@ const char *Game_MenuKey( int key )
 	return Default_MenuKey( &s_game_menu, key );
 }
 
-void M_Menu_Game_f (void)
-{
-	Game_MenuInit();
-	M_PushMenu( Game_MenuDraw, Game_MenuKey );
-	m_game_cursor = 1;
-}
+"""
+def M_Menu_Game_f ():
 
-/*
+	pass
+	#Game_MenuInit();
+	#M_PushMenu( Game_MenuDraw, Game_MenuKey );
+	#m_game_cursor = 1;
+
+"""
 =============================================================================
 
 LOADGAME MENU
@@ -2119,14 +2132,14 @@ const char *LoadGame_MenuKey( int key )
 	return Default_MenuKey( &s_loadgame_menu, key );
 }
 
-void M_Menu_LoadGame_f (void)
-{
-	LoadGame_MenuInit();
-	M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey );
-}
+"""
+def M_Menu_LoadGame_f ():
 
+	pass
+	#LoadGame_MenuInit();
+	#M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey );
 
-/*
+"""
 =============================================================================
 
 SAVEGAME MENU
@@ -2189,18 +2202,20 @@ const char *SaveGame_MenuKey( int key )
 	return Default_MenuKey( &s_savegame_menu, key );
 }
 
-void M_Menu_SaveGame_f (void)
-{
-	if (!Com_ServerState())
-		return;		// not playing a game
+"""
+def M_Menu_SaveGame_f ():
 
-	SaveGame_MenuInit();
-	M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey );
-	Create_Savestrings ();
-}
+	pass
+	#if (!Com_ServerState())
+	#	return;		# not playing a game
+
+	#SaveGame_MenuInit();
+	#M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey );
+	#Create_Savestrings ();
 
 
-/*
+
+"""
 =============================================================================
 
 JOIN SERVER MENU
@@ -3926,12 +3941,13 @@ void M_Quit_Draw (void)
 	re.DrawPic ( (viddef.width-w)/2, (viddef.height-h)/2, "quit");
 }
 
+"""
+def M_Menu_Quit_f ():
 
-void M_Menu_Quit_f (void)
-{
-	M_PushMenu (M_Quit_Draw, M_Quit_Key);
-}
+	pass
+	#M_PushMenu (M_Quit_Draw, M_Quit_Key);
 
+"""
 
 
 //=============================================================================
@@ -3942,35 +3958,39 @@ void M_Menu_Quit_f (void)
 =================
 M_Init
 =================
-*/
-void M_Init (void)
-{
-	Cmd_AddCommand ("menu_main", M_Menu_Main_f);
-	Cmd_AddCommand ("menu_game", M_Menu_Game_f);
-		Cmd_AddCommand ("menu_loadgame", M_Menu_LoadGame_f);
-		Cmd_AddCommand ("menu_savegame", M_Menu_SaveGame_f);
-		Cmd_AddCommand ("menu_joinserver", M_Menu_JoinServer_f);
-			Cmd_AddCommand ("menu_addressbook", M_Menu_AddressBook_f);
-		Cmd_AddCommand ("menu_startserver", M_Menu_StartServer_f);
-			Cmd_AddCommand ("menu_dmoptions", M_Menu_DMOptions_f);
-		Cmd_AddCommand ("menu_playerconfig", M_Menu_PlayerConfig_f);
-			Cmd_AddCommand ("menu_downloadoptions", M_Menu_DownloadOptions_f);
-		Cmd_AddCommand ("menu_credits", M_Menu_Credits_f );
-	Cmd_AddCommand ("menu_multiplayer", M_Menu_Multiplayer_f );
-	Cmd_AddCommand ("menu_video", M_Menu_Video_f);
-	Cmd_AddCommand ("menu_options", M_Menu_Options_f);
-		Cmd_AddCommand ("menu_keys", M_Menu_Keys_f);
-	Cmd_AddCommand ("menu_quit", M_Menu_Quit_f);
-}
+"""
+def M_Init ():
+
+	cmd.Cmd_AddCommand ("menu_main", M_Menu_Main_f)
+	cmd.Cmd_AddCommand ("menu_game", M_Menu_Game_f)
+	if 1: #Keep indent as in original c code
+		cmd.Cmd_AddCommand ("menu_loadgame", M_Menu_LoadGame_f)
+		cmd.Cmd_AddCommand ("menu_savegame", M_Menu_SaveGame_f)
+		#cmd.Cmd_AddCommand ("menu_joinserver", M_Menu_JoinServer_f)
+		#	cmd.Cmd_AddCommand ("menu_addressbook", M_Menu_AddressBook_f)
+		#cmd.Cmd_AddCommand ("menu_startserver", M_Menu_StartServer_f)
+		#	cmd.Cmd_AddCommand ("menu_dmoptions", M_Menu_DMOptions_f)
+		#cmd.Cmd_AddCommand ("menu_playerconfig", M_Menu_PlayerConfig_f)
+		#	cmd.Cmd_AddCommand ("menu_downloadoptions", M_Menu_DownloadOptions_f)
+		cmd.Cmd_AddCommand ("menu_credits", M_Menu_Credits_f )
+	cmd.Cmd_AddCommand ("menu_multiplayer", M_Menu_Multiplayer_f )
+	cmd.Cmd_AddCommand ("menu_video", M_Menu_Video_f)
+	cmd.Cmd_AddCommand ("menu_options", M_Menu_Options_f)
+	if 1:
+		cmd.Cmd_AddCommand ("menu_keys", M_Menu_Keys_f)
+	cmd.Cmd_AddCommand ("menu_quit", M_Menu_Quit_f)
 
 
-/*
+
+"""
 =================
 M_Draw
 =================
-*/
-void M_Draw (void)
-{
+"""
+def M_Draw ():
+
+	pass
+	"""
 	if (cls.key_dest != key_menu)
 		return;
 
@@ -3993,10 +4013,10 @@ void M_Draw (void)
 		S_StartLocalSound( menu_in_sound );
 		m_entersound = false;
 	}
-}
+"""
 
 
-/*
+"""
 =================
 M_Keydown
 =================
