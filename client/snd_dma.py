@@ -752,25 +752,24 @@ def S_StartSound(origin, entnum, entchannel, sfx, fvol, attenuation, timeofs): #
 ==================
 S_StartLocalSound
 ==================
-*/
-void S_StartLocalSound (char *sound)
-{
-	sfx_t	*sfx;
+"""
 
-	if (!sound_started)
-		return;
-		
-	sfx = S_RegisterSound (sound);
-	if (!sfx)
-	{
-		Com_Printf ("S_StartLocalSound: can't cache %s\n", sound);
-		return;
-	}
-	S_StartSound (NULL, cl_main.cl.playernum+1, 0, sfx, 1, 1, 0.0);
-}
+def S_StartLocalSound (sound): #char *
 
+	#sfx_t	*sfx;
 
-/*
+	if not sound_started:
+		return
+	
+	sfx = S_RegisterSound (sound)
+	if sfx is None:
+	
+		common.Com_Printf ("S_StartLocalSound: can't cache %s\n".format(sound))
+		return
+	
+	S_StartSound (None, cl_main.cl.playernum+1, 0, sfx, 1, 1, 0.0)
+
+"""
 ==================
 S_ClearBuffer
 ==================

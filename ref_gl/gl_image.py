@@ -1457,14 +1457,14 @@ def GL_FindImage (name, imgType): #char *, imagetype_t (returns image_t *)
 ===============
 R_RegisterSkin
 ===============
-*/
-struct image_s *R_RegisterSkin (char *name)
-{
-	return GL_FindImage (name, it_skin);
-}
+"""
+def R_RegisterSkin (name): #char * (returns struct image_s *)
+
+	return GL_FindImage (name, imagetype_t.it_skin)
 
 
-/*
+
+"""
 ================
 GL_FreeUnusedImages
 

@@ -388,14 +388,15 @@ void CL_Pause_f (void)
 ==================
 CL_Quit_f
 ==================
-*/
-void CL_Quit_f (void)
-{
-	CL_Disconnect ();
-	Com_Quit ();
-}
+"""
+def CL_Quit_f ():
 
-/*
+
+	#CL_Disconnect ()
+	common.Com_Quit ()
+
+
+"""
 ================
 CL_Drop
 
@@ -1712,8 +1713,9 @@ def CL_Frame (msec): #int
 	// decide the simulation time
 	cls.frametime = extratime/1000.0;
 	cl.time += extratime;
-	cls.realtime = curtime;
-
+	"""
+	cls.realtime = q_shlinux.curtime
+	"""
 	extratime = 0;
 #if 0
 	if (cls.frametime > (1.0 / cl_minfps->value))

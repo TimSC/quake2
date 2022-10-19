@@ -17,8 +17,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, cmd
-from client import cl_main, client
+from qcommon import cvar, cmd, common
+from client import cl_main, client, cl_scrn, snd_dma, keys
+from linux import vid_so
+from game import q_shared
+
 """
 #include <ctype.h>
 #ifdef _WIN32
@@ -27,10 +30,11 @@ from client import cl_main, client
 #include "client.h"
 #include "../client/qmenu.h"
 
-static int	m_main_cursor;
-
-#define NUM_CURSOR_FRAMES 15
 """
+m_main_cursor = 0 #static int
+
+NUM_CURSOR_FRAMES = 15
+
 menu_in_sound		= "misc/menu1.wav" #static char *
 menu_move_sound		= "misc/menu2.wav" #static char *
 menu_out_sound		= "misc/menu3.wav" #static char *
@@ -77,8 +81,8 @@ static void M_Banner( char *name )
 {
 	int w, h;
 
-	re.DrawGetPicSize (&w, &h, name );
-	re.DrawPic( viddef.width / 2 - w / 2, viddef.height / 2 - 110, name );
+	vid_so.re.DrawGetPicSize (&w, &h, name );
+	vid_so.re.DrawPic( vid_so.viddef.width / 2 - w / 2, vid_so.viddef.height / 2 - 110, name );
 }
 """
 def M_PushMenu ( draw, key ): #void (*) (void), const char *(*) (int k)
@@ -102,12 +106,12 @@ def M_PushMenu ( draw, key ): #void (*) (void), const char *(*) (int k)
 			found = i
 
 	if found is not None:
-		m_layers = m_layers[:i]
+		m_layers = m_layers[:found]
 
 	else:
 	
 		if m_menudepth >= MAX_MENU_DEPTH:
-			qcommon.Com_Error (ERR_FATAL, "M_PushMenu: MAX_MENU_DEPTH")
+			qcommon.Com_Error (q_shared.ERR_FATAL, "M_PushMenu: MAX_MENU_DEPTH")
 		
 		m_layers.append(menulayer_t(m_drawfunc, m_keyfunc))
 		#m_menudepth++;
@@ -137,9 +141,9 @@ def M_PopMenu ():
 
 	global m_layers, m_drawfunc, m_keyfunc
 
-	S_StartLocalSound( menu_out_sound )
+	snd_dma.S_StartLocalSound( menu_out_sound )
 	if len(m_layers) == 0:
-		common.Com_Error (ERR_FATAL, "M_PopMenu: depth < 1")
+		common.Com_Error (q_shared.ERR_FATAL, "M_PopMenu: depth < 1")
 	#m_menudepth--;
 
 	layer = m_layers.pop()
@@ -280,7 +284,7 @@ higher res screens.
 */
 void M_DrawCharacter (int cx, int cy, int num)
 {
-	re.DrawChar ( cx + ((viddef.width - 320)>>1), cy + ((viddef.height - 240)>>1), num);
+	vid_so.re.DrawChar ( cx + ((vid_so.viddef.width - 320)>>1), cy + ((vid_so.viddef.height - 240)>>1), num);
 }
 
 void M_Print (int cx, int cy, char *str)
@@ -305,7 +309,7 @@ void M_PrintWhite (int cx, int cy, char *str)
 
 void M_DrawPic (int x, int y, char *pic)
 {
-	re.DrawPic (x + ((viddef.width - 320)>>1), y + ((viddef.height - 240)>>1), pic);
+	vid_so.re.DrawPic (x + ((vid_so.viddef.width - 320)>>1), y + ((vid_so.viddef.height - 240)>>1), pic);
 }
 
 
@@ -317,29 +321,29 @@ Draws an animating cursor with the point at
 x,y.  The pic will extend to the left of x,
 and both above and below y.
 =============
-*/
-void M_DrawCursor( int x, int y, int f )
-{
-	char	cursorname[80];
-	static qboolean cached;
+"""
+cached = False
 
-	if ( !cached )
-	{
-		int i;
+def M_DrawCursor( x, y, f ): #int, int, int
 
-		for ( i = 0; i < NUM_CURSOR_FRAMES; i++ )
-		{
-			Com_sprintf( cursorname, sizeof( cursorname ), "m_cursor%d", i );
+	global cached
+	#char	cursorname[80];
+	#static qboolean cached;
 
-			re.RegisterPic( cursorname );
-		}
-		cached = true;
-	}
+	if not cached:
+	
+		for i in range(NUM_CURSOR_FRAMES):
+		
+			cursorname = "m_cursor{:d}".format(i)
+			vid_so.re.RegisterPic( cursorname )
+		
+		cached = True
+	
+	cursorname = "m_cursor{:d}".format(f)
+	vid_so.re.DrawPic( x, y, cursorname )
 
-	Com_sprintf( cursorname, sizeof(cursorname), "m_cursor%d", f );
-	re.DrawPic( x, y, cursorname );
-}
 
+"""
 void M_DrawTextBox (int x, int y, int width, int lines)
 {
 	int		cx, cy;
@@ -396,112 +400,96 @@ MAIN_ITEMS	= 5
 
 def M_Main_Draw ():
 
-	print ("M_Main_Draw")
-	pass
+	global m_main_cursor
+
 	"""
 	int i;
 	int w, h;
 	int ystart;
 	int	xoffset;
-	int widest = -1;
 	int totalheight = 0;
 	char litname[80];
-	char *names[] =
-	{
+	"""
+	names = [
 		"m_main_game",
 		"m_main_multiplayer",
 		"m_main_options",
 		"m_main_video",
-		"m_main_quit",
-		0
-	};
+		"m_main_quit"] #char *[]
 
-	for ( i = 0; names[i] != 0; i++ )
-	{
-		re.DrawGetPicSize( &w, &h, names[i] );
+	widest = -1
+	totalheight = 0
 
-		if ( w > widest )
-			widest = w;
-		totalheight += ( h + 12 );
-	}
+	for name in names:
+	
+		w, h = vid_so.re.DrawGetPicSize( name )
 
-	ystart = ( viddef.height / 2 - 110 );
-	xoffset = ( viddef.width - widest + 70 ) / 2;
+		if w > widest:
+			widest = w
+		totalheight += ( h + 12 )
+	
 
-	for ( i = 0; names[i] != 0; i++ )
-	{
-		if ( i != m_main_cursor )
-			re.DrawPic( xoffset, ystart + i * 40 + 13, names[i] );
-	}
-	strcpy( litname, names[m_main_cursor] );
-	strcat( litname, "_sel" );
-	re.DrawPic( xoffset, ystart + m_main_cursor * 40 + 13, litname );
+	ystart = vid_so.viddef.height // 2 - 110
+	xoffset = ( vid_so.viddef.width - widest + 70 ) // 2
 
-	M_DrawCursor( xoffset - 25, ystart + m_main_cursor * 40 + 11, (int)(cl_main.cls.realtime / 100)%NUM_CURSOR_FRAMES );
+	
+	for i, name in enumerate(names):
+	
+		if i != m_main_cursor:
+			vid_so.re.DrawPic( xoffset, ystart + i * 40 + 13, name )
+	
+	litname = names[m_main_cursor] + "_sel"
+	vid_so.re.DrawPic( xoffset, ystart + m_main_cursor * 40 + 13, litname )
 
-	re.DrawGetPicSize( &w, &h, "m_main_plaque" );
-	re.DrawPic( xoffset - 30 - w, ystart, "m_main_plaque" );
+	M_DrawCursor( xoffset - 25, ystart + m_main_cursor * 40 + 11, (int(cl_main.cls.realtime) // 100)%NUM_CURSOR_FRAMES )
 
-	re.DrawPic( xoffset - 30 - w, ystart + h + 5, "m_main_logo" );
-	"""
+	w, h = vid_so.re.DrawGetPicSize( "m_main_plaque" )
+	vid_so.re.DrawPic( xoffset - 30 - w, ystart, "m_main_plaque" )
+
+	vid_so.re.DrawPic( xoffset - 30 - w, ystart + h + 5, "m_main_logo" )
+
 
 def M_Main_Key (key): #int (returns const char *)
 
-	print ("M_Main_Key")
-	pass
-	"""
-	const char *sound = menu_move_sound;
+	global m_entersound, m_main_cursor
 
-	switch (key)
-	{
-	case K_ESCAPE:
-		M_PopMenu ();
-		break;
+	sound = menu_move_sound #const char *
 
-	case K_KP_DOWNARROW:
-	case K_DOWNARROW:
-		if (++m_main_cursor >= MAIN_ITEMS)
-			m_main_cursor = 0;
+	if key == keys.K_ESCAPE:
+		M_PopMenu ()
+
+	elif key == keys.K_KP_DOWNARROW or key == keys.K_DOWNARROW:
+		m_main_cursor += 1
+		if m_main_cursor >= MAIN_ITEMS:
+			m_main_cursor = 0
+		return sound
+
+	elif key == keys.K_KP_UPARROW or key == keys.K_UPARROW:
+
+		m_main_cursor -= 1
+		if m_main_cursor < 0:
+			m_main_cursor = MAIN_ITEMS - 1
 		return sound;
 
-	case K_KP_UPARROW:
-	case K_UPARROW:
-		if (--m_main_cursor < 0)
-			m_main_cursor = MAIN_ITEMS - 1;
-		return sound;
+	elif key == keys.K_KP_ENTER or key == keys.K_ENTER:
 
-	case K_KP_ENTER:
-	case K_ENTER:
-		m_entersound = true;
+		m_entersound = True
 
-		switch (m_main_cursor)
-		{
-		case 0:
-			M_Menu_Game_f ();
-			break;
+		if m_main_cursor == 0:
+			M_Menu_Game_f ()
+		elif m_main_cursor == 1:
+			M_Menu_Multiplayer_f()
+		elif m_main_cursor == 2:
+			M_Menu_Options_f ()
+		elif m_main_cursor == 3:
+			M_Menu_Video_f ()
+		elif m_main_cursor == 4:
+			M_Menu_Quit_f ()
 
-		case 1:
-			M_Menu_Multiplayer_f();
-			break;
-
-		case 2:
-			M_Menu_Options_f ();
-			break;
-
-		case 3:
-			M_Menu_Video_f ();
-			break;
-
-		case 4:
-			M_Menu_Quit_f ();
-			break;
-		}
-	}
-
-	return NULL;
+	return None
 
 
-"""
+
 def M_Menu_Main_f ():
 
 	M_PushMenu (M_Main_Draw, M_Main_Key)
@@ -544,7 +532,7 @@ static void StartNetworkServerFunc( void *unused )
 
 void Multiplayer_MenuInit( void )
 {
-	s_multiplayer_menu.x = viddef.width * 0.50 - 64;
+	s_multiplayer_menu.x = vid_so.viddef.width * 0.50 - 64;
 	s_multiplayer_menu.nitems = 0;
 
 	s_join_network_server_action.generic.type	= MTYPE_ACTION;
@@ -700,9 +688,9 @@ static void M_FindKeysForCommand (char *command, int *twokeys)
 static void KeyCursorDrawFunc( menuframework_s *menu )
 {
 	if ( bind_grab )
-		re.DrawChar( menu->x, menu->y + menu->cursor * 9, '=' );
+		vid_so.re.DrawChar( menu->x, menu->y + menu->cursor * 9, '=' );
 	else
-		re.DrawChar( menu->x, menu->y + menu->cursor * 9, 12 + ( ( int ) ( Sys_Milliseconds() / 250 ) & 1 ) );
+		vid_so.re.DrawChar( menu->x, menu->y + menu->cursor * 9, 12 + ( ( int ) ( Sys_Milliseconds() / 250 ) & 1 ) );
 }
 
 static void DrawKeyBindingFunc( void *self )
@@ -755,7 +743,7 @@ static void Keys_MenuInit( void )
 	int y = 0;
 	int i = 0;
 
-	s_keys_menu.x = viddef.width * 0.50;
+	s_keys_menu.x = vid_so.viddef.width * 0.50;
 	s_keys_menu.nitems = 0;
 	s_keys_menu.cursordraw = KeyCursorDrawFunc;
 
@@ -1161,7 +1149,7 @@ static void ConsoleFunc( void *unused )
 	*/
 	extern void Key_ClearTyping( void );
 
-	if ( cl.attractloop )
+	if ( cl_main.cl.attractloop )
 	{
 		Cbuf_AddText ("killserver\n");
 		return;
@@ -1195,7 +1183,7 @@ static void UpdateSoundQualityFunc( void *unused )
 	M_Print( 16 + 16, 120 - 48 + 24, "please be patient." );
 
 	// the text box won't show up unless we do a buffer swap
-	re.EndFrame();
+	vid_so.re.EndFrame();
 
 	CL_Snd_Restart_f();
 }
@@ -1239,8 +1227,8 @@ void Options_MenuInit( void )
 	/*
 	** configure controls menu and menu items
 	*/
-	s_options_menu.x = viddef.width / 2;
-	s_options_menu.y = viddef.height / 2 - 58;
+	s_options_menu.x = vid_so.viddef.width / 2;
+	s_options_menu.y = vid_so.viddef.height / 2 - 58;
 	s_options_menu.nitems = 0;
 
 	s_options_sfxvolume_slider.generic.type	= MTYPE_SLIDER;
@@ -1775,7 +1763,7 @@ void M_Credits_MenuDraw( void )
 	/*
 	** draw the credits
 	*/
-	for ( i = 0, y = viddef.height - ( ( cl_main.cls.realtime - credits_start_time ) / 40.0F ); credits[i] && y < viddef.height; y += 10, i++ )
+	for ( i = 0, y = vid_so.viddef.height - ( ( cl_main.cls.realtime - credits_start_time ) / 40.0F ); credits[i] && y < vid_so.viddef.height; y += 10, i++ )
 	{
 		int j, stringoffset = 0;
 		int bold = false;
@@ -1798,12 +1786,12 @@ void M_Credits_MenuDraw( void )
 		{
 			int x;
 
-			x = ( viddef.width - strlen( credits[i] ) * 8 - stringoffset * 8 ) / 2 + ( j + stringoffset ) * 8;
+			x = ( vid_so.viddef.width - strlen( credits[i] ) * 8 - stringoffset * 8 ) / 2 + ( j + stringoffset ) * 8;
 
 			if ( bold )
-				re.DrawChar( x, y, credits[i][j+stringoffset] + 128 );
+				vid_so.re.DrawChar( x, y, credits[i][j+stringoffset] + 128 );
 			else
-				re.DrawChar( x, y, credits[i][j+stringoffset] );
+				vid_so.re.DrawChar( x, y, credits[i][j+stringoffset] );
 		}
 	}
 
@@ -1908,7 +1896,7 @@ static menuseparator_s	s_blankline;
 static void StartGame( void )
 {
 	// disable updates and start the cinematic going
-	cl.servercount = -1;
+	cl_main.cl.servercount = -1;
 	M_ForceMenuOff ();
 	Cvar_SetValue( "deathmatch", 0 );
 	Cvar_SetValue( "coop", 0 );
@@ -1962,7 +1950,7 @@ void Game_MenuInit( void )
 		0
 	};
 
-	s_game_menu.x = viddef.width * 0.50;
+	s_game_menu.x = vid_so.viddef.width * 0.50;
 	s_game_menu.nitems = 0;
 
 	s_easy_game_action.generic.type	= MTYPE_ACTION;
@@ -2036,6 +2024,8 @@ const char *Game_MenuKey( int key )
 """
 def M_Menu_Game_f ():
 
+	global m_game_cursor
+
 	#Game_MenuInit()
 	M_PushMenu( Game_MenuDraw, Game_MenuKey )
 	m_game_cursor = 1
@@ -2095,8 +2085,8 @@ void LoadGame_MenuInit( void )
 {
 	int i;
 
-	s_loadgame_menu.x = viddef.width / 2 - 120;
-	s_loadgame_menu.y = viddef.height / 2 - 58;
+	s_loadgame_menu.x = vid_so.viddef.width / 2 - 120;
+	s_loadgame_menu.y = vid_so.viddef.height / 2 - 58;
 	s_loadgame_menu.nitems = 0;
 
 	Create_Savestrings();
@@ -2172,8 +2162,8 @@ void SaveGame_MenuInit( void )
 {
 	int i;
 
-	s_savegame_menu.x = viddef.width / 2 - 120;
-	s_savegame_menu.y = viddef.height / 2 - 58;
+	s_savegame_menu.x = vid_so.viddef.width / 2 - 120;
+	s_savegame_menu.y = vid_so.viddef.height / 2 - 58;
 	s_savegame_menu.nitems = 0;
 
 	Create_Savestrings();
@@ -2303,7 +2293,7 @@ void SearchLocalGames( void )
 	M_Print( 16 + 16, 120 - 48 + 24, "please be patient." );
 
 	// the text box won't show up unless we do a buffer swap
-	re.EndFrame();
+	vid_so.re.EndFrame();
 
 	// send out info packets
 	CL_PingServers_f();
@@ -2318,7 +2308,7 @@ void JoinServer_MenuInit( void )
 {
 	int i;
 
-	s_joinserver_menu.x = viddef.width * 0.50 - 120;
+	s_joinserver_menu.x = vid_so.viddef.width * 0.50 - 120;
 	s_joinserver_menu.nitems = 0;
 
 	s_joinserver_address_book_action.generic.type	= MTYPE_ACTION;
@@ -2618,7 +2608,7 @@ void StartServer_MenuInit( void )
 	/*
 	** initialize the menu stuff
 	*/
-	s_startserver_menu.x = viddef.width * 0.50;
+	s_startserver_menu.x = vid_so.viddef.width * 0.50;
 	s_startserver_menu.nitems = 0;
 
 	s_startmap_list.generic.type = MTYPE_SPINCONTROL;
@@ -2944,7 +2934,7 @@ void DMOptions_MenuInit( void )
 	int dmflags = Cvar_VariableValue( "dmflags" );
 	int y = 0;
 
-	s_dmoptions_menu.x = viddef.width * 0.50;
+	s_dmoptions_menu.x = vid_so.viddef.width * 0.50;
 	s_dmoptions_menu.nitems = 0;
 
 	s_falls_box.generic.type = MTYPE_SPINCONTROL;
@@ -3211,7 +3201,7 @@ void DownloadOptions_MenuInit( void )
 	};
 	int y = 0;
 
-	s_downloadoptions_menu.x = viddef.width * 0.50;
+	s_downloadoptions_menu.x = vid_so.viddef.width * 0.50;
 	s_downloadoptions_menu.nitems = 0;
 
 	s_download_title.generic.type = MTYPE_SEPARATOR;
@@ -3304,8 +3294,8 @@ void AddressBook_MenuInit( void )
 {
 	int i;
 
-	s_addressbook_menu.x = viddef.width / 2 - 142;
-	s_addressbook_menu.y = viddef.height / 2 - 58;
+	s_addressbook_menu.x = vid_so.viddef.width / 2 - 142;
+	s_addressbook_menu.y = vid_so.viddef.height / 2 - 58;
 	s_addressbook_menu.nitems = 0;
 
 	for ( i = 0; i < NUM_ADDRESSBOOK_ENTRIES; i++ )
@@ -3681,8 +3671,8 @@ qboolean PlayerConfig_MenuInit( void )
 		}
 	}
 
-	s_player_config_menu.x = viddef.width / 2 - 95; 
-	s_player_config_menu.y = viddef.height / 2 - 97;
+	s_player_config_menu.x = vid_so.viddef.width / 2 - 95; 
+	s_player_config_menu.y = vid_so.viddef.height / 2 - 97;
 	s_player_config_menu.nitems = 0;
 
 	s_player_name_field.generic.type = MTYPE_FIELD;
@@ -3787,8 +3777,8 @@ void PlayerConfig_MenuDraw( void )
 
 	memset( &refdef, 0, sizeof( refdef ) );
 
-	refdef.x = viddef.width / 2;
-	refdef.y = viddef.height / 2 - 72;
+	refdef.x = vid_so.viddef.width / 2;
+	refdef.y = vid_so.viddef.height / 2 - 72;
 	refdef.width = 144;
 	refdef.height = 168;
 	refdef.fov_x = 40;
@@ -3804,9 +3794,9 @@ void PlayerConfig_MenuDraw( void )
 		memset( &entity, 0, sizeof( entity ) );
 
 		Com_sprintf( scratch, sizeof( scratch ), "players/%s/tris.md2", s_pmi[s_player_model_box.curvalue].directory );
-		entity.model = re.RegisterModel( scratch );
+		entity.model = vid_so.re.RegisterModel( scratch );
 		Com_sprintf( scratch, sizeof( scratch ), "players/%s/%s.pcx", s_pmi[s_player_model_box.curvalue].directory, s_pmi[s_player_model_box.curvalue].skindisplaynames[s_player_skin_box.curvalue] );
-		entity.skin = re.RegisterSkin( scratch );
+		entity.skin = vid_so.re.RegisterSkin( scratch );
 		entity.flags = RF_FULLBRIGHT;
 		entity.origin[0] = 80;
 		entity.origin[1] = 0;
@@ -3827,15 +3817,15 @@ void PlayerConfig_MenuDraw( void )
 
 		Menu_Draw( &s_player_config_menu );
 
-		M_DrawTextBox( ( refdef.x ) * ( 320.0F / viddef.width ) - 8, ( viddef.height / 2 ) * ( 240.0F / viddef.height) - 77, refdef.width / 8, refdef.height / 8 );
+		M_DrawTextBox( ( refdef.x ) * ( 320.0F / vid_so.viddef.width ) - 8, ( vid_so.viddef.height / 2 ) * ( 240.0F / vid_so.viddef.height) - 77, refdef.width / 8, refdef.height / 8 );
 		refdef.height += 4;
 
-		re.RenderFrame( &refdef );
+		vid_so.re.RenderFrame( &refdef );
 
 		Com_sprintf( scratch, sizeof( scratch ), "/players/%s/%s_i.pcx", 
 			s_pmi[s_player_model_box.curvalue].directory,
 			s_pmi[s_player_model_box.curvalue].skindisplaynames[s_player_skin_box.curvalue] );
-		re.DrawPic( s_player_config_menu.x - 40, refdef.y, scratch );
+		vid_so.re.DrawPic( s_player_config_menu.x - 40, refdef.y, scratch );
 	}
 }
 
@@ -3909,42 +3899,25 @@ void M_Menu_Gallery_f( void )
 QUIT MENU
 
 =======================================================================
-*/
-
-const char *M_Quit_Key (int key)
-{
-	switch (key)
-	{
-	case K_ESCAPE:
-	case 'n':
-	case 'N':
-		M_PopMenu ();
-		break;
-
-	case 'Y':
-	case 'y':
-		cl_main.cls.key_dest = key_console;
-		CL_Quit_f ();
-		break;
-
-	default:
-		break;
-	}
-
-	return NULL;
-
-}
-
-
-void M_Quit_Draw (void)
-{
-	int		w, h;
-
-	re.DrawGetPicSize (&w, &h, "quit");
-	re.DrawPic ( (viddef.width-w)/2, (viddef.height-h)/2, "quit");
-}
-
 """
+
+def M_Quit_Key (key): #int (returns const char *)
+
+	if key in [keys.K_ESCAPE, 'n', 'N']:
+		M_PopMenu ()
+	elif key in ['Y', 'y']:
+		cl_main.cls.key_dest = key_console
+		cl_main.CL_Quit_f ()
+
+	return None
+
+def M_Quit_Draw ():
+
+	#int		w, h;
+
+	w, h = vid_so.re.DrawGetPicSize ("quit")
+	vid_so.re.DrawPic ( (vid_so.viddef.width-w)//2, (vid_so.viddef.height-h)//2, "quit")
+
 def M_Menu_Quit_f ():
 
 	M_PushMenu (M_Quit_Draw, M_Quit_Key)
@@ -3991,17 +3964,19 @@ M_Draw
 """
 def M_Draw ():
 
+	global m_entersound
+
 	if cl_main.cls.key_dest != client.keydest_t.key_menu:
 		return
 
 	# repaint everything next frame
-	SCR_DirtyScreen ()
+	cl_scrn.SCR_DirtyScreen ()
 
 	# dim everything behind it down
-	if cl.cinematictime > 0:
-		re.DrawFill (0,0,viddef.width, viddef.height, 0)
+	if cl_main.cl.cinematictime > 0:
+		vid_so.re.DrawFill (0,0,vid_so.viddef.width, vid_so.viddef.height, 0)
 	else:
-		re.DrawFadeScreen ()
+		vid_so.re.DrawFadeScreen ()
 
 	m_drawfunc ()
 
@@ -4010,7 +3985,7 @@ def M_Draw ():
 	# caching images
 	if m_entersound:
 	
-		S_StartLocalSound( menu_in_sound )
+		snd_dma.S_StartLocalSound( menu_in_sound )
 		m_entersound = False
 	
 
@@ -4028,5 +4003,5 @@ def M_Keydown (key): #int
 	if m_keyfunc is not None:
 		s = m_keyfunc( key )
 		if s is not None:
-			S_StartLocalSound( s )
+			snd_dma.S_StartLocalSound( s )
 

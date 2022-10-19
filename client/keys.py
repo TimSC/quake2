@@ -945,7 +945,7 @@ def Key_Event (key, down, timestamp): #int, qboolean, unsigned
 		if not down:
 			return
 
-		if cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS] and cl_main.cls.key_dest == key_game:
+		if cl_main.cl.frame.playerstate.stats[q_shared.STAT_LAYOUTS] and cl_main.cls.key_dest == key_game:
 			# put away help computer / inventory
 			cmd.Cbuf_AddText ("cmd putaway\n")
 			return
@@ -1032,7 +1032,7 @@ def Key_Event (key, down, timestamp): #int, qboolean, unsigned
 	if cl_main.cls.key_dest == client.keydest_t.key_message:
 		Key_Message (key)
 	elif cl_main.cls.key_dest == client.keydest_t.key_menu:
-		M_Keydown (key)
+		menu.M_Keydown (key)
 	elif cl_main.cls.key_dest in [client.keydest_t.key_game, client.keydest_t.key_console]:
 		Key_Console (key)
 	else:

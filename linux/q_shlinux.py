@@ -97,10 +97,14 @@ void Hunk_Free (void *base)
 Sys_Milliseconds
 ================
 """
-#int curtime;
+curtime = 0 #int
+
 def Sys_Milliseconds (): #(returns int)
 
-	return int(time.time() * 1000.0)
+	global curtime
+	curtime = int(time.time() * 1000.0)
+
+	return curtime
 	"""
 	struct timeval tp;
 	struct timezone tzp;

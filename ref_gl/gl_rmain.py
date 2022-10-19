@@ -1792,8 +1792,8 @@ def GetRefAPI ( rimp ): #refimport_t (returns refexport_t)
 
 	re.BeginRegistration = gl_model.R_BeginRegistration
 	re.RegisterModel = gl_model.R_RegisterModel
-	#re.RegisterSkin = R_RegisterSkin
-	#re.RegisterPic = Draw_FindPic
+	re.RegisterSkin = gl_image.R_RegisterSkin
+	re.RegisterPic = gl_draw.Draw_FindPic
 	#re.SetSky = R_SetSky
 	re.EndRegistration = gl_model.R_EndRegistration
 

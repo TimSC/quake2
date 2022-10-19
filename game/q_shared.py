@@ -995,30 +995,30 @@ ATTN_NORM =               1
 ATTN_IDLE =               2
 ATTN_STATIC =             3	# diminish very rapidly with distance
 
-"""
-// player_state->stats[] indexes
-#define STAT_HEALTH_ICON		0
-#define	STAT_HEALTH				1
-#define	STAT_AMMO_ICON			2
-#define	STAT_AMMO				3
-#define	STAT_ARMOR_ICON			4
-#define	STAT_ARMOR				5
-#define	STAT_SELECTED_ICON		6
-#define	STAT_PICKUP_ICON		7
-#define	STAT_PICKUP_STRING		8
-#define	STAT_TIMER_ICON			9
-#define	STAT_TIMER				10
-#define	STAT_HELPICON			11
-#define	STAT_SELECTED_ITEM		12
-#define	STAT_LAYOUTS			13
-#define	STAT_FRAGS				14
-#define	STAT_FLASHES			15		// cleared each frame, 1 = health, 2 = armor
-#define STAT_CHASE				16
-#define STAT_SPECTATOR			17
 
-#define	MAX_STATS				32
+# player_state->stats[] indexes
+STAT_HEALTH_ICON		= 0
+STAT_HEALTH				= 1
+STAT_AMMO_ICON			= 2
+STAT_AMMO				= 3
+STAT_ARMOR_ICON			= 4
+STAT_ARMOR				= 5
+STAT_SELECTED_ICON		= 6
+STAT_PICKUP_ICON		= 7
+STAT_PICKUP_STRING		= 8
+STAT_TIMER_ICON			= 9
+STAT_TIMER				= 10
+STAT_HELPICON			= 11
+STAT_SELECTED_ITEM		= 12
+STAT_LAYOUTS			= 13
+STAT_FRAGS				= 14
+STAT_FLASHES			= 15		# cleared each frame, 1 = health, 2 = armor
+STAT_CHASE				= 16
+STAT_SPECTATOR			= 17
 
-"""
+MAX_STATS =	32
+
+
 # dmflags->value flags
 DF_NO_HEALTH		= 0x00000001	# 1
 DF_NO_ITEMS			= 0x00000002	# 2
@@ -1170,32 +1170,36 @@ typedef struct entity_state_s
 // to rendered a view.  There will only be 10 player_state_t sent each second,
 // but the number of pmove_state_t changes will be reletive to client
 // frame rates
-typedef struct
-{
-	pmove_state_t	pmove;		// for prediction
+"""
+class player_state_t(object):
 
-	// these fields do not need to be communicated bit-precise
+	def __init__(self):
 
-	vec3_t		viewangles;		// for fixed views
-	vec3_t		viewoffset;		// add to pmovestate->origin
-	vec3_t		kick_angles;	// add to view direction to get render angles
-								// set by weapon kicks, pain effects, etc
+		self.pmove = None		# pmove_state_t, for prediction
 
-	vec3_t		gunangles;
-	vec3_t		gunoffset;
-	int			gunindex;
-	int			gunframe;
+		# these fields do not need to be communicated bit-precise
 
-	float		blend[4];		// rgba full screen effect
-	
-	float		fov;			// horizontal field of view
+		self.viewangles = None		# vec3_t, for fixed views
+		self.viewoffset = None		# vec3_t, add to pmovestate->origin
+		self.kick_angles = None		# vec3_t, add to view direction to get render angles
+									# set by weapon kicks, pain effects, etc
 
-	int			rdflags;		// refdef flags
+		self.gunangles = None # vec3_t
+		self.gunoffset = None # vec3_t
+		self.gunindex = None # int
+		self.gunframe = None # int
 
-	short		stats[MAX_STATS];		// fast status bar updates
-} player_state_t;
+		self.blend = [0.0, 0.0, 0.0, 0.0] # float[4], rgba full screen effect
+		
+		self.fov = None #float, horizontal field of view
 
+		self.rdflags = None # int, refdef flags
 
+		self.stats = [] # short[MAX_STATS], fast status bar updates
+		for i in range(MAX_STATS):
+			self.stats.append(0)
+
+"""
 // ==================
 // PGM 
 #define VIDREF_GL		1
