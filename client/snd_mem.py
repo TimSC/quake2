@@ -158,7 +158,9 @@ def S_LoadSound (s): #sfx_t * (returns sfxcache_t *)
 	len = info.samples / stepscale;
 
 	len = len * info.width * info.channels;
-
+	"""
+	s.cache = sc
+	"""
 	sc = s->cache = Z_Malloc (len + sizeof(sfxcache_t));
 	if (!sc)
 	{

@@ -71,33 +71,33 @@ MAX_MENU_DEPTH	= 8
 
 class menulayer_t(object):
 	def __init__(self, drawIn=None, keyIn=None):
-		draw = drawIn #void	(*draw) (void);
-		key = keyIn #const char *(*key) (int k);
+		self.draw = drawIn #void	(*draw) (void);
+		self.key = keyIn #const char *(*key) (int k);
 
 m_layers = [] #menulayer_t	[MAX_MENU_DEPTH];
 m_menudepth = 0
-"""
-static void M_Banner( char *name )
-{
-	int w, h;
 
-	vid_so.re.DrawGetPicSize (&w, &h, name );
-	vid_so.re.DrawPic( vid_so.viddef.width / 2 - w / 2, vid_so.viddef.height / 2 - 110, name );
-}
-"""
+def M_Banner( name ): #char *
+
+	#int w, h;
+
+	w, h = vid_so.re.DrawGetPicSize ( name )
+	vid_so.re.DrawPic( vid_so.viddef.width // 2 - w // 2, vid_so.viddef.height // 2 - 110, name )
+
 def M_PushMenu ( draw, key ): #void (*) (void), const char *(*) (int k)
 
 	global m_layers, m_drawfunc, m_keyfunc
 	"""
 	int		i;
-
-	if (Cvar_VariableValue ("maxclients") == 1 
-		&& Com_ServerState ())
-		Cvar_Set ("paused", "1");
 	"""
+
+	if cvar.Cvar_VariableValue ("maxclients") == 1 \
+		and common.Com_ServerState ():
+		cvar.Cvar_Set ("paused", "1");
+
 	# if this menu is already present, drop back to that level
 	# to avoid stacking menus by hotkeys
-	found = False
+	found = None
 	for i, layer in enumerate(m_layers):
 		if layer.draw == draw and \
 			layer.key == key:
