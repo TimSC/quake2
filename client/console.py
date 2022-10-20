@@ -37,12 +37,12 @@ class console_t(object):
 
 		self.initialized = False #qboolean
 
-		self.text = None #char	[CON_TEXTSIZE];
+		self.text = [] #char	[CON_TEXTSIZE];
 		self.current = None #int, line where next message will be printed
-		self.x = None #int, offset in current line for next print
+		self.x = 0 #int, offset in current line for next print
 		self.display = None #int, bottom of console displays this line
 
-		self.ormask = None #int, high bit mask for colored characters
+		self.ormask = 0 #int, high bit mask for colored characters
 
 		self.linewidth = None #int, characters across screen
 		self.totallines = 0 #int, total lines in console scrollback
@@ -166,11 +166,10 @@ Con_Clear_f
 """
 def Con_Clear_f ():
 
-	pass
+	for i, li in enumerate(con.text):
+		con.text[i] = ""
 	"""
 	memset (con.text, ' ', CON_TEXTSIZE);
-
-
 						
 /*
 ================
@@ -300,7 +299,9 @@ def Con_CheckResize ():
 		width = 38
 		con.linewidth = width
 		con.totallines = CON_TEXTSIZE // con.linewidth
-		con.text = "".join([' '] * CON_TEXTSIZE)
+		con.text = []
+		for i in range(con.totallines):
+			con.text.append("")
 	
 	else:
 	
@@ -318,19 +319,13 @@ def Con_CheckResize ():
 		if con.linewidth < numchars:
 			numchars = con.linewidth
 
-		#memcpy (tbuf, con.text, CON_TEXTSIZE)
-		con.text = "".join([' '] * CON_TEXTSIZE)
+		tbuf = con.text
+		con.text = []
+		for i in range(con.totallines):
+			con.text.append("")
 
-		"""
 		for i in range(numlines):
-		
-			for j in range(numchars):
-			
-				con.text[(con.totallines - 1 - i) * con.linewidth + j] = \
-						tbuf[((con.current - i + oldtotallines) % \
-							  oldtotallines) * oldwidth + j]
-			
-		"""
+			con.text[con.totallines - 1 - i] = tbuf[(con.current - i + oldtotallines) % oldtotallines]
 
 		Con_ClearNotify ()
 	
@@ -372,18 +367,21 @@ def Con_Init ():
 ===============
 Con_Linefeed
 ===============
-*/
-void Con_Linefeed (void)
-{
-	con.x = 0;
-	if (con.display == con.current)
-		con.display++;
-	con.current++;
-	memset (&con.text[(con.current%con.totallines)*con.linewidth]
-	, ' ', con.linewidth);
-}
+"""
+def Con_Linefeed ():
 
-/*
+	global con
+
+	con.x = 0
+	if con.display == con.current:
+		con.display+= 1
+	con.current+=1
+	con.text[con.current%con.totallines] = ""
+	#memset (&con.text[(con.current%con.totallines)*con.linewidth]
+	#, ' ', con.linewidth);
+
+
+"""
 ================
 Con_Print
 
@@ -394,78 +392,68 @@ If no console is visible, the text will appear at the top of the game window
 """
 def Con_Print (txt): #char *
 
-	pass
-	"""
-	int		y;
-	int		c, l;
-	static int	cr;
-	int		mask;
+	global con
+	
+	#int		y;
+	#int		c, l;
+	#static int	cr;
+	#int		mask;
+	cr = 0
 
-	if (!con.initialized)
-		return;
+	if not con.initialized:
+		return
 
-	if (txt[0] == 1 || txt[0] == 2)
-	{
-		mask = 128;		// go to colored text
-		txt++;
-	}
-	else
-		mask = 0;
+	cursor = 0
+	if txt[cursor] == 1 or txt[cursor] == 2:
+	
+		mask = 128		# go to colored text
+		cursor += 1
+	
+	else:
+		mask = 0
 
+	c = txt[cursor]
+	while cursor < len(txt):
 
-	while ( (c = *txt) )
-	{
-	// count word length
-		for (l=0 ; l< con.linewidth ; l++)
-			if ( txt[l] <= ' ')
-				break;
+		# count word length
+		l = min(con.linewidth, len(txt) - cursor)
 
-	// word wrap
-		if (l != con.linewidth && (con.x + l > con.linewidth) )
-			con.x = 0;
+		# word wrap
+		if l != con.linewidth and con.x + l > con.linewidth:
+			con.x = 0
 
-		txt++;
+		cursor+=1
 
-		if (cr)
-		{
-			con.current--;
-			cr = false;
-		}
-
+		if cr:
 		
-		if (!con.x)
-		{
-			Con_Linefeed ();
-		// mark time for transparent overlay
-			if (con.current >= 0)
-				con.times[con.current % NUM_CON_TIMES] = cl_main.cls.realtime;
-		}
-
-		switch (c)
-		{
-		case '\n':
-			con.x = 0;
-			break;
-
-		case '\r':
-			con.x = 0;
-			cr = 1;
-			break;
-
-		default:	// display character and advance
-			y = con.current % con.totallines;
-			con.text[y*con.linewidth+con.x] = c | mask | con.ormask;
-			con.x++;
-			if (con.x >= con.linewidth)
-				con.x = 0;
-			break;
-		}
+			con.current-=1
+			cr = False
 		
-	}
-}
+		if con.x == 0:
+		
+			Con_Linefeed ()
+			# mark time for transparent overlay
+			if con.current >= 0:
+				con.times[con.current % NUM_CON_TIMES] = cl_main.cls.realtime
+		
+		if c == '\n':
+			con.x = 0
 
+		elif c == '\r':
+			con.x = 0
+			cr = 1
 
-/*
+		else:	# display character and advance
+			y = con.current % con.totallines
+			con.text[y] = con.text[y][:con.x] + str(chr(ord(c) | mask | con.ormask))
+			con.x += 1
+			if con.x >= con.linewidth:
+				con.x = 0
+
+		if cursor < len(txt):
+			c = txt[cursor]
+
+"""
 ==============
 Con_CenteredPrint
 ==============
@@ -665,7 +653,6 @@ def Con_DrawConsole (frac): #float
 		y -= 8
 		rows-=1
 	
-
 	row = con.display
 	i = 0
 	while i<rows:
@@ -675,10 +662,10 @@ def Con_DrawConsole (frac): #float
 		if con.current - row >= con.totallines:
 			break		# past scrollback wrap point
 		
-		cursor = (row % con.totallines)*con.linewidth
-		text = con.text[cursor:]
+		cursor = row % con.totallines
+		text = con.text[cursor]
 
-		for x in range(con.linewidth):
+		for x, ch in enumerate(text):
 			vid_so.re.DrawChar ( (x+1)<<3, y, ord(text[x]))
 
 		i+=1
