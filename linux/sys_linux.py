@@ -98,7 +98,8 @@ def Sys_Quit ():
 	cl_main.CL_Shutdown ()
 	common.Qcommon_Shutdown ()
     #fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
-	exit(0)
+	#exit(0)
+	pygame.event.post(pygame.event.Event(pygame.QUIT))
 
 
 def Sys_Init():

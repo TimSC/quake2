@@ -1159,7 +1159,7 @@ static void ConsoleFunc( void *unused )
 	Con_ClearNotify ();
 
 	M_ForceMenuOff ();
-	cl_main.cls.key_dest = key_console;
+	cl_main.cls.key_dest = client.keydest_t.key_console;
 }
 
 static void UpdateSoundQualityFunc( void *unused )
@@ -3903,10 +3903,10 @@ QUIT MENU
 
 def M_Quit_Key (key): #int (returns const char *)
 
-	if key in [keys.K_ESCAPE, 'n', 'N']:
+	if key in [keys.K_ESCAPE, ord('n'), ord('N')]:
 		M_PopMenu ()
-	elif key in ['Y', 'y']:
-		cl_main.cls.key_dest = key_console
+	elif key in [ord('Y'), ord('y')]:
+		cl_main.cls.key_dest = client.keydest_t.key_console
 		cl_main.CL_Quit_f ()
 
 	return None

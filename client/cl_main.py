@@ -391,7 +391,6 @@ CL_Quit_f
 """
 def CL_Quit_f ():
 
-
 	#CL_Disconnect ()
 	common.Com_Quit ()
 
