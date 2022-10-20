@@ -435,7 +435,7 @@ class cmd_function_t(object):
 
 cmd_argv = [] #char *[MAX_STRING_TOKENS]
 cmd_null_string = "" # char *
-cmd_args = "" #char[MAX_STRING_CHARS]
+cmd_args = "" #char[q_shared.MAX_STRING_CHARS]
 
 
 cmd_functions = []		# possible commands to execute, cmd_function_t	*
@@ -475,77 +475,81 @@ def Cmd_Args():
 ======================
 Cmd_MacroExpandString
 ======================
-*/
-char *Cmd_MacroExpandString (char *text)
-{
+"""
+def Cmd_MacroExpandString (text): # char * (returns char *)
+
+	"""
 	int		i, j, count, len;
 	qboolean	inquote;
 	char	*scan;
-	static	char	expanded[MAX_STRING_CHARS];
-	char	temporary[MAX_STRING_CHARS];
+	static	char	expanded[q_shared.MAX_STRING_CHARS];
+	char	temporary[q_shared.MAX_STRING_CHARS];
 	char	*token, *start;
+	"""
 
-	inquote = false;
-	scan = text;
+	inquote = False
+	scan = text
 
-	len = strlen (scan);
-	if (len >= MAX_STRING_CHARS)
-	{
-		common.Com_Printf ("Line exceeded %i chars, discarded.\n", MAX_STRING_CHARS);
-		return NULL;
-	}
-
-	count = 0;
-
-	for (i=0 ; i<len ; i++)
-	{
-		if (scan[i] == '"')
-			inquote ^= 1;
-		if (inquote)
-			continue;	// don't expand inside quotes
-		if (scan[i] != '$')
-			continue;
-		// scan out the complete macro
-		start = scan+i+1;
-		token = COM_Parse (&start);
-		if (!start)
-			continue;
+	length = len (scan)
+	if length >= q_shared.MAX_STRING_CHARS:
 	
-		token = Cvar_VariableString (token);
+		common.Com_Printf ("Line exceeded %i chars, discarded.\n", q_shared.MAX_STRING_CHARS)
+		return None
+	
+	count = 0
+	i = 0
 
-		j = strlen(token);
-		len += j;
-		if (len >= MAX_STRING_CHARS)
-		{
-			common.Com_Printf ("Expanded line exceeded %i chars, discarded.\n", MAX_STRING_CHARS);
-			return NULL;
-		}
+	while i<len(scan):
 
-		strncpy (temporary, scan, i);
-		strcpy (temporary+i, token);
-		strcpy (temporary+i+j, start);
+		if scan[i] == '"':
+			inquote = not inquote
+		if inquote:
+			i+=1
+			continue	# don't expand inside quotes
+		if scan[i] != '$':
+			i+=1
+			continue
 
-		strcpy (expanded, temporary);
-		scan = expanded;
-		i--;
+		# scan out the complete macro
+		token, i2 = q_shared.COM_Parse (scan, i+1)
 
-		if (++count == 100)
-		{
+		if i2 is None:
+			i+=1
+			continue
+	
+		token = cvar.Cvar_VariableString (token)
+
+		j = len(token)
+		length += j
+		if length >= q_shared.MAX_STRING_CHARS:
+		
+			common.Com_Printf ("Expanded line exceeded {} chars, discarded.\n".format(q_shared.MAX_STRING_CHARS))
+			return None
+		
+		temporary = scan[:i]
+		temporary += token
+		temporary += scan[i2:]
+
+		expanded = temporary
+		scan = expanded
+		i-=1
+
+		count += 1
+		if count == 100:
+		
 			common.Com_Printf ("Macro expansion loop, discarded.\n");
-			return NULL;
-		}
-	}
+			return None
+		
+		i+=1
+	
 
-	if (inquote)
-	{
+	if inquote:
+	
 		common.Com_Printf ("Line has unmatched quote, discarded.\n");
-		return NULL;
-	}
+		return None
+	
+	return scan
 
-	return scan;
-}
-
-"""
 """
 ============
 Cmd_TokenizeString
@@ -564,8 +568,8 @@ def Cmd_TokenizeString (text, macroExpand): #char *, qboolean
 	cursor = 0
 
 	# macro expand the text
-	#if (macroExpand)
-	#	text = Cmd_MacroExpandString (text);
+	if macroExpand:
+		text = Cmd_MacroExpandString (text)
 	if text is None or len(text) == 0:
 		return;
 
@@ -673,38 +677,34 @@ Cmd_CompleteCommand
 """
 def Cmd_CompleteCommand (partial): #char * (returns char *)
 
-	return partial
-	"""
-	cmd_function_t	*cmd;
-	int				len;
-	cmdalias_t		*a;
+	#cmd_function_t	*cmd;
+	#int				len;
+	#cmdalias_t		*a;
 	
-	len = strlen(partial);
+	length = len(partial)
 	
-	if (!len)
-		return NULL;
+	if length == 0:
+		return None
 		
-// check for exact match
-	for (cmd=cmd_functions ; cmd ; cmd=cmd->next)
-		if (!strcmp (partial,cmd->name))
-			return cmd->name;
-	for (a=cmd_alias ; a ; a=a->next)
-		if (!strcmp (partial, a->name))
-			return a->name;
+	# check for exact match
+	for cmd in cmd_functions:
+		if partial == cmd.name:
+			return cmd.name
+	for a in cmd_alias:
+		if partial == a.name:
+			return a.name
 
-// check for partial match
-	for (cmd=cmd_functions ; cmd ; cmd=cmd->next)
-		if (!strncmp (partial,cmd->name, len))
-			return cmd->name;
-	for (a=cmd_alias ; a ; a=a->next)
-		if (!strncmp (partial, a->name, len))
-			return a->name;
+	# check for partial match
+	for cmd in cmd_functions:
+		if partial == cmd.name[:length]:
+			return cmd.name
+	for a in cmd_alias:
+		if partial == a.name[:length]:
+			return a.name
 
-	return NULL;
+	return None
 
 
-
-"""
 """
 ============
 Cmd_ExecuteString

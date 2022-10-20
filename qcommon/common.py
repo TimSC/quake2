@@ -22,7 +22,7 @@ from qcommon import cvar, cmd, files, qcommon
 from linux import sys_linux, q_shlinux
 from game import q_shared
 from server import sv_main
-from client import cl_main, cl_scrn, keys
+from client import cl_main, cl_scrn, keys, console
 import pygame
 
 screen = None
@@ -113,7 +113,7 @@ Both client and server can use this, and it will output
 to the apropriate place.
 =============
 """
-def Com_Printf (fmt): #char *
+def Com_Printf (msg): #char *
 
 	"""
 	va_list		argptr;
@@ -134,13 +134,11 @@ def Com_Printf (fmt): #char *
 		return;
 	}
 """
-	msg = fmt
+	console.Con_Print(msg)
 
-	print (msg, end='')
+	# also echo to debugging console
+	sys_linux.Sys_ConsoleOutput (msg)
 	"""		
-	// also echo to debugging console
-	Sys_ConsoleOutput (msg);
-
 	// logfile
 	if (logfile_active && logfile_active->value)
 	{

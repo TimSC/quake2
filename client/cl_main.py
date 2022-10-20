@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, common
+from qcommon import cvar, common, cmd
 from game import q_shared
 from client import console, snd_dma, cl_scrn, client, cl_view, menu
 from linux import q_shlinux, vid_so
@@ -40,63 +40,25 @@ cvar_t	*adr7;
 cvar_t	*adr8;
 
 """
+
+adr0, adr1, adr2, adr3, adr4, adr5, adr6, adr7, adr8 = None, None, None, None, None, None, None, None, None
+
 cl_stereo_separation = None #cvar_t *
 cl_stereo = None #cvar_t *
-"""
-cvar_t	*rcon_client_password;
-cvar_t	*rcon_address;
 
-cvar_t	*cl_noskins;
-cvar_t	*cl_autoskins;
-cvar_t	*cl_footsteps;
-cvar_t	*cl_timeout;
-cvar_t	*cl_predict;
-//cvar_t	*cl_minfps;
-cvar_t	*cl_maxfps;
-cvar_t	*cl_gun;
+cl_add_blend, cl_add_lights, cl_add_particles, cl_add_entities = None, None, None, None
+cl_gun, cl_footsteps, cl_noskins, cl_autoskins, cl_predict, cl_maxfps = None, None, None, None, None, None
+cl_upspeed, cl_forwardspeed, cl_sidespeed, cl_yawspeed, cl_pitchspeed, cl_anglespeedkey = None, None, None, None, None, None
+cl_run, freelook, lookspring, lookstrafe, sensitivity = None, None, None, None, None
+m_pitch, m_yaw, m_forward, m_side = None, None, None, None
+cl_shownet, cl_showmiss, cl_showclamp, cl_timeout, cl_paused, cl_timedemo = None, None, None, None, None, None
+rcon_client_password, rcon_address, cl_lightlevel = None, None, None
+info_password, info_spectator, name, skin, rate, msg, hand, fov, gender, gender_auto, cl_vwep = None, None, None, None, None, None, None, None, None, None, None
 
-cvar_t	*cl_add_particles;
-cvar_t	*cl_add_lights;
-cvar_t	*cl_add_entities;
-cvar_t	*cl_add_blend;
-
-cvar_t	*cl_shownet;
-cvar_t	*cl_showmiss;
-cvar_t	*cl_showclamp;
-
-cvar_t	*cl_paused;
-cvar_t	*cl_timedemo;
-
-cvar_t	*lookspring;
-cvar_t	*lookstrafe;
-cvar_t	*sensitivity;
-
-cvar_t	*m_pitch;
-cvar_t	*m_yaw;
-cvar_t	*m_forward;
-cvar_t	*m_side;
-
-cvar_t	*cl_lightlevel;
-
-//
-// userinfo
-//
-cvar_t	*info_password;
-cvar_t	*info_spectator;
-cvar_t	*name;
-cvar_t	*skin;
-cvar_t	*rate;
-cvar_t	*fov;
-cvar_t	*msg;
-cvar_t	*hand;
-cvar_t	*gender;
-cvar_t	*gender_auto;
-
-cvar_t	*cl_vwep;
-"""
 cls = client.client_static_t()
 
 cl = client.client_state_t()
+
 """
 centity_t		cl_entities[MAX_EDICTS];
 
@@ -1413,92 +1375,98 @@ CL_InitLocal
 """
 def CL_InitLocal ():
 
+	global adr0, adr1, adr2, adr3, adr4, adr5, adr6, adr7, adr8
 	global cl_stereo_separation, cl_stereo, cls
-
+	global cl_add_blend, cl_add_lights, cl_add_particles, cl_add_entities
+	global cl_gun, cl_footsteps, cl_noskins, cl_autoskins, cl_predict, cl_maxfps
+	global cl_upspeed, cl_forwardspeed, cl_sidespeed, cl_yawspeed, cl_pitchspeed, cl_anglespeedkey
+	global cl_run, freelook, lookspring, lookstrafe, sensitivity
+	global m_pitch, m_yaw, m_forward, m_side
+	global cl_shownet, cl_showmiss, cl_showclamp, cl_timeout, cl_paused, cl_timedemo
+	global rcon_client_password, rcon_address, cl_lightlevel
+	global info_password, info_spectator, name, skin, rate, msg, hand, fov, gender, gender_auto, cl_vwep
 
 	#cls.state = client.connstate_t.ca_disconnected
 	cls.realtime = q_shlinux.Sys_Milliseconds ()
-	"""
-	CL_InitInput ();
 
-	adr0 = Cvar_Get( "adr0", "", CVAR_ARCHIVE );
-	adr1 = Cvar_Get( "adr1", "", CVAR_ARCHIVE );
-	adr2 = Cvar_Get( "adr2", "", CVAR_ARCHIVE );
-	adr3 = Cvar_Get( "adr3", "", CVAR_ARCHIVE );
-	adr4 = Cvar_Get( "adr4", "", CVAR_ARCHIVE );
-	adr5 = Cvar_Get( "adr5", "", CVAR_ARCHIVE );
-	adr6 = Cvar_Get( "adr6", "", CVAR_ARCHIVE );
-	adr7 = Cvar_Get( "adr7", "", CVAR_ARCHIVE );
-	adr8 = Cvar_Get( "adr8", "", CVAR_ARCHIVE );
+	#CL_InitInput ();
 
-"""
+	adr0 = cvar.Cvar_Get( "adr0", "", q_shared.CVAR_ARCHIVE )
+	adr1 = cvar.Cvar_Get( "adr1", "", q_shared.CVAR_ARCHIVE )
+	adr2 = cvar.Cvar_Get( "adr2", "", q_shared.CVAR_ARCHIVE )
+	adr3 = cvar.Cvar_Get( "adr3", "", q_shared.CVAR_ARCHIVE )
+	adr4 = cvar.Cvar_Get( "adr4", "", q_shared.CVAR_ARCHIVE )
+	adr5 = cvar.Cvar_Get( "adr5", "", q_shared.CVAR_ARCHIVE )
+	adr6 = cvar.Cvar_Get( "adr6", "", q_shared.CVAR_ARCHIVE )
+	adr7 = cvar.Cvar_Get( "adr7", "", q_shared.CVAR_ARCHIVE )
+	adr8 = cvar.Cvar_Get( "adr8", "", q_shared.CVAR_ARCHIVE )
+
 	#
 	# register our variables
 	#
 	cl_stereo_separation = cvar.Cvar_Get( "cl_stereo_separation", "0.4", q_shared.CVAR_ARCHIVE )
 	cl_stereo = cvar.Cvar_Get( "cl_stereo", "0", 0 )
-"""
 
-	cl_add_blend = Cvar_Get ("cl_blend", "1", 0);
-	cl_add_lights = Cvar_Get ("cl_lights", "1", 0);
-	cl_add_particles = Cvar_Get ("cl_particles", "1", 0);
-	cl_add_entities = Cvar_Get ("cl_entities", "1", 0);
-	cl_gun = Cvar_Get ("cl_gun", "1", 0);
-	cl_footsteps = Cvar_Get ("cl_footsteps", "1", 0);
-	cl_noskins = Cvar_Get ("cl_noskins", "0", 0);
-	cl_autoskins = Cvar_Get ("cl_autoskins", "0", 0);
-	cl_predict = Cvar_Get ("cl_predict", "1", 0);
-//	cl_minfps = Cvar_Get ("cl_minfps", "5", 0);
-	cl_maxfps = Cvar_Get ("cl_maxfps", "90", 0);
+	cl_add_blend = cvar.Cvar_Get ("cl_blend", "1", 0)
+	cl_add_lights = cvar.Cvar_Get ("cl_lights", "1", 0)
+	cl_add_particles = cvar.Cvar_Get ("cl_particles", "1", 0)
+	cl_add_entities = cvar.Cvar_Get ("cl_entities", "1", 0)
+	cl_gun = cvar.Cvar_Get ("cl_gun", "1", 0)
+	cl_footsteps = cvar.Cvar_Get ("cl_footsteps", "1", 0)
+	cl_noskins = cvar.Cvar_Get ("cl_noskins", "0", 0)
+	cl_autoskins = cvar.Cvar_Get ("cl_autoskins", "0", 0)
+	cl_predict = cvar.Cvar_Get ("cl_predict", "1", 0)
+	## cl_minfps = cvar.Cvar_Get ("cl_minfps", "5", 0)
+	cl_maxfps = cvar.Cvar_Get ("cl_maxfps", "90", 0)
 
-	cl_upspeed = Cvar_Get ("cl_upspeed", "200", 0);
-	cl_forwardspeed = Cvar_Get ("cl_forwardspeed", "200", 0);
-	cl_sidespeed = Cvar_Get ("cl_sidespeed", "200", 0);
-	cl_yawspeed = Cvar_Get ("cl_yawspeed", "140", 0);
-	cl_pitchspeed = Cvar_Get ("cl_pitchspeed", "150", 0);
-	cl_anglespeedkey = Cvar_Get ("cl_anglespeedkey", "1.5", 0);
+	cl_upspeed = cvar.Cvar_Get ("cl_upspeed", "200", 0)
+	cl_forwardspeed = cvar.Cvar_Get ("cl_forwardspeed", "200", 0)
+	cl_sidespeed = cvar.Cvar_Get ("cl_sidespeed", "200", 0)
+	cl_yawspeed = cvar.Cvar_Get ("cl_yawspeed", "140", 0)
+	cl_pitchspeed = cvar.Cvar_Get ("cl_pitchspeed", "150", 0)
+	cl_anglespeedkey = cvar.Cvar_Get ("cl_anglespeedkey", "1.5", 0)
 
-	cl_run = Cvar_Get ("cl_run", "0", CVAR_ARCHIVE);
-	freelook = Cvar_Get( "freelook", "0", CVAR_ARCHIVE );
-	lookspring = Cvar_Get ("lookspring", "0", CVAR_ARCHIVE);
-	lookstrafe = Cvar_Get ("lookstrafe", "0", CVAR_ARCHIVE);
-	sensitivity = Cvar_Get ("sensitivity", "3", CVAR_ARCHIVE);
+	cl_run = cvar.Cvar_Get ("cl_run", "0", q_shared.CVAR_ARCHIVE)
+	freelook = cvar.Cvar_Get( "freelook", "0", q_shared.CVAR_ARCHIVE )
+	lookspring = cvar.Cvar_Get ("lookspring", "0", q_shared.CVAR_ARCHIVE)
+	lookstrafe = cvar.Cvar_Get ("lookstrafe", "0", q_shared.CVAR_ARCHIVE)
+	sensitivity = cvar.Cvar_Get ("sensitivity", "3", q_shared.CVAR_ARCHIVE)
+	
+	m_pitch = cvar.Cvar_Get ("m_pitch", "0.022", q_shared.CVAR_ARCHIVE)
+	m_yaw = cvar.Cvar_Get ("m_yaw", "0.022", 0)
+	m_forward = cvar.Cvar_Get ("m_forward", "1", 0)
+	m_side = cvar.Cvar_Get ("m_side", "1", 0)
 
-	m_pitch = Cvar_Get ("m_pitch", "0.022", CVAR_ARCHIVE);
-	m_yaw = Cvar_Get ("m_yaw", "0.022", 0);
-	m_forward = Cvar_Get ("m_forward", "1", 0);
-	m_side = Cvar_Get ("m_side", "1", 0);
+	cl_shownet = cvar.Cvar_Get ("cl_shownet", "0", 0)
+	cl_showmiss = cvar.Cvar_Get ("cl_showmiss", "0", 0)
+	cl_showclamp = cvar.Cvar_Get ("showclamp", "0", 0)
+	cl_timeout = cvar.Cvar_Get ("cl_timeout", "120", 0)
+	cl_paused = cvar.Cvar_Get ("paused", "0", 0)
+	cl_timedemo = cvar.Cvar_Get ("timedemo", "0", 0)
 
-	cl_shownet = Cvar_Get ("cl_shownet", "0", 0);
-	cl_showmiss = Cvar_Get ("cl_showmiss", "0", 0);
-	cl_showclamp = Cvar_Get ("showclamp", "0", 0);
-	cl_timeout = Cvar_Get ("cl_timeout", "120", 0);
-	cl_paused = Cvar_Get ("paused", "0", 0);
-	cl_timedemo = Cvar_Get ("timedemo", "0", 0);
+	rcon_client_password = cvar.Cvar_Get ("rcon_password", "", 0)
+	rcon_address = cvar.Cvar_Get ("rcon_address", "", 0)
 
-	rcon_client_password = Cvar_Get ("rcon_password", "", 0);
-	rcon_address = Cvar_Get ("rcon_address", "", 0);
+	cl_lightlevel = cvar.Cvar_Get ("r_lightlevel", "0", 0)
 
-	cl_lightlevel = Cvar_Get ("r_lightlevel", "0", 0);
+	#
+	# userinfo
+	#
+	info_password = cvar.Cvar_Get ("password", "", q_shared.CVAR_USERINFO)
+	info_spectator = cvar.Cvar_Get ("spectator", "0", q_shared.CVAR_USERINFO)
+	name = cvar.Cvar_Get ("name", "unnamed", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	skin = cvar.Cvar_Get ("skin", "male/grunt", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	rate = cvar.Cvar_Get ("rate", "25000", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE);	# FIXME
+	msg = cvar.Cvar_Get ("msg", "1", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	hand = cvar.Cvar_Get ("hand", "0", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	fov = cvar.Cvar_Get ("fov", "90", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	gender = cvar.Cvar_Get ("gender", "male", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	gender_auto = cvar.Cvar_Get ("gender_auto", "1", q_shared.CVAR_ARCHIVE)
+	gender.modified = False # clear this so we know when user sets it manually
 
-	//
-	// userinfo
-	//
-	info_password = Cvar_Get ("password", "", CVAR_USERINFO);
-	info_spectator = Cvar_Get ("spectator", "0", CVAR_USERINFO);
-	name = Cvar_Get ("name", "unnamed", CVAR_USERINFO | CVAR_ARCHIVE);
-	skin = Cvar_Get ("skin", "male/grunt", CVAR_USERINFO | CVAR_ARCHIVE);
-	rate = Cvar_Get ("rate", "25000", CVAR_USERINFO | CVAR_ARCHIVE);	// FIXME
-	msg = Cvar_Get ("msg", "1", CVAR_USERINFO | CVAR_ARCHIVE);
-	hand = Cvar_Get ("hand", "0", CVAR_USERINFO | CVAR_ARCHIVE);
-	fov = Cvar_Get ("fov", "90", CVAR_USERINFO | CVAR_ARCHIVE);
-	gender = Cvar_Get ("gender", "male", CVAR_USERINFO | CVAR_ARCHIVE);
-	gender_auto = Cvar_Get ("gender_auto", "1", CVAR_ARCHIVE);
-	gender->modified = false; // clear this so we know when user sets it manually
+	cl_vwep = cvar.Cvar_Get ("cl_vwep", "1", q_shared.CVAR_ARCHIVE)
 
-	cl_vwep = Cvar_Get ("cl_vwep", "1", CVAR_ARCHIVE);
-
-
+	"""
 	//
 	// register our commands
 	//
@@ -1514,9 +1482,9 @@ def CL_InitLocal ():
 	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
 	Cmd_AddCommand ("record", CL_Record_f);
 	Cmd_AddCommand ("stop", CL_Stop_f);
-
-	Cmd_AddCommand ("quit", CL_Quit_f);
-
+	"""
+	cmd.Cmd_AddCommand ("quit", CL_Quit_f)
+	"""
 	Cmd_AddCommand ("connect", CL_Connect_f);
 	Cmd_AddCommand ("reconnect", CL_Reconnect_f);
 
@@ -1529,34 +1497,32 @@ def CL_InitLocal ():
 	Cmd_AddCommand ("precache", CL_Precache_f);
 
 	Cmd_AddCommand ("download", CL_Download_f);
-
-	//
-	// forward to server commands
-	//
-	// the only thing this does is allow command completion
-	// to work -- all unknown commands are automatically
-	// forwarded to the server
-	Cmd_AddCommand ("wave", NULL);
-	Cmd_AddCommand ("inven", NULL);
-	Cmd_AddCommand ("kill", NULL);
-	Cmd_AddCommand ("use", NULL);
-	Cmd_AddCommand ("drop", NULL);
-	Cmd_AddCommand ("say", NULL);
-	Cmd_AddCommand ("say_team", NULL);
-	Cmd_AddCommand ("info", NULL);
-	Cmd_AddCommand ("prog", NULL);
-	Cmd_AddCommand ("give", NULL);
-	Cmd_AddCommand ("god", NULL);
-	Cmd_AddCommand ("notarget", NULL);
-	Cmd_AddCommand ("noclip", NULL);
-	Cmd_AddCommand ("invuse", NULL);
-	Cmd_AddCommand ("invprev", NULL);
-	Cmd_AddCommand ("invnext", NULL);
-	Cmd_AddCommand ("invdrop", NULL);
-	Cmd_AddCommand ("weapnext", NULL);
-	Cmd_AddCommand ("weapprev", NULL);
 	"""
-
+	#
+	# forward to server commands
+	#
+	# the only thing this does is allow command completion
+	# to work -- all unknown commands are automatically
+	# forwarded to the server
+	cmd.Cmd_AddCommand ("wave", None)
+	cmd.Cmd_AddCommand ("inven", None)
+	cmd.Cmd_AddCommand ("kill", None)
+	cmd.Cmd_AddCommand ("use", None)
+	cmd.Cmd_AddCommand ("drop", None)
+	cmd.Cmd_AddCommand ("say", None)
+	cmd.Cmd_AddCommand ("say_team", None)
+	cmd.Cmd_AddCommand ("info", None)
+	cmd.Cmd_AddCommand ("prog", None)
+	cmd.Cmd_AddCommand ("give", None)
+	cmd.Cmd_AddCommand ("god", None)
+	cmd.Cmd_AddCommand ("notarget", None)
+	cmd.Cmd_AddCommand ("noclip", None)
+	cmd.Cmd_AddCommand ("invuse", None)
+	cmd.Cmd_AddCommand ("invprev", None)
+	cmd.Cmd_AddCommand ("invnext", None)
+	cmd.Cmd_AddCommand ("invdrop", None)
+	cmd.Cmd_AddCommand ("weapnext", None)
+	cmd.Cmd_AddCommand ("weapprev", None)
 
 
 """

@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import pygame
-from qcommon import cmd, common
+from qcommon import cmd, common, cvar
 from game import q_shared
 from client import console, client, cl_main, cl_scrn, menu
 from linux import sys_linux, q_shlinux
@@ -390,30 +390,28 @@ keynames = [ #keyname_t[]
 """
 
 def CompleteCommand ():
-	pass
-	"""
-	char	*cmd, *s;
 
-	s = key_lines[edit_line]+1;
-	if (*s == '\\' || *s == '/')
-		s++;
+	#char	*cmd, *s;
+	global key_lines, edit_line
 
-	cmd = cmd.Cmd_CompleteCommand (s);
-	if cmd is None:
-		cmd = Cvar_CompleteVariable (s);
-	if cmd is not None:
-	{
-		key_lines[edit_line][1] = '/';
-		strcpy (key_lines[edit_line]+2, cmd);
-		key_linepos = strlen(cmd)+2;
-		key_lines[edit_line][key_linepos] = ' ';
-		key_linepos++;
-		key_lines[edit_line][key_linepos] = 0;
-		return;
-	}
+	s = key_lines[edit_line]
+	if len(s) > 1:
+		cursor = 1
+		if s[cursor] == '\\' or s[cursor] == '/':
+			cursor+=1
+		s = s[cursor:]
 
+	cmdStr = cmd.Cmd_CompleteCommand (s)
+	if cmdStr is None:
+		cmdStr = cvar.Cvar_CompleteVariable (s)
+	if cmdStr is not None:
+	
+		line = ']/' + cmdStr + ' '
+		key_lines[edit_line] = line
 
-
+		return
+	
+"""
 ====================
 Key_Console
 

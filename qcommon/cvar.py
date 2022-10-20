@@ -81,31 +81,31 @@ def Cvar_VariableString (var_name): #char *
 ============
 Cvar_CompleteVariable
 ============
-*/
-char *Cvar_CompleteVariable (char *partial)
-{
-	cvar_t		*cvar;
-	int			len;
-	
-	len = strlen(partial);
-	
-	if (!len)
-		return NULL;
-		
-	// check exact match
-	for (cvar=cvar_vars ; cvar ; cvar=cvar.next)
-		if (!strcmp (partial,cvar.name))
-			return cvar.name;
-
-	// check partial match
-	for (cvar=cvar_vars ; cvar ; cvar=cvar.next)
-		if (!strncmp (partial,cvar.name, len))
-			return cvar.name;
-
-	return NULL;
-}
-
 """
+def Cvar_CompleteVariable (partial): #char * (returns char *)
+
+	#cvar_t		*cvar;
+	#int			len;
+	
+	length = len(partial)
+	
+	if length == 0:
+		return None
+		
+	# check exact match
+	for cvar in cvar_vars:
+		if partial == cvar.name:
+			return cvar.name
+
+	# check partial match
+	for cvar in cvar_vars:
+		if partial == cvar.name[:length]:
+			return cvar.name
+
+	return None
+
+
+
 """
 ============
 Cvar_Get

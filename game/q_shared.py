@@ -65,9 +65,9 @@ typedef enum {false, true}	qboolean;
 #define	PITCH				0		// up / down
 #define	YAW					1		// left / right
 #define	ROLL				2		// fall over
-
-#define	MAX_STRING_CHARS	1024	// max length of a string passed to Cmd_TokenizeString
 """
+MAX_STRING_CHARS = 1024	# max length of a string passed to Cmd_TokenizeString
+
 MAX_STRING_TOKENS = 80		# max tokens resulting from Cmd_TokenizeString
 MAX_TOKEN_CHARS = 128		# max length of an individual token
 
@@ -2298,7 +2298,7 @@ def COM_Parse (data, cursor): #char ** (returns char *)
 			cursor += 1
 
 			if c=='\"' or cursor >= len(data):
-				return "".join(com_token), cursor;
+				return "".join(com_token), cursor
 			
 			if length < MAX_TOKEN_CHARS:
 

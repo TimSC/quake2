@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import sys
 import time
 import pygame
-from qcommon import common
+from qcommon import common, cvar
 from client import cl_main
 """
 #include <unistd.h>
@@ -48,9 +48,9 @@ from client import cl_main
 #include "../qcommon/qcommon.h"
 
 #include "../linux/rw_linux.h"
-
-cvar_t *nostdout;
-
+"""
+nostdout = None # cvar_t *;
+"""
 unsigned	sys_frame_time;
 
 uid_t saved_euid;
@@ -59,15 +59,15 @@ qboolean stdin_active = true;
 // =======================================================================
 // General routines
 // =======================================================================
+"""
+def Sys_ConsoleOutput (string): #char *
 
-void Sys_ConsoleOutput (char *string)
-{
-	if (nostdout && nostdout->value)
-		return;
+	if nostdout and nostdout.value:
+		return
 
-	fputs(string, stdout);
-}
+	print (string, end="")
 
+"""
 void Sys_Printf (char *fmt, ...)
 {
 	va_list		argptr;
@@ -307,6 +307,7 @@ char *Sys_GetClipboardData(void)
 
 def main (): #int argc, char **argv
 
+	global nostdout
 	#int time, oldtime, newtime
 
 	# go back to real user for config loads
@@ -317,7 +318,7 @@ def main (): #int argc, char **argv
 
 	#fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY)
 
-	#nostdout = Cvar_Get("nostdout", "0", 0)
+	nostdout = cvar.Cvar_Get("nostdout", "0", 0)
 	#if !nostdout->value:
 	#	fcntl(0, F_SETFL, fcntl (0, F_GETFL, 0) | FNDELAY)
 	##	printf ("Linux Quake -- Version %0.3f\n", LINUX_VERSION)

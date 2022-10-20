@@ -391,9 +391,11 @@ Handles cursor positioning, line wrapping, etc
 All console printing must go through this in order to be logged to disk
 If no console is visible, the text will appear at the top of the game window
 ================
-*/
-void Con_Print (char *txt)
-{
+"""
+def Con_Print (txt): #char *
+
+	pass
+	"""
 	int		y;
 	int		c, l;
 	static int	cr;
@@ -624,7 +626,7 @@ def Con_DrawConsole (frac): #float
 	char			dlbar[1024];
 	"""
 
-	lines = vid_so.viddef.height * frac
+	lines = int(vid_so.viddef.height * frac)
 	if lines <= 0:
 		return
 
@@ -643,42 +645,47 @@ def Con_DrawConsole (frac): #float
 
 	# draw the text
 	con.vislines = lines
-	"""	
-#if 0
-	rows = (lines-8)>>3;		// rows of text to draw
 
-	y = lines - 24;
-#else
-	rows = (lines-22)>>3;		// rows of text to draw
+	##rows = (lines-8)>>3;		// rows of text to draw
+	##
+	##y = lines - 24;
 
-	y = lines - 30;
-#endif
+	rows = (lines-22)>>3		# rows of text to draw
+
+	y = lines - 30
+
 
 	# draw from the bottom up
-	if (con.display != con.current)
-	{
-	// draw arrows to show the buffer is backscrolled
-		for (x=0 ; x<con.linewidth ; x+=4)
-			vid_so.re.DrawChar ( (x+1)<<3, y, '^');
+	if con.display != con.current:
 	
-		y -= 8;
-		rows--;
-	}
+		# draw arrows to show the buffer is backscrolled
+		for x in range(0, con.linewidth, 4):
+			vid_so.re.DrawChar ( (x+1)<<3, y, ord('^'))
 	
-	row = con.display;
-	for (i=0 ; i<rows ; i++, y-=8, row--)
-	{
-		if (row < 0)
-			break;
-		if (con.current - row >= con.totallines)
-			break;		// past scrollback wrap point
-			
-		text = con.text + (row % con.totallines)*con.linewidth;
+		y -= 8
+		rows-=1
+	
 
-		for (x=0 ; x<con.linewidth ; x++)
-			vid_so.re.DrawChar ( (x+1)<<3, y, text[x]);
-	}
+	row = con.display
+	i = 0
+	while i<rows:
+	
+		if row < 0:
+			break
+		if con.current - row >= con.totallines:
+			break		# past scrollback wrap point
+		
+		cursor = (row % con.totallines)*con.linewidth
+		text = con.text[cursor:]
 
+		for x in range(con.linewidth):
+			vid_so.re.DrawChar ( (x+1)<<3, y, ord(text[x]))
+
+		i+=1
+		y-=8 
+		row-=1
+	
+	"""
 //ZOID
 	# draw the download bar
 	# figure out width
