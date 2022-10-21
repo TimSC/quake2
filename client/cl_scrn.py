@@ -105,15 +105,15 @@ void CL_AddNetgraph (void)
 	if (scr_debuggraph->value || scr_timegraph->value)
 		return;
 
-	for (i=0 ; i<cls.netchan.dropped ; i++)
+	for (i=0 ; i<cl_main.cls.netchan.dropped ; i++)
 		SCR_DebugGraph (30, 0x40);
 
-	for (i=0 ; i<cl.surpressCount ; i++)
+	for (i=0 ; i<cl_main.cl.surpressCount ; i++)
 		SCR_DebugGraph (30, 0xdf);
 
 	// see what the latency was on this packet
-	in = cls.netchan.incoming_acknowledged & (CMD_BACKUP-1);
-	ping = cls.realtime - cl.cmd_time[in];
+	in = cl_main.cls.netchan.incoming_acknowledged & (CMD_BACKUP-1);
+	ping = cl_main.cls.realtime - cl_main.cl.cmd_time[in];
 	ping /= 30;
 	if (ping > 30)
 		ping = 30;
@@ -207,7 +207,7 @@ void SCR_CenterPrint (char *str)
 
 	strncpy (scr_centerstring, str, sizeof(scr_centerstring)-1);
 	scr_centertime_off = scr_centertime->value;
-	scr_centertime_start = cl.time;
+	scr_centertime_start = cl_main.cl.time;
 
 	// count the number of lines for centering
 	scr_center_lines = 1;
@@ -302,7 +302,7 @@ void SCR_DrawCenterString (void)
 
 void SCR_CheckDrawCenterString (void)
 {
-	scr_centertime_off -= cls.frametime;
+	scr_centertime_off -= cl_main.cls.frametime;
 	
 	if (scr_centertime_off <= 0)
 		return;
@@ -451,7 +451,7 @@ SCR_DrawNet
 */
 void SCR_DrawNet (void)
 {
-	if (cls.netchan.outgoing_sequence - cls.netchan.incoming_acknowledged 
+	if (cl_main.cls.netchan.outgoing_sequence - cl_main.cls.netchan.incoming_acknowledged 
 		< CMD_BACKUP-1)
 		return;
 
@@ -509,21 +509,21 @@ Scroll it up or down
 void SCR_RunConsole (void)
 {
 // decide on the height of the console
-	if (cls.key_dest == key_console)
+	if (cl_main.cls.key_dest == key_console)
 		scr_conlines = 0.5;		// half screen
 	else
 		scr_conlines = 0;				// none visible
 	
 	if (scr_conlines < scr_con_current)
 	{
-		scr_con_current -= scr_conspeed->value*cls.frametime;
+		scr_con_current -= scr_conspeed->value*cl_main.cls.frametime;
 		if (scr_conlines > scr_con_current)
 			scr_con_current = scr_conlines;
 
 	}
 	else if (scr_conlines > scr_con_current)
 	{
-		scr_con_current += scr_conspeed->value*cls.frametime;
+		scr_con_current += scr_conspeed->value*cl_main.cls.frametime;
 		if (scr_conlines < scr_con_current)
 			scr_con_current = scr_conlines;
 	}
@@ -578,25 +578,25 @@ def SCR_BeginLoadingPlaque ():
 
 	"""
 	S_StopAllSounds ();
-	cl.sound_prepped = false;		// don't play ambients
+	cl_main.cl.sound_prepped = false;		// don't play ambients
 	CDAudio_Stop ();
-	if (cls.disable_screen)
+	if (cl_main.cls.disable_screen)
 		return;
 	if (developer->value)
 		return;
-	if (cls.state == ca_disconnected)
+	if (cl_main.cls.state == ca_disconnected)
 		return;	// if at console, don't bring up the plaque
-	if (cls.key_dest == key_console)
+	if (cl_main.cls.key_dest == key_console)
 		return;
 	"""
-	if cl.cinematictime > 0:
+	if cl_main.cl.cinematictime > 0:
 		scr_draw_loading = 2	# clear to black first
 	else:
 		scr_draw_loading = 1
 
 	SCR_UpdateScreen ()
-	cls.disable_screen = q_shlinux.Sys_Milliseconds ()
-	#cls.disable_servercount = cl.servercount;
+	cl_main.cls.disable_screen = q_shlinux.Sys_Milliseconds ()
+	#cl_main.cls.disable_servercount = cl_main.cl.servercount;
 
 
 """
@@ -646,7 +646,7 @@ def SCR_TimeRefresh_f ():
 	#float	time;
 	pass
 	"""
-	if ( cls.state != ca_active )
+	if ( cl_main.cls.state != ca_active )
 		return;
 
 	start = q_shlinux.Sys_Milliseconds ();
@@ -656,8 +656,8 @@ def SCR_TimeRefresh_f ():
 		vid_so.re.BeginFrame( 0 );
 		for (i=0 ; i<128 ; i++)
 		{
-			cl.refdef.viewangles[1] = i/128.0*360.0;
-			vid_so.re.RenderFrame (&cl.refdef);
+			cl_main.cl.refdef.viewangles[1] = i/128.0*360.0;
+			vid_so.re.RenderFrame (&cl_main.cl.refdef);
 		}
 		vid_so.re.EndFrame();
 	}
@@ -665,10 +665,10 @@ def SCR_TimeRefresh_f ():
 	{
 		for (i=0 ; i<128 ; i++)
 		{
-			cl.refdef.viewangles[1] = i/128.0*360.0;
+			cl_main.cl.refdef.viewangles[1] = i/128.0*360.0;
 
 			vid_so.re.BeginFrame( 0 );
-			vid_so.re.RenderFrame (&cl.refdef);
+			vid_so.re.RenderFrame (&cl_main.cl.refdef);
 			vid_so.re.EndFrame();
 		}
 	}
@@ -723,7 +723,7 @@ void SCR_TileClear (void)
 		return;		// full screen console
 	if (scr_viewsize->value == 100)
 		return;		// full screen rendering
-	if (cl.cinematictime > 0)
+	if (cl_main.cl.cinematictime > 0)
 		return;		// full screen cinematic
 
 	// erase rect will be the union of the past three frames
@@ -969,7 +969,7 @@ void SCR_ExecuteLayoutString (char *s)
 	int		index;
 	clientinfo_t	*ci;
 
-	if (cls.state != ca_active || !cl.refresh_prepped)
+	if (cl_main.cls.state != ca_active || !cl_main.cl.refresh_prepped)
 		return;
 
 	if (!s[0])
@@ -1023,14 +1023,14 @@ void SCR_ExecuteLayoutString (char *s)
 		if (!strcmp(token, "pic"))
 		{	// draw a pic from a stat number
 			token = COM_Parse (&s);
-			value = cl.frame.playerstate.stats[atoi(token)];
+			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
 			if (value >= MAX_IMAGES)
 				Com_Error (ERR_DROP, "Pic >= MAX_IMAGES");
-			if (cl.configstrings[CS_IMAGES+value])
+			if (cl_main.cl.configstrings[CS_IMAGES+value])
 			{
 				SCR_AddDirtyPoint (x, y);
 				SCR_AddDirtyPoint (x+23, y+23);
-				vid_so.re.DrawPic (x, y, cl.configstrings[CS_IMAGES+value]);
+				vid_so.re.DrawPic (x, y, cl_main.cl.configstrings[CS_IMAGES+value]);
 			}
 			continue;
 		}
@@ -1050,7 +1050,7 @@ void SCR_ExecuteLayoutString (char *s)
 			value = atoi(token);
 			if (value >= MAX_CLIENTS || value < 0)
 				Com_Error (ERR_DROP, "client >= MAX_CLIENTS");
-			ci = &cl.clientinfo[value];
+			ci = &cl_main.cl.clientinfo[value];
 
 			token = COM_Parse (&s);
 			score = atoi(token);
@@ -1068,7 +1068,7 @@ void SCR_ExecuteLayoutString (char *s)
 			DrawString (x+32, y+24, va("Time:  %i", time));
 
 			if (!ci->icon)
-				ci = &cl.baseclientinfo;
+				ci = &cl_main.cl.baseclientinfo;
 			vid_so.re.DrawPic (x, y, ci->iconname);
 			continue;
 		}
@@ -1089,7 +1089,7 @@ void SCR_ExecuteLayoutString (char *s)
 			value = atoi(token);
 			if (value >= MAX_CLIENTS || value < 0)
 				Com_Error (ERR_DROP, "client >= MAX_CLIENTS");
-			ci = &cl.clientinfo[value];
+			ci = &cl_main.cl.clientinfo[value];
 
 			token = COM_Parse (&s);
 			score = atoi(token);
@@ -1101,7 +1101,7 @@ void SCR_ExecuteLayoutString (char *s)
 
 			sprintf(block, "%3d %3d %-12.12s", score, ping, ci->name);
 
-			if (value == cl.playernum)
+			if (value == cl_main.cl.playernum)
 				DrawAltString (x, y, block);
 			else
 				DrawString (x, y, block);
@@ -1122,7 +1122,7 @@ void SCR_ExecuteLayoutString (char *s)
 			token = COM_Parse (&s);
 			width = atoi(token);
 			token = COM_Parse (&s);
-			value = cl.frame.playerstate.stats[atoi(token)];
+			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
 			SCR_DrawField (x, y, 0, width, value);
 			continue;
 		}
@@ -1132,15 +1132,15 @@ void SCR_ExecuteLayoutString (char *s)
 			int		color;
 
 			width = 3;
-			value = cl.frame.playerstate.stats[STAT_HEALTH];
+			value = cl_main.cl.frame.playerstate.stats[STAT_HEALTH];
 			if (value > 25)
 				color = 0;	// green
 			else if (value > 0)
-				color = (cl.frame.serverframe>>2) & 1;		// flash
+				color = (cl_main.cl.frame.serverframe>>2) & 1;		// flash
 			else
 				color = 1;
 
-			if (cl.frame.playerstate.stats[STAT_FLASHES] & 1)
+			if (cl_main.cl.frame.playerstate.stats[STAT_FLASHES] & 1)
 				vid_so.re.DrawPic (x, y, "field_3");
 
 			SCR_DrawField (x, y, color, width, value);
@@ -1152,15 +1152,15 @@ void SCR_ExecuteLayoutString (char *s)
 			int		color;
 
 			width = 3;
-			value = cl.frame.playerstate.stats[STAT_AMMO];
+			value = cl_main.cl.frame.playerstate.stats[STAT_AMMO];
 			if (value > 5)
 				color = 0;	// green
 			else if (value >= 0)
-				color = (cl.frame.serverframe>>2) & 1;		// flash
+				color = (cl_main.cl.frame.serverframe>>2) & 1;		// flash
 			else
 				continue;	// negative number = don't show
 
-			if (cl.frame.playerstate.stats[STAT_FLASHES] & 4)
+			if (cl_main.cl.frame.playerstate.stats[STAT_FLASHES] & 4)
 				vid_so.re.DrawPic (x, y, "field_3");
 
 			SCR_DrawField (x, y, color, width, value);
@@ -1172,13 +1172,13 @@ void SCR_ExecuteLayoutString (char *s)
 			int		color;
 
 			width = 3;
-			value = cl.frame.playerstate.stats[STAT_ARMOR];
+			value = cl_main.cl.frame.playerstate.stats[STAT_ARMOR];
 			if (value < 1)
 				continue;
 
 			color = 0;	// green
 
-			if (cl.frame.playerstate.stats[STAT_FLASHES] & 2)
+			if (cl_main.cl.frame.playerstate.stats[STAT_FLASHES] & 2)
 				vid_so.re.DrawPic (x, y, "field_3");
 
 			SCR_DrawField (x, y, color, width, value);
@@ -1192,10 +1192,10 @@ void SCR_ExecuteLayoutString (char *s)
 			index = atoi(token);
 			if (index < 0 || index >= MAX_CONFIGSTRINGS)
 				Com_Error (ERR_DROP, "Bad stat_string index");
-			index = cl.frame.playerstate.stats[index];
+			index = cl_main.cl.frame.playerstate.stats[index];
 			if (index < 0 || index >= MAX_CONFIGSTRINGS)
 				Com_Error (ERR_DROP, "Bad stat_string index");
-			DrawString (x, y, cl.configstrings[index]);
+			DrawString (x, y, cl_main.cl.configstrings[index]);
 			continue;
 		}
 
@@ -1230,7 +1230,7 @@ void SCR_ExecuteLayoutString (char *s)
 		if (!strcmp(token, "if"))
 		{	// draw a number
 			token = COM_Parse (&s);
-			value = cl.frame.playerstate.stats[atoi(token)];
+			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
 			if (!value)
 			{	// skip to endif
 				while (s && strcmp(token, "endif") )
@@ -1257,7 +1257,7 @@ is based on the stats array
 */
 void SCR_DrawStats (void)
 {
-	SCR_ExecuteLayoutString (cl.configstrings[CS_STATUSBAR]);
+	SCR_ExecuteLayoutString (cl_main.cl.configstrings[CS_STATUSBAR]);
 }
 
 
@@ -1271,9 +1271,9 @@ SCR_DrawLayout
 
 void SCR_DrawLayout (void)
 {
-	if (!cl.frame.playerstate.stats[STAT_LAYOUTS])
+	if (!cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS])
 		return;
-	SCR_ExecuteLayoutString (cl.layout);
+	SCR_ExecuteLayoutString (cl_main.cl.layout);
 }
 
 //=======================================================
@@ -1356,23 +1356,23 @@ def SCR_UpdateScreen ():
 		
 			pass
 			"""
-			if (cls.key_dest == key_menu)
+			if (cl_main.cls.key_dest == key_menu)
 			{
-				if (cl.cinematicpalette_active)
+				if (cl_main.cl.cinematicpalette_active)
 				{
 					vid_so.re.CinematicSetPalette(NULL)
-					cl.cinematicpalette_active = false
+					cl_main.cl.cinematicpalette_active = false
 				}
 				M_Draw ()
 				##vid_so.re.EndFrame()
 				##return
 			}
-			else if (cls.key_dest == key_console)
+			else if (cl_main.cls.key_dest == key_console)
 			{
-				if (cl.cinematicpalette_active)
+				if (cl_main.cl.cinematicpalette_active)
 				{
 					vid_so.re.CinematicSetPalette(NULL)
-					cl.cinematicpalette_active = false
+					cl_main.cl.cinematicpalette_active = false
 				}
 				SCR_DrawConsole ()
 				##vid_so.re.EndFrame()
@@ -1390,10 +1390,10 @@ def SCR_UpdateScreen ():
 		
 			"""
 			# make sure the game palette is active
-			if (cl.cinematicpalette_active)
+			if (cl_main.cl.cinematicpalette_active)
 			{
 				vid_so.re.CinematicSetPalette(NULL)
-				cl.cinematicpalette_active = false
+				cl_main.cl.cinematicpalette_active = false
 			}
 
 			# do 3D refresh drawing, and then update the screen
@@ -1405,16 +1405,16 @@ def SCR_UpdateScreen ():
 			V_RenderView ( separation[i] )
 
 			SCR_DrawStats ()
-			if (cl.frame.playerstate.stats[STAT_LAYOUTS] & 1)
+			if (cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS] & 1)
 				SCR_DrawLayout ()
-			if (cl.frame.playerstate.stats[STAT_LAYOUTS] & 2)
+			if (cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS] & 2)
 				CL_DrawInventory ()
 
 			SCR_DrawNet ()
 			SCR_CheckDrawCenterString ()
 
 			if (scr_timegraph->value)
-				SCR_DebugGraph (cls.frametime*300, 0)
+				SCR_DebugGraph (cl_main.cls.frametime*300, 0)
 
 			if (scr_debuggraph->value || scr_timegraph->value || scr_netgraph->value)
 				SCR_DrawDebugGraph ()

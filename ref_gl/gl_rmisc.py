@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import OpenGL.GL as GL
+from ref_gl import gl_image, gl_rmain
+from game import q_shared
 """
 // r_misc.c
 
@@ -108,7 +110,7 @@ void GL_ScreenShot_f (void)
 	FILE		*f;
 
 	// create the scrnshots directory if it doesn't exist
-	Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot", ri.FS_Gamedir());
+	Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot", gl_rmain.ri.FS_Gamedir());
 	Sys_Mkdir (checkname);
 
 // 
@@ -120,7 +122,7 @@ void GL_ScreenShot_f (void)
 	{ 
 		picname[5] = i/10 + '0'; 
 		picname[6] = i%10 + '0'; 
-		Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot/%s", ri.FS_Gamedir(), picname);
+		Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot/%s", gl_rmain.ri.FS_Gamedir(), picname);
 		f = fopen (checkname, "rb");
 		if (!f)
 			break;	// file doesn't exist
@@ -128,7 +130,7 @@ void GL_ScreenShot_f (void)
 	} 
 	if (i==100) 
 	{
-		ri.Con_Printf (PRINT_ALL, "SCR_ScreenShot_f: Couldn't create a file\n"); 
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "SCR_ScreenShot_f: Couldn't create a file\n"); 
 		return;
  	}
 
@@ -158,20 +160,22 @@ void GL_ScreenShot_f (void)
 	fclose (f);
 
 	free (buffer);
-	ri.Con_Printf (PRINT_ALL, "Wrote %s\n", picname);
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Wrote %s\n", picname);
 } 
 
 /*
 ** GL_Strings_f
 */
-void GL_Strings_f( void )
-{
-	ri.Con_Printf (PRINT_ALL, "GL_VENDOR: %s\n", gl_config.vendor_string );
-	ri.Con_Printf (PRINT_ALL, "GL_RENDERER: %s\n", gl_config.renderer_string );
-	ri.Con_Printf (PRINT_ALL, "GL_VERSION: %s\n", gl_config.version_string );
-	ri.Con_Printf (PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
-}
+"""
+def GL_Strings_f( ):
 
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_VENDOR: {}\n".format(gl_rmain.gl_config.vendor_string) )
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_RENDERER: {}\n".format(gl_rmain.gl_config.renderer_string) )
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_VERSION: {}\n".format(gl_rmain.gl_config.version_string) )
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_EXTENSIONS: {}\n".format(gl_rmain.gl_config.extensions) )
+
+
+"""
 /*
 ** GL_SetDefaultState
 */
@@ -194,19 +198,19 @@ def GL_SetDefaultState( ):
 
 	GL.glPolygonMode (GL.GL_FRONT_AND_BACK, GL.GL_FILL)
 	GL.glShadeModel (GL.GL_FLAT)
-"""
-	GL_TextureMode( gl_texturemode->string );
-	GL_TextureAlphaMode( gl_texturealphamode->string );
-	GL_TextureSolidMode( gl_texturesolidmode->string );
 
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
+	gl_image.GL_TextureMode( gl_rmain.gl_texturemode.string )
+	gl_image.GL_TextureAlphaMode( gl_rmain.gl_texturealphamode.string )
+	gl_image.GL_TextureSolidMode( gl_rmain.gl_texturesolidmode.string )
+	
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, gl_image.gl_filter_min)
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, gl_image.gl_filter_max)
 
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
 
-	qglBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+	GL.glBlendFunc (GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+	"""
 	GL_TexEnv( GL_REPLACE );
 
 	if ( qglPointParameterfEXT )

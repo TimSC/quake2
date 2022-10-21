@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, common
-from client import cl_main, client, cl_scrn, snd_dma, keys
+from client import cl_main, client, cl_scrn, snd_dma, keys, qmenu
 from linux import vid_so
 from game import q_shared
 
@@ -29,6 +29,96 @@ from game import q_shared
 #endif
 #include "client.h"
 #include "../client/qmenu.h"
+"""
+
+MAXMENUITEMS	= 64
+
+MTYPE_SLIDER		= 0
+MTYPE_LIST			= 1
+MTYPE_ACTION		= 2
+MTYPE_SPINCONTROL	= 3
+MTYPE_SEPARATOR  	= 4
+MTYPE_FIELD			= 5
+
+QMF_LEFT_JUSTIFY	= 0x00000001
+QMF_GRAYED			= 0x00000002
+QMF_NUMBERSONLY		= 0x00000004
+
+class menuframework_s(object):
+
+	def __init__(self):
+		self.x, self.y = 0, 0 #int
+		self.cursor = 0 #int
+
+		self.nitems = 0 #int
+		self.nslots = 0 #int
+		self.items = [] #void *[64]
+
+		self.statusbar = None #const char *
+
+		self.cursordraw = None #void (*cursordraw)( struct _tag_menuframework *m )
+	
+class menucommon_s(object):
+
+	def __init__(self):
+		self.type = 0 #int
+		self.name = None #const char *
+		self.x, self.y = 0, 0 #int
+		self.parent = None #menuframework_s *
+		self.cursor_offset = 0 #int
+		self.localdata = [0, 0, 0, 0] #int[4]
+		self.flags = 0 #unsigned
+
+		self.statusbar = None # const char *
+
+		self.callback = None # void (*)( void *self );
+		self.statusbarfunc = None # void (*)( void *self );
+		self.ownerdraw = None # void (*)( void *self );
+		self.cursordraw = None # void (*)( void *self );
+
+"""
+typedef struct
+{
+	menucommon_s generic;
+
+	char		buffer[80];
+	int			cursor;
+	int			length;
+	int			visible_length;
+	int			visible_offset;
+} menufield_s;
+
+typedef struct 
+{
+	menucommon_s generic;
+
+	float minvalue;
+	float maxvalue;
+	float curvalue;
+
+	float range;
+} menuslider_s;
+
+typedef struct
+{
+	menucommon_s generic;
+
+	int curvalue;
+
+	const char **itemnames;
+} menulist_s;
+"""
+class menuaction_s(object):
+
+	def __init__(self):
+		self.generic = menucommon_s()
+
+"""
+typedef struct
+{
+	menucommon_s generic;
+} menuseparator_s;
+
 
 """
 m_main_cursor = 0 #static int
@@ -154,123 +244,80 @@ def M_PopMenu ():
 		M_ForceMenuOff ()
 
 
-"""
-const char *Default_MenuKey( menuframework_s *m, int key )
-{
-	const char *sound = NULL;
-	menucommon_s *item;
 
-	if ( m )
-	{
-		if ( ( item = Menu_ItemAtCursor( m ) ) != 0 )
-		{
-			if ( item->type == MTYPE_FIELD )
-			{
-				if ( Field_Key( ( menufield_s * ) item, key ) )
-					return NULL;
-			}
-		}
-	}
+def Default_MenuKey( m, key ): # menuframework_s *, int (returns const char *)
 
-	switch ( key )
-	{
-	case K_ESCAPE:
-		M_PopMenu();
-		return menu_out_sound;
-	case K_KP_UPARROW:
-	case K_UPARROW:
-		if ( m )
-		{
-			m->cursor--;
-			Menu_AdjustCursor( m, -1 );
-			sound = menu_move_sound;
-		}
-		break;
-	case K_TAB:
-		if ( m )
-		{
-			m->cursor++;
-			Menu_AdjustCursor( m, 1 );
-			sound = menu_move_sound;
-		}
-		break;
-	case K_KP_DOWNARROW:
-	case K_DOWNARROW:
-		if ( m )
-		{
-			m->cursor++;
-			Menu_AdjustCursor( m, 1 );
-			sound = menu_move_sound;
-		}
-		break;
-	case K_KP_LEFTARROW:
-	case K_LEFTARROW:
-		if ( m )
-		{
-			Menu_SlideItem( m, -1 );
-			sound = menu_move_sound;
-		}
-		break;
-	case K_KP_RIGHTARROW:
-	case K_RIGHTARROW:
-		if ( m )
-		{
-			Menu_SlideItem( m, 1 );
-			sound = menu_move_sound;
-		}
-		break;
+	sound = None #const char *
+	#menucommon_s *item;
 
-	case K_MOUSE1:
-	case K_MOUSE2:
-	case K_MOUSE3:
-	case K_JOY1:
-	case K_JOY2:
-	case K_JOY3:
-	case K_JOY4:
-	case K_AUX1:
-	case K_AUX2:
-	case K_AUX3:
-	case K_AUX4:
-	case K_AUX5:
-	case K_AUX6:
-	case K_AUX7:
-	case K_AUX8:
-	case K_AUX9:
-	case K_AUX10:
-	case K_AUX11:
-	case K_AUX12:
-	case K_AUX13:
-	case K_AUX14:
-	case K_AUX15:
-	case K_AUX16:
-	case K_AUX17:
-	case K_AUX18:
-	case K_AUX19:
-	case K_AUX20:
-	case K_AUX21:
-	case K_AUX22:
-	case K_AUX23:
-	case K_AUX24:
-	case K_AUX25:
-	case K_AUX26:
-	case K_AUX27:
-	case K_AUX28:
-	case K_AUX29:
-	case K_AUX30:
-	case K_AUX31:
-	case K_AUX32:
+	if m is not None:
+	
+		item = qmenu.Menu_ItemAtCursor( m )
+		if item is not None:
 		
-	case K_KP_ENTER:
-	case K_ENTER:
-		if ( m )
-			Menu_SelectItem( m );
-		sound = menu_move_sound;
-		break;
-	}
+			if item.generic.type == MTYPE_FIELD:
+			
+				if qmenu.Field_Key( item, key ):
+					return None
+	
+	if key == keys.K_ESCAPE:
+		M_PopMenu()
+		return menu_out_sound
 
-	return sound;
-}
+	elif key == keys.K_KP_UPARROW or key == keys.K_UPARROW:
+		if m is not None:
+		
+			m.cursor-=1
+			qmenu.Menu_AdjustCursor( m, -1 )
+			sound = menu_move_sound
+		
+	elif key == keys.K_TAB:
+		if m is not None:
+		
+			m.cursor+=1
+			qmenu.Menu_AdjustCursor( m, 1 )
+			sound = menu_move_sound
+		
 
+	elif key == keys.K_KP_DOWNARROW or key == keys.K_DOWNARROW:
+		if m is not None:
+		
+			m.cursor+=1
+			qmenu.Menu_AdjustCursor( m, 1 )
+			sound = menu_move_sound
+
+	elif key == keys.K_KP_LEFTARROW or key == keys.K_LEFTARROW:
+		if m is not None:
+		
+			Menu_SlideItem( m, -1 )
+			sound = menu_move_sound
+
+	elif key == keys.K_KP_RIGHTARROW or key == keys.K_RIGHTARROW:
+		if m is not None:
+		
+			Menu_SlideItem( m, 1 )
+			sound = menu_move_sound
+
+
+	elif key in [keys.K_MOUSE1, keys.K_MOUSE2, keys.K_MOUSE3,
+		keys.K_JOY1, keys.K_JOY2, keys.K_JOY3, keys.K_JOY4,
+		keys.K_AUX1, keys.K_AUX2, keys.K_AUX3, keys.K_AUX4,
+		keys.K_AUX5, keys.K_AUX6, keys.K_AUX7, keys.K_AUX8,
+		keys.K_AUX9, keys.K_AUX10, keys.K_AUX11, keys.K_AUX12,
+		keys.K_AUX13, keys.K_AUX14, keys.K_AUX15, keys.K_AUX16,
+		keys.K_AUX17, keys.K_AUX18, keys.K_AUX19, keys.K_AUX20,
+		keys.K_AUX21, keys.K_AUX22, keys.K_AUX23, keys.K_AUX24,
+		keys.K_AUX25, keys.K_AUX26, keys.K_AUX27, keys.K_AUX28,
+		keys.K_AUX29, keys.K_AUX30, keys.K_AUX31, keys.K_AUX32,
+		keys.K_KP_ENTER, keys.K_ENTER]:
+		
+		if m is not None:
+			qmenu.Menu_SelectItem( m )
+		sound = menu_move_sound
+
+	return sound
+
+"""
 //=============================================================================
 
 /*
@@ -511,8 +558,8 @@ static void Multiplayer_MenuDraw (void)
 {
 	M_Banner( "m_banner_multiplayer" );
 
-	Menu_AdjustCursor( &s_multiplayer_menu, 1 );
-	Menu_Draw( &s_multiplayer_menu );
+	qmenu.Menu_AdjustCursor( &s_multiplayer_menu, 1 );
+	qmenu.Menu_Draw( &s_multiplayer_menu );
 }
 
 static void PlayerSetupFunc( void *unused )
@@ -556,13 +603,13 @@ void Multiplayer_MenuInit( void )
 	s_player_setup_action.generic.name	= " player setup";
 	s_player_setup_action.generic.callback = PlayerSetupFunc;
 
-	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_join_network_server_action );
-	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_start_network_server_action );
-	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_player_setup_action );
+	qmenu.Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_join_network_server_action );
+	qmenu.Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_start_network_server_action );
+	qmenu.Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_player_setup_action );
 
 	Menu_SetStatusBar( &s_multiplayer_menu, NULL );
 
-	Menu_Center( &s_multiplayer_menu );
+	qmenu.Menu_Center( &s_multiplayer_menu );
 }
 
 const char *Multiplayer_MenuKey( int key )
@@ -702,7 +749,7 @@ static void DrawKeyBindingFunc( void *self )
 		
 	if (keys[0] == -1)
 	{
-		Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, "???" );
+		qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, "???" );
 	}
 	else
 	{
@@ -711,14 +758,14 @@ static void DrawKeyBindingFunc( void *self )
 
 		name = Key_KeynumToString (keys[0]);
 
-		Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, name );
+		qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, name );
 
 		x = strlen(name) * 8;
 
 		if (keys[1] != -1)
 		{
-			Menu_DrawString( a->generic.x + a->generic.parent->x + 24 + x, a->generic.y + a->generic.parent->y, "or" );
-			Menu_DrawString( a->generic.x + a->generic.parent->x + 48 + x, a->generic.y + a->generic.parent->y, Key_KeynumToString (keys[1]) );
+			qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 24 + x, a->generic.y + a->generic.parent->y, "or" );
+			qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 48 + x, a->generic.y + a->generic.parent->y, Key_KeynumToString (keys[1]) );
 		}
 	}
 }
@@ -931,45 +978,45 @@ static void Keys_MenuInit( void )
 	s_keys_help_computer_action.generic.localdata[0] = ++i;
 	s_keys_help_computer_action.generic.name	= bindnames[s_keys_help_computer_action.generic.localdata[0]][1];
 
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_attack_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_change_weapon_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_walk_forward_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_backpedal_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_left_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_right_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_run_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_step_left_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_step_right_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_sidestep_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_look_up_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_look_down_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_center_view_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_mouse_look_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_keyboard_look_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_move_up_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_move_down_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_attack_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_change_weapon_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_walk_forward_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_backpedal_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_left_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_right_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_run_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_step_left_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_step_right_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_sidestep_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_look_up_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_look_down_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_center_view_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_mouse_look_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_keyboard_look_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_move_up_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_move_down_action );
 
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inventory_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_use_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_drop_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_prev_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_next_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inventory_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_use_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_drop_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_prev_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_next_action );
 
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_help_computer_action );
+	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_help_computer_action );
 	
 	Menu_SetStatusBar( &s_keys_menu, "enter to change, backspace to clear" );
-	Menu_Center( &s_keys_menu );
+	qmenu.Menu_Center( &s_keys_menu );
 }
 
 static void Keys_MenuDraw (void)
 {
-	Menu_AdjustCursor( &s_keys_menu, 1 );
-	Menu_Draw( &s_keys_menu );
+	qmenu.Menu_AdjustCursor( &s_keys_menu, 1 );
+	qmenu.Menu_Draw( &s_keys_menu );
 }
 
 static const char *Keys_MenuKey( int key )
 {
-	menuaction_s *item = ( menuaction_s * ) Menu_ItemAtCursor( &s_keys_menu );
+	menuaction_s *item = ( menuaction_s * ) qmenu.Menu_ItemAtCursor( &s_keys_menu );
 
 	if ( bind_grab )
 	{	
@@ -1348,28 +1395,28 @@ void Options_MenuInit( void )
 
 	ControlsSetMenuItemValues();
 
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sfxvolume_slider );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdvolume_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookstrafe_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_crosshair_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_customize_options_action );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_defaults_action );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_console_action );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_sfxvolume_slider );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdvolume_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookstrafe_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_crosshair_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_customize_options_action );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_defaults_action );
+	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_console_action );
 }
 
 void Options_MenuDraw (void)
 {
 	M_Banner( "m_banner_options" );
-	Menu_AdjustCursor( &s_options_menu, 1 );
-	Menu_Draw( &s_options_menu );
+	qmenu.Menu_AdjustCursor( &s_options_menu, 1 );
+	qmenu.Menu_Draw( &s_options_menu );
 }
 
 const char *Options_MenuKey( int key )
@@ -1884,47 +1931,50 @@ GAME MENU
 
 static int		m_game_cursor;
 
-static menuframework_s	s_game_menu;
-static menuaction_s		s_easy_game_action;
-static menuaction_s		s_medium_game_action;
-static menuaction_s		s_hard_game_action;
+"""
+s_game_menu = menuframework_s()
+
+s_easy_game_action = menuaction_s() #static
+s_medium_game_action = menuaction_s()
+s_hard_game_action = menuaction_s()
+"""
 static menuaction_s		s_load_game_action;
 static menuaction_s		s_save_game_action;
 static menuaction_s		s_credits_action;
 static menuseparator_s	s_blankline;
+"""
+def StartGame( ):
 
-static void StartGame( void )
-{
-	// disable updates and start the cinematic going
-	cl_main.cl.servercount = -1;
-	M_ForceMenuOff ();
-	Cvar_SetValue( "deathmatch", 0 );
-	Cvar_SetValue( "coop", 0 );
+	# disable updates and start the cinematic going
+	cl_main.cl.servercount = -1
+	M_ForceMenuOff ()
+	cvar.Cvar_SetValue( "deathmatch", 0 )
+	cvar.Cvar_SetValue( "coop", 0 )
 
-	Cvar_SetValue( "gamerules", 0 );		//PGM
+	cvar.Cvar_SetValue( "gamerules", 0 )		#PGM
 
-	Cbuf_AddText ("loading ; killserver ; wait ; newgame\n");
-	cl_main.cls.key_dest = client.keydest_t.key_game;
-}
+	cmd.Cbuf_AddText ("loading ; killserver ; wait ; newgame\n")
+	cl_main.cls.key_dest = client.keydest_t.key_game
 
-static void EasyGameFunc( void *data )
-{
-	Cvar_ForceSet( "skill", "0" );
-	StartGame();
-}
 
-static void MediumGameFunc( void *data )
-{
-	Cvar_ForceSet( "skill", "1" );
-	StartGame();
-}
+def EasyGameFunc( data ): #void *
 
-static void HardGameFunc( void *data )
-{
-	Cvar_ForceSet( "skill", "2" );
-	StartGame();
-}
+	cvar.Cvar_ForceSet( "skill", "0" )
+	StartGame()
 
+
+def MediumGameFunc( data ):
+
+	cvar.Cvar_ForceSet( "skill", "1" )
+	StartGame()
+
+
+def HardGameFunc( data ):
+
+	cvar.Cvar_ForceSet( "skill", "2" )
+	StartGame()
+
+"""
 static void LoadGameFunc( void *unused )
 {
 	M_Menu_LoadGame_f ();
@@ -1939,41 +1989,41 @@ static void CreditsFunc( void *unused )
 {
 	M_Menu_Credits_f();
 }
+"""
+def Game_MenuInit( ):
 
-void Game_MenuInit( void )
-{
-	static const char *difficulty_names[] =
-	{
+	
+	difficulty_names = [
 		"easy",
 		"medium",
 		"hard",
 		0
-	};
+	] #static const char *[]
 
-	s_game_menu.x = vid_so.viddef.width * 0.50;
-	s_game_menu.nitems = 0;
+	s_game_menu.x = vid_so.viddef.width * 0.50
+	s_game_menu.nitems = 0
 
-	s_easy_game_action.generic.type	= MTYPE_ACTION;
-	s_easy_game_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_easy_game_action.generic.x		= 0;
-	s_easy_game_action.generic.y		= 0;
-	s_easy_game_action.generic.name	= "easy";
-	s_easy_game_action.generic.callback = EasyGameFunc;
+	s_easy_game_action.generic.type	= MTYPE_ACTION
+	s_easy_game_action.generic.flags  = QMF_LEFT_JUSTIFY
+	s_easy_game_action.generic.x		= 0
+	s_easy_game_action.generic.y		= 0
+	s_easy_game_action.generic.name	= "easy"
+	s_easy_game_action.generic.callback = EasyGameFunc
 
-	s_medium_game_action.generic.type	= MTYPE_ACTION;
-	s_medium_game_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_medium_game_action.generic.x		= 0;
-	s_medium_game_action.generic.y		= 10;
-	s_medium_game_action.generic.name	= "medium";
-	s_medium_game_action.generic.callback = MediumGameFunc;
+	s_medium_game_action.generic.type	= MTYPE_ACTION
+	s_medium_game_action.generic.flags  = QMF_LEFT_JUSTIFY
+	s_medium_game_action.generic.x		= 0
+	s_medium_game_action.generic.y		= 10
+	s_medium_game_action.generic.name	= "medium"
+	s_medium_game_action.generic.callback = MediumGameFunc
 
-	s_hard_game_action.generic.type	= MTYPE_ACTION;
-	s_hard_game_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_hard_game_action.generic.x		= 0;
-	s_hard_game_action.generic.y		= 20;
-	s_hard_game_action.generic.name	= "hard";
-	s_hard_game_action.generic.callback = HardGameFunc;
-
+	s_hard_game_action.generic.type	= MTYPE_ACTION
+	s_hard_game_action.generic.flags  = QMF_LEFT_JUSTIFY
+	s_hard_game_action.generic.x		= 0
+	s_hard_game_action.generic.y		= 20
+	s_hard_game_action.generic.name	= "hard"
+	s_hard_game_action.generic.callback = HardGameFunc
+	"""
 	s_blankline.generic.type = MTYPE_SEPARATOR;
 
 	s_load_game_action.generic.type	= MTYPE_ACTION;
@@ -1996,37 +2046,36 @@ void Game_MenuInit( void )
 	s_credits_action.generic.y		= 60;
 	s_credits_action.generic.name	= "credits";
 	s_credits_action.generic.callback = CreditsFunc;
+	"""
+	qmenu.Menu_AddItem( s_game_menu, s_easy_game_action )
+	qmenu.Menu_AddItem( s_game_menu, s_medium_game_action )
+	qmenu.Menu_AddItem( s_game_menu, s_hard_game_action )
+	"""
+	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_blankline );
+	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_load_game_action );
+	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_save_game_action );
+	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_blankline );
+	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_credits_action );
+	"""
+	qmenu.Menu_Center( s_game_menu )
 
-	Menu_AddItem( &s_game_menu, ( void * ) &s_easy_game_action );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_medium_game_action );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_hard_game_action );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_blankline );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_load_game_action );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_save_game_action );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_blankline );
-	Menu_AddItem( &s_game_menu, ( void * ) &s_credits_action );
+def Game_MenuDraw( ):
 
-	Menu_Center( &s_game_menu );
-}
+	M_Banner( "m_banner_game" )
+	qmenu.Menu_AdjustCursor( s_game_menu, 1 )
+	qmenu.Menu_Draw( s_game_menu )
 
-void Game_MenuDraw( void )
-{
-	M_Banner( "m_banner_game" );
-	Menu_AdjustCursor( &s_game_menu, 1 );
-	Menu_Draw( &s_game_menu );
-}
 
-const char *Game_MenuKey( int key )
-{
-	return Default_MenuKey( &s_game_menu, key );
-}
+def Game_MenuKey( key ):
 
-"""
+	return Default_MenuKey( s_game_menu, key )
+
+
 def M_Menu_Game_f ():
 
 	global m_game_cursor
 
-	#Game_MenuInit()
+	Game_MenuInit()
 	M_PushMenu( Game_MenuDraw, Game_MenuKey )
 	m_game_cursor = 1
 
@@ -2105,15 +2154,15 @@ void LoadGame_MenuInit( void )
 
 		s_loadgame_actions[i].generic.type = MTYPE_ACTION;
 
-		Menu_AddItem( &s_loadgame_menu, &s_loadgame_actions[i] );
+		qmenu.Menu_AddItem( &s_loadgame_menu, &s_loadgame_actions[i] );
 	}
 }
 
 void LoadGame_MenuDraw( void )
 {
 	M_Banner( "m_banner_load_game" );
-//	Menu_AdjustCursor( &s_loadgame_menu, 1 );
-	Menu_Draw( &s_loadgame_menu );
+//	qmenu.Menu_AdjustCursor( &s_loadgame_menu, 1 );
+	qmenu.Menu_Draw( &s_loadgame_menu );
 }
 
 const char *LoadGame_MenuKey( int key )
@@ -2154,8 +2203,8 @@ void SaveGameCallback( void *self )
 void SaveGame_MenuDraw( void )
 {
 	M_Banner( "m_banner_save_game" );
-	Menu_AdjustCursor( &s_savegame_menu, 1 );
-	Menu_Draw( &s_savegame_menu );
+	qmenu.Menu_AdjustCursor( &s_savegame_menu, 1 );
+	qmenu.Menu_Draw( &s_savegame_menu );
 }
 
 void SaveGame_MenuInit( void )
@@ -2181,7 +2230,7 @@ void SaveGame_MenuInit( void )
 
 		s_savegame_actions[i].generic.type = MTYPE_ACTION;
 
-		Menu_AddItem( &s_savegame_menu, &s_savegame_actions[i] );
+		qmenu.Menu_AddItem( &s_savegame_menu, &s_savegame_actions[i] );
 	}
 }
 
@@ -2343,14 +2392,14 @@ void JoinServer_MenuInit( void )
 		s_joinserver_server_actions[i].generic.statusbar = "press ENTER to connect";
 	}
 
-	Menu_AddItem( &s_joinserver_menu, &s_joinserver_address_book_action );
-	Menu_AddItem( &s_joinserver_menu, &s_joinserver_server_title );
-	Menu_AddItem( &s_joinserver_menu, &s_joinserver_search_action );
+	qmenu.Menu_AddItem( &s_joinserver_menu, &s_joinserver_address_book_action );
+	qmenu.Menu_AddItem( &s_joinserver_menu, &s_joinserver_server_title );
+	qmenu.Menu_AddItem( &s_joinserver_menu, &s_joinserver_search_action );
 
 	for ( i = 0; i < 8; i++ )
-		Menu_AddItem( &s_joinserver_menu, &s_joinserver_server_actions[i] );
+		qmenu.Menu_AddItem( &s_joinserver_menu, &s_joinserver_server_actions[i] );
 
-	Menu_Center( &s_joinserver_menu );
+	qmenu.Menu_Center( &s_joinserver_menu );
 
 	SearchLocalGames();
 }
@@ -2358,7 +2407,7 @@ void JoinServer_MenuInit( void )
 void JoinServer_MenuDraw(void)
 {
 	M_Banner( "m_banner_join_server" );
-	Menu_Draw( &s_joinserver_menu );
+	qmenu.Menu_Draw( &s_joinserver_menu );
 }
 
 
@@ -2699,16 +2748,16 @@ void StartServer_MenuInit( void )
 	s_startserver_start_action.generic.y	= 128;
 	s_startserver_start_action.generic.callback = StartServerActionFunc;
 
-	Menu_AddItem( &s_startserver_menu, &s_startmap_list );
-	Menu_AddItem( &s_startserver_menu, &s_rules_box );
-	Menu_AddItem( &s_startserver_menu, &s_timelimit_field );
-	Menu_AddItem( &s_startserver_menu, &s_fraglimit_field );
-	Menu_AddItem( &s_startserver_menu, &s_maxclients_field );
-	Menu_AddItem( &s_startserver_menu, &s_hostname_field );
-	Menu_AddItem( &s_startserver_menu, &s_startserver_dmoptions_action );
-	Menu_AddItem( &s_startserver_menu, &s_startserver_start_action );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_startmap_list );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_rules_box );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_timelimit_field );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_fraglimit_field );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_maxclients_field );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_hostname_field );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_startserver_dmoptions_action );
+	qmenu.Menu_AddItem( &s_startserver_menu, &s_startserver_start_action );
 
-	Menu_Center( &s_startserver_menu );
+	qmenu.Menu_Center( s_startserver_menu )
 
 	// call this now to set proper inital state
 	RulesChangeFunc ( NULL );
@@ -2716,7 +2765,7 @@ void StartServer_MenuInit( void )
 
 void StartServer_MenuDraw(void)
 {
-	Menu_Draw( &s_startserver_menu );
+	qmenu.Menu_Draw( &s_startserver_menu );
 }
 
 const char *StartServer_MenuKey( int key )
@@ -3096,35 +3145,35 @@ void DMOptions_MenuInit( void )
 //ROGUE
 //============
 
-	Menu_AddItem( &s_dmoptions_menu, &s_falls_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_weapons_stay_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_instant_powerups_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_powerups_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_health_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_armor_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_spawn_farthest_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_samelevel_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_force_respawn_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_teamplay_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_allow_exit_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_infinite_ammo_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_fixed_fov_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_quad_drop_box );
-	Menu_AddItem( &s_dmoptions_menu, &s_friendlyfire_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_falls_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_weapons_stay_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_instant_powerups_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_powerups_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_health_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_armor_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_spawn_farthest_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_samelevel_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_force_respawn_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_teamplay_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_allow_exit_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_infinite_ammo_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_fixed_fov_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_quad_drop_box );
+	qmenu.Menu_AddItem( &s_dmoptions_menu, &s_friendlyfire_box );
 
 //=======
 //ROGUE
 	if(Developer_searchpath(2) == 2)
 	{
-		Menu_AddItem( &s_dmoptions_menu, &s_no_mines_box );
-		Menu_AddItem( &s_dmoptions_menu, &s_no_nukes_box );
-		Menu_AddItem( &s_dmoptions_menu, &s_stack_double_box );
-		Menu_AddItem( &s_dmoptions_menu, &s_no_spheres_box );
+		qmenu.Menu_AddItem( &s_dmoptions_menu, &s_no_mines_box );
+		qmenu.Menu_AddItem( &s_dmoptions_menu, &s_no_nukes_box );
+		qmenu.Menu_AddItem( &s_dmoptions_menu, &s_stack_double_box );
+		qmenu.Menu_AddItem( &s_dmoptions_menu, &s_no_spheres_box );
 	}
 //ROGUE
 //=======
 
-	Menu_Center( &s_dmoptions_menu );
+	qmenu.Menu_Center( &s_dmoptions_menu );
 
 	// set the original dmflags statusbar
 	DMFlagCallback( 0 );
@@ -3133,7 +3182,7 @@ void DMOptions_MenuInit( void )
 
 void DMOptions_MenuDraw(void)
 {
-	Menu_Draw( &s_dmoptions_menu );
+	qmenu.Menu_Draw( &s_dmoptions_menu );
 }
 
 const char *DMOptions_MenuKey( int key )
@@ -3249,14 +3298,14 @@ void DownloadOptions_MenuInit( void )
 	s_allow_download_sounds_box.itemnames = yes_no_names;
 	s_allow_download_sounds_box.curvalue = (Cvar_VariableValue("allow_download_sounds") != 0);
 
-	Menu_AddItem( &s_downloadoptions_menu, &s_download_title );
-	Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_box );
-	Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_maps_box );
-	Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_players_box );
-	Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_models_box );
-	Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_sounds_box );
+	qmenu.Menu_AddItem( &s_downloadoptions_menu, &s_download_title );
+	qmenu.Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_box );
+	qmenu.Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_maps_box );
+	qmenu.Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_players_box );
+	qmenu.Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_models_box );
+	qmenu.Menu_AddItem( &s_downloadoptions_menu, &s_allow_download_sounds_box );
 
-	Menu_Center( &s_downloadoptions_menu );
+	qmenu.Menu_Center( &s_downloadoptions_menu );
 
 	// skip over title
 	if (s_downloadoptions_menu.cursor == 0)
@@ -3265,7 +3314,7 @@ void DownloadOptions_MenuInit( void )
 
 void DownloadOptions_MenuDraw(void)
 {
-	Menu_Draw( &s_downloadoptions_menu );
+	qmenu.Menu_Draw( &s_downloadoptions_menu );
 }
 
 const char *DownloadOptions_MenuKey( int key )
@@ -3319,7 +3368,7 @@ void AddressBook_MenuInit( void )
 
 		strcpy( s_addressbook_fields[i].buffer, adr->string );
 
-		Menu_AddItem( &s_addressbook_menu, &s_addressbook_fields[i] );
+		qmenu.Menu_AddItem( &s_addressbook_menu, &s_addressbook_fields[i] );
 	}
 }
 
@@ -3342,7 +3391,7 @@ const char *AddressBook_MenuKey( int key )
 void AddressBook_MenuDraw(void)
 {
 	M_Banner( "m_banner_addressbook" );
-	Menu_Draw( &s_addressbook_menu );
+	qmenu.Menu_Draw( &s_addressbook_menu );
 }
 
 void M_Menu_AddressBook_f(void)
@@ -3752,19 +3801,19 @@ qboolean PlayerConfig_MenuInit( void )
 	s_player_download_action.generic.statusbar = NULL;
 	s_player_download_action.generic.callback = DownloadOptionsFunc;
 
-	Menu_AddItem( &s_player_config_menu, &s_player_name_field );
-	Menu_AddItem( &s_player_config_menu, &s_player_model_title );
-	Menu_AddItem( &s_player_config_menu, &s_player_model_box );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_name_field );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_model_title );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_model_box );
 	if ( s_player_skin_box.itemnames )
 	{
-		Menu_AddItem( &s_player_config_menu, &s_player_skin_title );
-		Menu_AddItem( &s_player_config_menu, &s_player_skin_box );
+		qmenu.Menu_AddItem( &s_player_config_menu, &s_player_skin_title );
+		qmenu.Menu_AddItem( &s_player_config_menu, &s_player_skin_box );
 	}
-	Menu_AddItem( &s_player_config_menu, &s_player_hand_title );
-	Menu_AddItem( &s_player_config_menu, &s_player_handedness_box );
-	Menu_AddItem( &s_player_config_menu, &s_player_rate_title );
-	Menu_AddItem( &s_player_config_menu, &s_player_rate_box );
-	Menu_AddItem( &s_player_config_menu, &s_player_download_action );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_hand_title );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_handedness_box );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_rate_title );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_rate_box );
+	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_download_action );
 
 	return true;
 }
@@ -3815,7 +3864,7 @@ void PlayerConfig_MenuDraw( void )
 		refdef.lightstyles = 0;
 		refdef.rdflags = RDF_NOWORLDMODEL;
 
-		Menu_Draw( &s_player_config_menu );
+		qmenu.Menu_Draw( &s_player_config_menu );
 
 		M_DrawTextBox( ( refdef.x ) * ( 320.0F / vid_so.viddef.width ) - 8, ( vid_so.viddef.height / 2 ) * ( 240.0F / vid_so.viddef.height) - 77, refdef.width / 8, refdef.height / 8 );
 		refdef.height += 4;

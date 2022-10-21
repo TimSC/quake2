@@ -322,12 +322,12 @@ class cvar_t(object):
 
 	def __init__(self):
 
-		name = None #char *
-		string = None #char	*
-		latched_string = None #char	*, for CVAR_LATCH vars
-		flags = None #int
-		modified = None #qboolean, set each time the cvar is changed
-		value = None #float
+		self.name = None #char *
+		self.string = None #char	*
+		self.latched_string = None #char	*, for CVAR_LATCH vars
+		self.flags = None #int
+		self.modified = None #qboolean, set each time the cvar is changed
+		self.value = None #float
 
 """
 
