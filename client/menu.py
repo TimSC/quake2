@@ -112,15 +112,15 @@ class menuaction_s(object):
 
 	def __init__(self):
 		self.generic = menucommon_s()
-
-"""
-typedef struct
-{
-	menucommon_s generic;
-} menuseparator_s;
+		self.generic.type = MTYPE_ACTION
 
 
-"""
+class menuseparator_s(object):
+
+	def __init__(self):
+		self.generic = menucommon_s()
+		self.generic.type = MTYPE_SEPARATOR
+
 m_main_cursor = 0 #static int
 
 NUM_CURSOR_FRAMES = 15
@@ -619,8 +619,9 @@ const char *Multiplayer_MenuKey( int key )
 """
 def M_Menu_Multiplayer_f():
 
+	pass
 	#Multiplayer_MenuInit()
-	M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey )
+	#M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey )
 
 """
 =======================================================================
@@ -1051,8 +1052,9 @@ static const char *Keys_MenuKey( int key )
 """
 def M_Menu_Keys_f ():
 
+	pass
 	#Keys_MenuInit();
-	M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
+	#M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
 
 
 
@@ -1426,8 +1428,9 @@ const char *Options_MenuKey( int key )
 """
 def M_Menu_Options_f ():
 
+	pass
 	#Options_MenuInit();
-	M_PushMenu ( Options_MenuDraw, Options_MenuKey )
+	#M_PushMenu ( Options_MenuDraw, Options_MenuKey )
 
 
 """
@@ -1441,8 +1444,9 @@ VIDEO MENU
 
 def M_Menu_Video_f ():
 
+	pass
 	#VID_MenuInit()
-	M_PushMenu( VID_MenuDraw, VID_MenuKey )
+	#M_PushMenu( VID_MenuDraw, VID_MenuKey )
 
 
 """
@@ -1866,7 +1870,7 @@ extern int Developer_searchpath (int who);
 """
 def M_Menu_Credits_f():
 
-
+	pass
 	"""
 
 	int		n;
@@ -1918,7 +1922,7 @@ def M_Menu_Credits_f():
 
 	credits_start_time = cl_main.cls.realtime;
 	"""
-	M_PushMenu( M_Credits_MenuDraw, M_Credits_Key)
+	#M_PushMenu( M_Credits_MenuDraw, M_Credits_Key)
 
 
 """
@@ -1927,22 +1931,21 @@ def M_Menu_Credits_f():
 GAME MENU
 
 =============================================================================
-*/
-
-static int		m_game_cursor;
-
 """
+m_game_cursor = 0 #static int
+
 s_game_menu = menuframework_s()
 
 s_easy_game_action = menuaction_s() #static
 s_medium_game_action = menuaction_s()
 s_hard_game_action = menuaction_s()
-"""
-static menuaction_s		s_load_game_action;
-static menuaction_s		s_save_game_action;
-static menuaction_s		s_credits_action;
-static menuseparator_s	s_blankline;
-"""
+
+s_load_game_action = menuaction_s()
+s_save_game_action = menuaction_s()
+s_credits_action = menuaction_s()
+
+s_blankline = menuseparator_s()
+
 def StartGame( ):
 
 	# disable updates and start the cinematic going
@@ -1974,22 +1977,22 @@ def HardGameFunc( data ):
 	cvar.Cvar_ForceSet( "skill", "2" )
 	StartGame()
 
-"""
-static void LoadGameFunc( void *unused )
-{
-	M_Menu_LoadGame_f ();
-}
 
-static void SaveGameFunc( void *unused )
-{
-	M_Menu_SaveGame_f();
-}
+def LoadGameFunc( unused ):
 
-static void CreditsFunc( void *unused )
-{
-	M_Menu_Credits_f();
-}
-"""
+	M_Menu_LoadGame_f ()
+
+
+def SaveGameFunc( unused ):
+
+	M_Menu_SaveGame_f()
+
+
+def CreditsFunc( unused ):
+
+	M_Menu_Credits_f()
+
+
 def Game_MenuInit( ):
 
 	
@@ -2003,60 +2006,52 @@ def Game_MenuInit( ):
 	s_game_menu.x = vid_so.viddef.width * 0.50
 	s_game_menu.nitems = 0
 
-	s_easy_game_action.generic.type	= MTYPE_ACTION
 	s_easy_game_action.generic.flags  = QMF_LEFT_JUSTIFY
 	s_easy_game_action.generic.x		= 0
 	s_easy_game_action.generic.y		= 0
 	s_easy_game_action.generic.name	= "easy"
 	s_easy_game_action.generic.callback = EasyGameFunc
 
-	s_medium_game_action.generic.type	= MTYPE_ACTION
 	s_medium_game_action.generic.flags  = QMF_LEFT_JUSTIFY
 	s_medium_game_action.generic.x		= 0
 	s_medium_game_action.generic.y		= 10
 	s_medium_game_action.generic.name	= "medium"
 	s_medium_game_action.generic.callback = MediumGameFunc
 
-	s_hard_game_action.generic.type	= MTYPE_ACTION
 	s_hard_game_action.generic.flags  = QMF_LEFT_JUSTIFY
 	s_hard_game_action.generic.x		= 0
 	s_hard_game_action.generic.y		= 20
 	s_hard_game_action.generic.name	= "hard"
 	s_hard_game_action.generic.callback = HardGameFunc
-	"""
-	s_blankline.generic.type = MTYPE_SEPARATOR;
 
-	s_load_game_action.generic.type	= MTYPE_ACTION;
-	s_load_game_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_load_game_action.generic.x		= 0;
-	s_load_game_action.generic.y		= 40;
-	s_load_game_action.generic.name	= "load game";
-	s_load_game_action.generic.callback = LoadGameFunc;
+	s_load_game_action.generic.flags  = QMF_LEFT_JUSTIFY
+	s_load_game_action.generic.x		= 0
+	s_load_game_action.generic.y		= 40
+	s_load_game_action.generic.name	= "load game"
+	s_load_game_action.generic.callback = LoadGameFunc
 
-	s_save_game_action.generic.type	= MTYPE_ACTION;
-	s_save_game_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_save_game_action.generic.x		= 0;
-	s_save_game_action.generic.y		= 50;
-	s_save_game_action.generic.name	= "save game";
-	s_save_game_action.generic.callback = SaveGameFunc;
+	s_save_game_action.generic.flags  = QMF_LEFT_JUSTIFY
+	s_save_game_action.generic.x		= 0
+	s_save_game_action.generic.y		= 50
+	s_save_game_action.generic.name	= "save game"
+	s_save_game_action.generic.callback = SaveGameFunc
 
-	s_credits_action.generic.type	= MTYPE_ACTION;
-	s_credits_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_credits_action.generic.x		= 0;
-	s_credits_action.generic.y		= 60;
-	s_credits_action.generic.name	= "credits";
-	s_credits_action.generic.callback = CreditsFunc;
-	"""
+	s_credits_action.generic.flags  = QMF_LEFT_JUSTIFY
+	s_credits_action.generic.x		= 0
+	s_credits_action.generic.y		= 60
+	s_credits_action.generic.name	= "credits"
+	s_credits_action.generic.callback = CreditsFunc
+	
 	qmenu.Menu_AddItem( s_game_menu, s_easy_game_action )
 	qmenu.Menu_AddItem( s_game_menu, s_medium_game_action )
 	qmenu.Menu_AddItem( s_game_menu, s_hard_game_action )
-	"""
-	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_blankline );
-	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_load_game_action );
-	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_save_game_action );
-	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_blankline );
-	qmenu.Menu_AddItem( &s_game_menu, ( void * ) &s_credits_action );
-	"""
+	qmenu.Menu_AddItem( s_game_menu, s_blankline )
+	
+	qmenu.Menu_AddItem( s_game_menu, s_load_game_action )
+	qmenu.Menu_AddItem( s_game_menu, s_save_game_action )
+	qmenu.Menu_AddItem( s_game_menu, s_blankline )
+	qmenu.Menu_AddItem( s_game_menu, s_credits_action )
+	
 	qmenu.Menu_Center( s_game_menu )
 
 def Game_MenuDraw( ):
@@ -2179,8 +2174,9 @@ const char *LoadGame_MenuKey( int key )
 """
 def M_Menu_LoadGame_f ():
 
+	pass
 	#LoadGame_MenuInit()
-	M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey )
+	#M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey )
 
 """
 =============================================================================
@@ -2248,11 +2244,12 @@ const char *SaveGame_MenuKey( int key )
 """
 def M_Menu_SaveGame_f ():
 
+	pass
 	#if (!Com_ServerState())
 	#	return;		# not playing a game
 
 	#SaveGame_MenuInit();
-	M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey )
+	#M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey )
 	#Create_Savestrings ();
 
 

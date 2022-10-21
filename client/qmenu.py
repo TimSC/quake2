@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from client import menu as menumod
-from linux import vid_so
+from linux import vid_so, q_shlinux
 """
 #include <string.h>
 #include <ctype.h>
@@ -120,7 +120,7 @@ void Field_Draw( menufield_s *f )
 		else
 			offset = f->cursor;
 
-		if ( ( ( int ) ( Sys_Milliseconds() / 250 ) ) & 1 )
+		if ( ( ( int ) ( q_shlinux.Sys_Milliseconds() / 250 ) ) & 1 )
 		{
 			Draw_Char( f.generic.x + f.generic.parent.x + ( offset + 2 ) * 8 + 8,
 					   f.generic.y + f.generic.parent.y,
@@ -370,33 +370,34 @@ def Menu_Draw( menu ): #menuframework_s *
 		elif item.generic.type == menumod.MTYPE_ACTION:
 			Action_Draw( item )
 
-		elif item.generic.type == menumod.menumod.MTYPE_SEPARATOR:
+		elif item.generic.type == menumod.MTYPE_SEPARATOR:
 			Separator_Draw( item )
 
 	
+
+	item = Menu_ItemAtCursor( menu )
+
+	if item is not None and item.generic.cursordraw is not None:
+	
+		item.generic.cursordraw( item )
+	
+	elif menu.cursordraw is not None:
+	
+		menu.cursordraw( menu )
+	
+	
+	elif item is not None and item.generic.type != menumod.MTYPE_FIELD:
+	
+		if item.generic.flags & menumod.QMF_LEFT_JUSTIFY:
+		
+			Draw_Char( menu.x + item.generic.x - 24 + item.generic.cursor_offset, menu.y + item.generic.y, 12 + ( int ( q_shlinux.Sys_Milliseconds()//250 ) & 1 ) )
+		
+		else:
+		
+			Draw_Char( menu.x + item.generic.cursor_offset, menu.y + item.generic.y, 12 + ( int ( q_shlinux.Sys_Milliseconds()//250 ) & 1 ) )
+		
+	
 	"""
-	item = Menu_ItemAtCursor( menu );
-
-	if ( item && item->cursordraw )
-	{
-		item->cursordraw( item );
-	}
-	else if ( menu->cursordraw )
-	{
-		menu->cursordraw( menu );
-	}
-	else if ( item && item->type != menumod.MTYPE_FIELD )
-	{
-		if ( item->flags & menumod.QMF_LEFT_JUSTIFY )
-		{
-			Draw_Char( menu.x + item.x - 24 + item->cursor_offset, menu.y + item.y, 12 + ( ( int ) ( Sys_Milliseconds()/250 ) & 1 ) );
-		}
-		else
-		{
-			Draw_Char( menu.x + item->cursor_offset, menu.y + item.y, 12 + ( ( int ) ( Sys_Milliseconds()/250 ) & 1 ) );
-		}
-	}
-
 	if ( item )
 	{
 		if ( item->statusbarfunc )
@@ -433,43 +434,29 @@ void Menu_DrawStatusBar( const char *string )
 """
 def Menu_DrawString( x, y, string ): #int, int, const char *
 
-	#unsigned i;
-
 	for i, ch in enumerate(string):
 
 		Draw_Char( ( x + i*8 ), y, ord(ch) )
 	
-"""
-void Menu_DrawStringDark( int x, int y, const char *string )
-{
-	unsigned i;
 
-	for ( i = 0; i < strlen( string ); i++ )
-	{
-		Draw_Char( ( x + i*8 ), y, string[i] + 128 );
-	}
-}
+def Menu_DrawStringDark( x, y, string ): #int, int, const char *
 
-void Menu_DrawStringR2L( int x, int y, const char *string )
-{
-	unsigned i;
+	for i, ch in enumerate(string):
+	
+		Draw_Char( ( x + i*8 ), y, ord(ch) + 128 )
+	
+def Menu_DrawStringR2L( x, y, string ): #int, int, const char *
 
-	for ( i = 0; i < strlen( string ); i++ )
-	{
-		Draw_Char( ( x - i*8 ), y, string[strlen(string)-i-1] );
-	}
-}
+	for i, ch in enumerate(string):
+	
+		Draw_Char( ( x - i*8 ), y, ord(string[-i-1]) )
 
-void Menu_DrawStringR2LDark( int x, int y, const char *string )
-{
-	unsigned i;
+def Menu_DrawStringR2LDark( x, y, string ): #int, int, const char *
 
-	for ( i = 0; i < strlen( string ); i++ )
-	{
-		Draw_Char( ( x - i*8 ), y, string[strlen(string)-i-1]+128 );
-	}
-}
-"""
+	for i, ch in enumerate(string):
+	
+		Draw_Char( ( x - i*8 ), y, ord(string[-i-1])+128 )
+	
 def Menu_ItemAtCursor( m ): #menuframework_s * (returns void *)
 
 	if m.cursor < 0 or m.cursor >= len(m.items):
@@ -566,13 +553,13 @@ void MenuList_Draw( menulist_s *l )
 		y += 10;
 	}
 }
+"""
+def Separator_Draw( s ): #menuseparator_s *
 
-void Separator_Draw( menuseparator_s *s )
-{
-	if ( s.generic.name )
-		Menu_DrawStringR2LDark( s.generic.x + s.generic.parent.x, s.generic.y + s.generic.parent.y, s.generic.name );
-}
+	if s.generic.name:
+		Menu_DrawStringR2LDark( s.generic.x + s.generic.parent.x, s.generic.y + s.generic.parent.y, s.generic.name )
 
+"""
 void Slider_DoSlide( menuslider_s *s, int dir )
 {
 	s->curvalue += dir;
