@@ -728,8 +728,7 @@ def GLimp_SetMode( width, height, mode, fullscreen ): # int *, int *, int, qbool
 						visinfo->visual, mask, &attr);
 	XMapWindow(dpy, win);
 	"""
-
-	flags = pygame.OPENGL
+	flags = pygame.OPENGL | pygame.DOUBLEBUF
 	if fullscreen:
 		flags |= pygame.FULLSCREEN
 	screen = pygame.display.set_mode((width, height), flags)
