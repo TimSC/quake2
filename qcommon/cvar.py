@@ -255,32 +255,33 @@ def Cvar_Set (var_name, value): #char *, char * (returns cvar_t *)
 ============
 Cvar_FullSet
 ============
-*/
-cvar_t *Cvar_FullSet (char *var_name, char *value, int flags)
-{
-	cvar_t	*var;
+"""
+def Cvar_FullSet (var_name, value, flags): #char *, char *, int (returns cvar_t *)
+
+	var = Cvar_FindVar (var_name)
+	if var is None:
+		# create it
+		return Cvar_Get (var_name, value, flags)
 	
-	var = Cvar_FindVar (var_name);
-	if (!var)
-	{	// create it
-		return Cvar_Get (var_name, value, flags);
-	}
 
-	var.modified = true;
+	var.modified = True
 
-	if (var.flags & q_shared.CVAR_USERINFO)
-		userinfo_modified = true;	// transmit at next oportunity
+	if var.flags & q_shared.CVAR_USERINFO:
+		userinfo_modified = True	# transmit at next oportunity
 	
-	Z_Free (var.string);	// free the old value string
+	#Z_Free (var.string);	# free the old value string
 	
-	var.string = CopyString(value);
-	var.value = atof (var.string);
-	var.flags = flags;
+	var.string = value
+	try:
+		var.value = float(var.string)
+	except ValueError:
+		var.value = None
+	var.flags = flags
 
-	return var;
-}
+	return var
 
-/*
+
+"""
 ============
 Cvar_SetValue
 ============
@@ -302,9 +303,12 @@ Cvar_GetLatchedVars
 
 Any variables with latched values will now be updated
 ============
-*/
-void Cvar_GetLatchedVars (void)
-{
+"""
+def Cvar_GetLatchedVars ():
+
+
+	pass
+	"""
 	cvar_t	*var;
 
 	for (var = cvar_vars ; var ; var = var.next)
@@ -323,8 +327,8 @@ void Cvar_GetLatchedVars (void)
 	}
 }
 
-"""
-"""
+
+
 ============
 Cvar_Command
 

@@ -17,7 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cmd, common
+from qcommon import cmd, common, files
+from server import sv_init
 """
 #include "server.h"
 
@@ -155,9 +156,11 @@ SV_WipeSavegame
 
 Delete save/<XXX>/
 =====================
-*/
-void SV_WipeSavegame (char *savename)
-{
+"""
+def SV_WipeSavegame (savename): #char *
+
+	pass
+	"""
 	char	name[MAX_OSPATH];
 	char	*s;
 
@@ -466,11 +469,10 @@ Puts the server in demo mode on a specific map/cinematic
 ==================
 """
 def SV_DemoMap_f ():
-	pass
-	"""
-	SV_Map (true, Cmd_Argv(1), false );
+	
+	sv_init.SV_Map (True, cmd.Cmd_Argv(1), False )
 
-/*
+"""
 ==================
 SV_GameMap_f
 
@@ -489,24 +491,21 @@ goes to map jail.bsp.
 ==================
 """
 def SV_GameMap_f ():
-	pass
+
+	#char		*map;
+	#int			i;
+	#client_t	*cl;
+	#qboolean	*savedInuse;
+
+	if cmd.Cmd_Argc() != 2:
+	
+		common.Com_Printf ("USAGE: gamemap <map>\n");
+		return
+	
+	common.Com_DPrintf("SV_GameMap(%s)\n".format(cmd.Cmd_Argv(1)))
 	"""
-
-	char		*map;
-	int			i;
-	client_t	*cl;
-	qboolean	*savedInuse;
-
-	if (Cmd_Argc() != 2)
-	{
-		Com_Printf ("USAGE: gamemap <map>\n");
-		return;
-	}
-
-	Com_DPrintf("SV_GameMap(%s)\n", Cmd_Argv(1));
-
 	FS_CreatePath (va("%s/save/current/", FS_Gamedir()));
-
+	
 	// check for clearing the current savegame
 	map = Cmd_Argv(1);
 	if (map[0] == '*')
@@ -536,10 +535,10 @@ def SV_GameMap_f ():
 			free (savedInuse);
 		}
 	}
-
-	// start up the next map
-	SV_Map (false, Cmd_Argv(1), false );
-
+	"""
+	# start up the next map
+	sv_init.SV_Map (False, cmd.Cmd_Argv(1), False )
+	"""
 	// archive server state
 	strncpy (svs.mapcmd, Cmd_Argv(1), sizeof(svs.mapcmd)-1);
 
@@ -549,39 +548,36 @@ def SV_GameMap_f ():
 		SV_WriteServerFile (true);
 		SV_CopySaveGame ("current", "save0");
 	}
-}
+	"""
 
-/*
+"""
 ==================
-SV_Map_f
+sv_init.SV_Map_f
 
 Goes directly to a given map without any savegame archiving.
 For development work
 ==================
 """
 def SV_Map_f ():
-	pass
-	"""
-	char	*map;
-	char	expanded[MAX_QPATH];
 
-	// if not a pcx, demo, or cinematic, check to make sure the level exists
-	map = Cmd_Argv(1);
-	if (!strstr (map, "."))
-	{
-		Com_sprintf (expanded, sizeof(expanded), "maps/%s.bsp", map);
-		if (FS_LoadFile (expanded, NULL) == -1)
-		{
-			Com_Printf ("Can't find %s\n", expanded);
-			return;
-		}
-	}
+	#char	*map;
 
-	sv.state = ss_dead;		// don't save current level when changing
-	SV_WipeSavegame("current");
-	SV_GameMap_f ();
+	# if not a pcx, demo, or cinematic, check to make sure the level exists
+	mapName = cmd.Cmd_Argv(1)
+	if mapName.find(".") == -1:
+	
+		expanded = "maps/{}.bsp".format(mapName)
+		length, handle = files.FS_LoadFile (expanded, None)
+		if handle is None:
+		
+			common.Com_Printf ("Can't find {}\n".format(expanded))
+			return
+		
+	sv.state = ss_dead;		# don't save current level when changing
+	SV_WipeSavegame("current")
+	SV_GameMap_f ()
 
-/*
+"""
 =====================================================================
 
   SAVEGAMES
@@ -633,7 +629,7 @@ def SV_Loadgame_f ():
 
 	// go to the map
 	sv.state = ss_dead;		// don't save current level when changing
-	SV_Map (false, svs.mapcmd, true);
+	sv_init.SV_Map (false, svs.mapcmd, true);
 
 
 

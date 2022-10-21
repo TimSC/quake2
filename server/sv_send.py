@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // sv_main.c -- server main program
 
 #include "server.h"
@@ -128,9 +129,11 @@ SV_BroadcastCommand
 
 Sends text to all active clients
 =================
-*/
-void SV_BroadcastCommand (char *fmt, ...)
-{
+"""
+def SV_BroadcastCommand (msg): #char *
+
+	pass
+	"""
 	va_list		argptr;
 	char		string[1024];
 	
@@ -564,4 +567,4 @@ void SV_SendClientMessages (void)
 		}
 	}
 }
-
+"""

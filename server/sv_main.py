@@ -1039,9 +1039,11 @@ SV_Shutdown
 Called when each game quits,
 before Sys_Quit or Sys_Error
 ================
-*/
-void SV_Shutdown (char *finalmsg, qboolean reconnect)
-{
+"""
+def SV_Shutdown (finalmsg, reconnect): #char *, qboolean
+
+	pass
+	"""
 	if (svs.clients)
 		SV_FinalMessage (finalmsg, reconnect);
 

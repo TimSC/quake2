@@ -188,12 +188,12 @@ PROTOCOL_VERSION	= 34
 #define	PORT_SERVER	27910
 
 //=========================================
+"""
+UPDATE_BACKUP	= 16	# copies of entity_state_t to keep buffered
+							# must be power of two
+UPDATE_MASK		= (UPDATE_BACKUP-1)
 
-#define	UPDATE_BACKUP	16	// copies of entity_state_t to keep buffered
-							// must be power of two
-#define	UPDATE_MASK		(UPDATE_BACKUP-1)
-
-
+"""
 
 //==================
 // the svc_strings[] array in cl_parse.c should mirror this

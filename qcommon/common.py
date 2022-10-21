@@ -274,16 +274,14 @@ def Com_ServerState (): #(returns int)
 ==================
 Com_SetServerState
 ==================
-*/
-void Com_SetServerState (int state)
-{
+"""
+def Com_SetServerState (state):
+
 	global server_state
 
-	server_state = state;
-}
+	server_state = state
 
-
-/*
+"""
 ==============================================================================
 
 			MESSAGE IO FUNCTIONS

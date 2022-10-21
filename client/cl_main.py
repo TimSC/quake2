@@ -341,7 +341,7 @@ CL_Quit_f
 """
 def CL_Quit_f ():
 
-	#CL_Disconnect ()
+	CL_Disconnect ()
 	common.Com_Quit ()
 
 
@@ -351,9 +351,10 @@ CL_Drop
 
 Called after an ERR_DROP was thrown
 ================
-*/
-void CL_Drop (void)
-{
+"""
+def CL_Drop ():
+	pass
+	"""
 	if (cls.state == client.connstate_t.ca_uninitialized)
 		return;
 	if (cls.state == ca_disconnected)
@@ -569,9 +570,11 @@ Goes from a connected state to full screen console state
 Sends a disconnect message to the server
 This is also called on Com_Error, so it shouldn't cause any errors
 =====================
-*/
-void CL_Disconnect (void)
-{
+"""
+def CL_Disconnect ():
+
+	pass
+	"""
 	byte	final[32];
 
 	if (cls.state == ca_disconnected)
@@ -1374,7 +1377,7 @@ def CL_InitLocal ():
 	global rcon_client_password, rcon_address, cl_lightlevel
 	global info_password, info_spectator, name, skin, rate, msg, hand, fov, gender, gender_auto, cl_vwep
 
-	#cls.state = client.connstate_t.ca_disconnected
+	cls.state = client.connstate_t.ca_disconnected
 	cls.realtime = q_shlinux.Sys_Milliseconds ()
 
 	cl_input.CL_InitInput ()

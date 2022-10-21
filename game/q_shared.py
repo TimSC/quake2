@@ -73,21 +73,20 @@ MAX_TOKEN_CHARS = 128		# max length of an individual token
 
 MAX_QPATH			= 64		# max length of a quake game pathname
 MAX_OSPATH			= 128		# max length of a filesystem pathname
-"""
-//
-// per-level limits
-//
-#define	MAX_CLIENTS			256		// absolute limit
-#define	MAX_EDICTS			1024	// must change protocol to increase more
-#define	MAX_LIGHTSTYLES		256
-#define	MAX_MODELS			256		// these are sent over the net as bytes
-"""
-MAX_SOUNDS = 256		# so they cannot be blindly increased
-"""
-#define	MAX_IMAGES			256
-#define	MAX_ITEMS			256
-#define MAX_GENERAL			(MAX_CLIENTS*2)	// general config strings
 
+#
+# per-level limits
+#
+MAX_CLIENTS			= 256		# absolute limit
+MAX_EDICTS			= 1024	# must change protocol to increase more
+MAX_LIGHTSTYLES		= 256
+MAX_MODELS			= 256		# these are sent over the net as bytes
+MAX_SOUNDS 			= 256		# so they cannot be blindly increased
+
+MAX_IMAGES			= 256
+MAX_ITEMS			= 256
+MAX_GENERAL			= (MAX_CLIENTS*2)	# general config strings
+"""
 
 // game print flags
 #define	PRINT_LOW			0		// pickup messages
@@ -1091,32 +1090,32 @@ ROGUE - VERSIONS
 #define	ANGLE2SHORT(x)	((int)((x)*65536/360) & 65535)
 #define	SHORT2ANGLE(x)	((x)*(360.0/65536))
 
+"""
+#
+# config strings are a general means of communication from
+# the server to all connected clients.
+# Each config string can be at most MAX_QPATH characters.
+#
+CS_NAME				= 0
+CS_CDTRACK			= 1
+CS_SKY				= 2
+CS_SKYAXIS			= 3		# %f %f %f format
+CS_SKYROTATE		= 4
+CS_STATUSBAR		= 5		# display program string
 
-//
-// config strings are a general means of communication from
-// the server to all connected clients.
-// Each config string can be at most MAX_QPATH characters.
-//
-#define	CS_NAME				0
-#define	CS_CDTRACK			1
-#define	CS_SKY				2
-#define	CS_SKYAXIS			3		// %f %f %f format
-#define	CS_SKYROTATE		4
-#define	CS_STATUSBAR		5		// display program string
+CS_AIRACCEL			= 29		# air acceleration control
+CS_MAXCLIENTS		= 30
+CS_MAPCHECKSUM		= 31		# for catching cheater maps
 
-#define CS_AIRACCEL			29		// air acceleration control
-#define	CS_MAXCLIENTS		30
-#define	CS_MAPCHECKSUM		31		// for catching cheater maps
-
-#define	CS_MODELS			32
-#define	CS_SOUNDS			(CS_MODELS+MAX_MODELS)
-#define	CS_IMAGES			(CS_SOUNDS+MAX_SOUNDS)
-#define	CS_LIGHTS			(CS_IMAGES+MAX_IMAGES)
-#define	CS_ITEMS			(CS_LIGHTS+MAX_LIGHTSTYLES)
-#define	CS_PLAYERSKINS		(CS_ITEMS+MAX_ITEMS)
-#define CS_GENERAL			(CS_PLAYERSKINS+MAX_CLIENTS)
-#define	MAX_CONFIGSTRINGS	(CS_GENERAL+MAX_GENERAL)
-
+CS_MODELS			= 32
+CS_SOUNDS			= (CS_MODELS+MAX_MODELS)
+CS_IMAGES			= (CS_SOUNDS+MAX_SOUNDS)
+CS_LIGHTS			= (CS_IMAGES+MAX_IMAGES)
+CS_ITEMS			= (CS_LIGHTS+MAX_LIGHTSTYLES)
+CS_PLAYERSKINS		= (CS_ITEMS+MAX_ITEMS)
+CS_GENERAL			= (CS_PLAYERSKINS+MAX_CLIENTS)
+MAX_CONFIGSTRINGS	= (CS_GENERAL+MAX_GENERAL)
+"""
 
 //==============================================
 
@@ -2354,17 +2353,13 @@ void Com_PageInMemory (byte *buffer, int size)
 
 ============================================================================
 */
+"""
+# FIXME: replace all Q_stricmp with Q_strcasecmp
+def Q_stricmp (s1, s2): #char *, char* (return int)
 
-// FIXME: replace all Q_stricmp with Q_strcasecmp
-int Q_stricmp (char *s1, char *s2)
-{
-#if defined(WIN32)
-	return _stricmp (s1, s2);
-#else
-	return strcasecmp (s1, s2);
-#endif
-}
+	return strcasecmp (s1, s2)
 
+"""
 
 int Q_strncasecmp (char *s1, char *s2, int n)
 {

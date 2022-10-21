@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // cmodel.c -- model loading
 
 #include "qcommon.h"
@@ -544,9 +545,12 @@ CM_LoadMap
 
 Loads in the map and all submodels
 ==================
-*/
-cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
-{
+"""
+def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsigned *)
+
+	print ("CM_LoadMap", name)
+	return None, 0
+	"""
 	unsigned		*buf;
 	int				i;
 	dheader_t		header;
@@ -1767,4 +1771,4 @@ qboolean CM_HeadnodeVisible (int nodenum, byte *visbits)
 		return true;
 	return CM_HeadnodeVisible(node->children[1], visbits);
 }
-
+"""
