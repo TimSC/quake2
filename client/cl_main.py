@@ -1793,8 +1793,8 @@ def CL_Init ():
 	in_linux.IN_Init ()
 
 	## Cbuf_AddText ("exec autoexec.cfg\n");
-	#FS_ExecAutoexec ();
-	#cmd.Cbuf_Execute ()
+	files.FS_ExecAutoexec ()
+	cmd.Cbuf_Execute ()
 
 
 """

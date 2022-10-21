@@ -140,8 +140,9 @@ char *strlwr (char *s)
 static	char	findbase[MAX_OSPATH];
 static	char	findpath[MAX_OSPATH];
 static	char	findpattern[MAX_OSPATH];
-static	DIR		*fdir;
-
+"""
+fdir = None #static DIR	*
+"""
 static qboolean CompareAttributes(char *path, char *name,
 	unsigned musthave, unsigned canthave )
 {
@@ -165,16 +166,18 @@ static qboolean CompareAttributes(char *path, char *name,
 
 	return true;
 }
+"""
+def Sys_FindFirst (path, musthave, canhave) #char *, unsigned, unsigned (returns char *)
 
-char *Sys_FindFirst (char *path, unsigned musthave, unsigned canhave)
-{
+
+	"""
 	struct dirent *d;
 	char *p;
 
 	if (fdir)
 		Sys_Error ("Sys_BeginFind without close");
 
-//	COM_FilePath (path, findbase);
+	## COM_FilePath (path, findbase);
 	strcpy(findbase, path);
 
 	if ((p = strrchr(findbase, '/')) != NULL) {
@@ -190,17 +193,18 @@ char *Sys_FindFirst (char *path, unsigned musthave, unsigned canhave)
 		return NULL;
 	while ((d = readdir(fdir)) != NULL) {
 		if (!*findpattern || glob_match(findpattern, d->d_name)) {
-//			if (*findpattern)
-//				printf("%s matched %s\n", findpattern, d->d_name);
+			##if (*findpattern)
+			##	printf("%s matched %s\n", findpattern, d->d_name);
 			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
 				sprintf (findpath, "%s/%s", findbase, d->d_name);
 				return findpath;
 			}
 		}
 	}
-	return NULL;
-}
+	"""
+	return None
 
+"""
 char *Sys_FindNext (unsigned musthave, unsigned canhave)
 {
 	struct dirent *d;
@@ -219,14 +223,13 @@ char *Sys_FindNext (unsigned musthave, unsigned canhave)
 	}
 	return NULL;
 }
+"""
+def Sys_FindClose ():
 
-void Sys_FindClose (void)
-{
-	if (fdir != NULL)
-		closedir(fdir);
-	fdir = NULL;
-}
+	if fdir is not None
+		closedir(fdir)
+	fdir = None
 
-
+"""
 //============================================
 """

@@ -549,24 +549,23 @@ def FS_Gamedir (): #(returns char *)
 =============
 FS_ExecAutoexec
 =============
-*/
-void FS_ExecAutoexec (void)
-{
-	char *dir;
-	char name [MAX_QPATH];
+"""
+def FS_ExecAutoexec ():
 
-	dir = Cvar_VariableString("gamedir");
-	if (*dir)
-		Com_sprintf(name, sizeof(name), "%s/%s/autoexec.cfg", fs_basedir->string, dir); 
-	else
-		Com_sprintf(name, sizeof(name), "%s/%s/autoexec.cfg", fs_basedir->string, qcommon.BASEDIRNAME); 
-	if (Sys_FindFirst(name, 0, SFF_SUBDIR | SFF_HIDDEN | SFF_SYSTEM))
-		Cbuf_AddText ("exec autoexec.cfg\n");
-	Sys_FindClose();
-}
+	#char *dir;
+	#char name [MAX_QPATH];
 
+	di = cvar.Cvar_VariableString("gamedir")
+	if di is not None:
+		name = os.path.join(fs_basedir.string, di, "autoexec.cfg")
+	else:
+		name = os.path.join(fs_basedir.string, qcommon.BASEDIRNAME, "autoexec.cfg")
+	canhave = 0 #SFF_SUBDIR | SFF_HIDDEN | SFF_SYSTEM
+	if q_shlinux.Sys_FindFirst(name, 0, canhave):
+		cmd.Cbuf_AddText ("exec autoexec.cfg\n");
+	q_shlinux.Sys_FindClose()
 
-/*
+"""
 ================
 FS_SetGamedir
 
