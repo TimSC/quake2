@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import os
 from qcommon import cmd, common, qcommon, cvar, qfiles
 from game import q_shared
+from linux import q_shlinux
 """
 #include "qcommon.h"
 
@@ -560,7 +561,7 @@ def FS_ExecAutoexec ():
 		name = os.path.join(fs_basedir.string, di, "autoexec.cfg")
 	else:
 		name = os.path.join(fs_basedir.string, qcommon.BASEDIRNAME, "autoexec.cfg")
-	canhave = 0 #SFF_SUBDIR | SFF_HIDDEN | SFF_SYSTEM
+	canhave = q_shared.SFF_SUBDIR | q_shared.SFF_HIDDEN | q_shared.SFF_SYSTEM
 	if q_shlinux.Sys_FindFirst(name, 0, canhave):
 		cmd.Cbuf_AddText ("exec autoexec.cfg\n");
 	q_shlinux.Sys_FindClose()
@@ -659,18 +660,19 @@ def FS_Link_f ():
 """
 def FS_ListFiles( findname, musthave, canthave ): #char *, unsigned, unsigned (returns char **)
 	
-	"""
-	char *s;
-	int nfiles = 0;
-	char **list = 0;
+	
+	#char *s;
+	#nfiles = 0; #int
+	out = [] #char ** = 0;
 
-	s = Sys_FindFirst( findname, musthave, canthave );
-	while ( s )
-	{
+	"""
+	s = Sys_FindFirst( findname, musthave, canthave )
+	while s is not None:
+	
 		if ( s[strlen(s)-1] != '.' )
 			nfiles++;
 		s = Sys_FindNext( musthave, canthave );
-	}
+	
 	Sys_FindClose ();
 
 	if ( !nfiles )
@@ -681,29 +683,29 @@ def FS_ListFiles( findname, musthave, canthave ): #char *, unsigned, unsigned (r
 
 	list = malloc( sizeof( char * ) * nfiles );
 	memset( list, 0, sizeof( char * ) * nfiles );
-
-	s = Sys_FindFirst( findname, musthave, canthave );
-	nfiles = 0;
-	while ( s )
-	{
-		if ( s[strlen(s)-1] != '.' )
-		{
-			list[nfiles] = strdup( s );
-#ifdef _WIN32
-			strlwr( list[nfiles] );
-#endif
-			nfiles++;
-		}
-		s = Sys_FindNext( musthave, canthave );
-	}
-	Sys_FindClose ();
-
-	return list;
 	"""
-	return []
+
+	s = q_shlinux.Sys_FindFirst( findname, musthave, canthave )
+	nfiles = 0
+	while s is not None:
+
+		if s[-1] != '.':
+		
+			out.append(s)
+			#ifdef _WIN32
+			##strlwr( list[nfiles] );
+			#endif
+			nfiles+=1
+		
+		s = q_shlinux.Sys_FindNext( musthave, canthave )
+	
+	q_shlinux.Sys_FindClose ()
+
+	return out
+
+
 
 """
-/*
 ** FS_Dir_f
 """
 def FS_Dir_f():
@@ -736,9 +738,9 @@ def FS_Dir_f():
 			for name in dirnames:
 			
 				if name.rfind('/') != -1:
-					Com_Printf( "{}\n", name[name.rfind('/')+1:] )
+					common.Com_Printf( "{}\n".format(name[name.rfind('/')+1:]))
 				else:
-					Com_Printf( "{}\n", name )
+					common.Com_Printf( "{}\n".format(name) )
 
 		common.Com_Printf( "\n" );
 		

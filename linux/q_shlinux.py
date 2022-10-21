@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
+import os
 import time
-
+import glob
 """
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -136,98 +137,101 @@ char *strlwr (char *s)
 }
 
 //============================================
-
-static	char	findbase[MAX_OSPATH];
-static	char	findpath[MAX_OSPATH];
-static	char	findpattern[MAX_OSPATH];
 """
+findbase = None #static	char[MAX_OSPATH];
+findpath = None #static	char	[MAX_OSPATH];
+findpattern = None #static	char	[MAX_OSPATH];
 fdir = None #static DIR	*
-"""
-static qboolean CompareAttributes(char *path, char *name,
-	unsigned musthave, unsigned canthave )
-{
-	struct stat st;
-	char fn[MAX_OSPATH];
+fdirCursor = None
 
-// . and .. never match
-	if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-		return false;
+def CompareAttributes(path, name, musthave, canthave ): #char *, char *, unsigned, unsigned (returns static qboolean)
 
-	return true;
+	#struct stat st;
+	#char fn[MAX_OSPATH];
 
-	if (stat(fn, &st) == -1)
-		return false; // shouldn't happen
+	# . and .. never match
+	if name == "." or name == "..":
+		return False
 
-	if ( ( st.st_mode & S_IFDIR ) && ( canthave & SFF_SUBDIR ) )
-		return false;
+	return True
 
-	if ( ( musthave & SFF_SUBDIR ) && !( st.st_mode & S_IFDIR ) )
-		return false;
+	#if (stat(fn, &st) == -1)
+	#	return False # shouldn't happen
 
-	return true;
-}
-"""
-def Sys_FindFirst (path, musthave, canhave) #char *, unsigned, unsigned (returns char *)
+	#if ( ( st.st_mode & S_IFDIR ) && ( canthave & SFF_SUBDIR ) )
+	#	return False
+
+	#if ( ( musthave & SFF_SUBDIR ) && !( st.st_mode & S_IFDIR ) )
+	#	return False
+
+	#return True
 
 
-	"""
-	struct dirent *d;
-	char *p;
+def Sys_FindFirst (path, musthave, canhave): #char *, unsigned, unsigned (returns char *)
 
-	if (fdir)
-		Sys_Error ("Sys_BeginFind without close");
+	global fdir, findbase, findpath, findpattern, fdirCursor
+
+	#struct dirent *d;
+	#char *p;
+
+	if fdir is not None:
+		common.Sys_Error ("Sys_BeginFind without close")
 
 	## COM_FilePath (path, findbase);
-	strcpy(findbase, path);
+	findbase = path
 
-	if ((p = strrchr(findbase, '/')) != NULL) {
-		*p = 0;
-		strcpy(findpattern, p + 1);
-	} else
-		strcpy(findpattern, "*");
+	p = path.rfind('/')
+	if p != -1:
+		findpattern = path[p+1:]
+		findbase = path[:p]
+	else:
+		findpattern = "*"
 
-	if (strcmp(findpattern, "*.*") == 0)
-		strcpy(findpattern, "*");
+	if findpattern == "*.*":
+		findpattern = "*"
 	
-	if ((fdir = opendir(findbase)) == NULL)
-		return NULL;
-	while ((d = readdir(fdir)) != NULL) {
-		if (!*findpattern || glob_match(findpattern, d->d_name)) {
-			##if (*findpattern)
-			##	printf("%s matched %s\n", findpattern, d->d_name);
-			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
-				sprintf (findpath, "%s/%s", findbase, d->d_name);
-				return findpath;
-			}
-		}
-	}
-	"""
+	try:
+		fdir = list(glob.glob(os.path.join(findbase, findpattern)))
+	except Exception as err:
+		print (err)
+		return None
+
+	fdirCursor = 0
+
+	while fdirCursor < len(fdir):
+		d_name = fdir[fdirCursor]
+		fdirCursor += 1
+
+		if CompareAttributes(findbase, d_name, musthave, canhave):
+			findpath = os.path.join(findbase, d_name)
+			return findpath
+
 	return None
 
-"""
-char *Sys_FindNext (unsigned musthave, unsigned canhave)
-{
-	struct dirent *d;
 
-	if (fdir == NULL)
-		return NULL;
-	while ((d = readdir(fdir)) != NULL) {
-		if (!*findpattern || glob_match(findpattern, d->d_name)) {
-//			if (*findpattern)
-//				printf("%s matched %s\n", findpattern, d->d_name);
-			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
-				sprintf (findpath, "%s/%s", findbase, d->d_name);
-				return findpath;
-			}
-		}
-	}
-	return NULL;
-}
-"""
+def Sys_FindNext (musthave, canhave):
+
+	global fdir, findbase, findpath, findpattern, fdirCursor
+	#struct dirent *d;
+
+	if fdir is None:
+		return None
+
+	while fdirCursor < len(fdir):
+		d_name = fdir[fdirCursor]
+		fdirCursor += 1
+
+		if CompareAttributes(findbase, d_name, musthave, canhave):
+			findpath = os.path.join(findbase, d_name)
+			return findpath
+	
+	return None
+
+
 def Sys_FindClose ():
 
-	if fdir is not None
-		closedir(fdir)
+	global fdir
+
 	fdir = None
 
 """
