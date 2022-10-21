@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import OpenGL.GL as GL
 """
 // r_misc.c
 
@@ -174,24 +175,26 @@ void GL_Strings_f( void )
 /*
 ** GL_SetDefaultState
 */
-void GL_SetDefaultState( void )
-{
-	qglClearColor (1,0, 0.5 , 0.5);
-	qglCullFace(GL_FRONT);
-	qglEnable(GL_TEXTURE_2D);
+"""
+def GL_SetDefaultState( ):
+	
 
-	qglEnable(GL_ALPHA_TEST);
-	qglAlphaFunc(GL_GREATER, 0.666);
+	GL.glClearColor (1,0, 0.5 , 0.5)
+	GL.glCullFace(GL.GL_FRONT)
+	GL.glEnable(GL.GL_TEXTURE_2D)
 
-	qglDisable (GL_DEPTH_TEST);
-	qglDisable (GL_CULL_FACE);
-	qglDisable (GL_BLEND);
+	GL.glEnable(GL.GL_ALPHA_TEST)
+	GL.glAlphaFunc(GL.GL_GREATER, 0.666)
 
-	qglColor4f (1,1,1,1);
+	GL.glDisable (GL.GL_DEPTH_TEST)
+	GL.glDisable (GL.GL_CULL_FACE)
+	GL.glDisable (GL.GL_BLEND)
 
-	qglPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
-	qglShadeModel (GL_FLAT);
+	GL.glColor4f (1,1,1,1)
 
+	GL.glPolygonMode (GL.GL_FRONT_AND_BACK, GL.GL_FILL)
+	GL.glShadeModel (GL.GL_FLAT)
+"""
 	GL_TextureMode( gl_texturemode->string );
 	GL_TextureAlphaMode( gl_texturealphamode->string );
 	GL_TextureSolidMode( gl_texturesolidmode->string );

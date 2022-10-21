@@ -22,11 +22,10 @@ import OpenGL.GLU as GLU
 from OpenGL.GL import glGetString
 from enum import Enum
 from client import ref
-from ref_gl import gl_model
 from linux import gl_glx, qgl_linux
 from game import q_shared
 from qcommon import cvar, cmd, files, qcommon
-from ref_gl import gl_draw, gl_image, gl_rmisc
+from ref_gl import gl_draw, gl_image, gl_rmisc, gl_model
 
 REF_VERSION = "GL 0.01"
 
@@ -1468,19 +1467,19 @@ def R_Init( hinstance, hWnd ): #void *, void *
 	{
 		ri.Con_Printf( q_shared.PRINT_ALL, "...GL_SGIS_multitexture not found\n" );
 	}
-
-	GL_SetDefaultState();
-
-	/*
-	** draw our stereo patterns
-	*/
-#if 0 // commented out until H3D pays us the money they owe us
-	GL_DrawStereoPattern();
-#endif
 	"""
+	gl_rmisc.GL_SetDefaultState()
+
+	#
+	# draw our stereo patterns
+	#
+
+	# commented out until H3D pays us the money they owe us
+	## GL_DrawStereoPattern()
+
 	gl_image.GL_InitImages ()
-	#Mod_Init ();
-	#R_InitParticleTexture ();
+	#Mod_Init ()
+	#R_InitParticleTexture ()
 	gl_draw.Draw_InitLocal ()
 
 
