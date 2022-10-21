@@ -291,54 +291,53 @@ def Menu_AddItem( menu, item ): #menuframework_s *, void *
 */
 """
 def Menu_AdjustCursor( m,  direc ): #menuframework_s *, int
-	pass
-	"""
-	menucommon_s *citem;
 
-	/*
-	** see if it's in a valid spot
-	*/
-	if ( m->cursor >= 0 && m->cursor < m->nitems )
-	{
-		if ( ( citem = Menu_ItemAtCursor( m ) ) != 0 )
-		{
-			if ( citem->type != MTYPE_SEPARATOR )
-				return;
-		}
-	}
 
-	/*
-	** it's not in a valid spot, so crawl in the direction indicated until we
-	** find a valid spot
-	*/
-	if ( dir == 1 )
-	{
-		while ( 1 )
-		{
-			citem = Menu_ItemAtCursor( m );
-			if ( citem )
-				if ( citem->type != MTYPE_SEPARATOR )
-					break;
-			m->cursor += dir;
-			if ( m->cursor >= m->nitems )
-				m->cursor = 0;
-		}
-	}
-	else
-	{
-		while ( 1 )
-		{
-			citem = Menu_ItemAtCursor( m );
-			if ( citem )
-				if ( citem->type != MTYPE_SEPARATOR )
-					break;
-			m->cursor += dir;
-			if ( m->cursor < 0 )
-				m->cursor = m->nitems - 1;
-		}
-	}
-}
-"""
+	#menucommon_s *citem;
+
+	#
+	# see if it's in a valid spot
+	#
+	if m.cursor >= 0 and m.cursor < len(m.items):
+	
+		citem = Menu_ItemAtCursor( m )
+		if citem is not None:
+		
+			if citem.generic.type != menumod.MTYPE_SEPARATOR:
+				return
+		
+	
+
+	#
+	# it's not in a valid spot, so crawl in the direction indicated until we
+	# find a valid spot
+	#
+	if direc == 1:
+	
+		while 1:
+		
+			citem = Menu_ItemAtCursor( m )
+			if citem is not None:
+				if citem.generic.type != menumod.MTYPE_SEPARATOR:
+					break
+			m.cursor += direc
+			if m.cursor >= len(m.items):
+				m.cursor = 0
+		
+	
+	else:
+	
+		while 1:
+		
+			citem = Menu_ItemAtCursor( m )
+			if citem is not None:
+				if citem.generic.type != menumod.MTYPE_SEPARATOR:
+					break
+			m.cursor += direc
+			if m.cursor < 0:
+				m.cursor = len(m.items) - 1
+		
+
 def Menu_Center( menu ): #menuframework_s *
 
 	height = menu.items[-1].generic.y
@@ -371,7 +370,7 @@ def Menu_Draw( menu ): #menuframework_s *
 		elif item.generic.type == menumod.MTYPE_ACTION:
 			Action_Draw( item )
 
-		elif item.generic.type == menumod.MTYPE_SEPARATOR:
+		elif item.generic.type == menumod.menumod.MTYPE_SEPARATOR:
 			Separator_Draw( item )
 
 	
@@ -473,7 +472,7 @@ void Menu_DrawStringR2LDark( int x, int y, const char *string )
 """
 def Menu_ItemAtCursor( m ): #menuframework_s * (returns void *)
 
-	if m.cursor < 0 or m.cursor >= m.nitems:
+	if m.cursor < 0 or m.cursor >= len(m.items):
 		return None
 
 	return m.items[m.cursor]
