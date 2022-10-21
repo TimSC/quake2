@@ -385,26 +385,23 @@ Cvar_WriteVariables
 Appends lines containing "set variable value" for all variables
 with the archive flag set to true.
 ============
-*/
-void Cvar_WriteVariables (char *path)
-{
-	cvar_t	*var;
-	char	buffer[1024];
-	FILE	*f;
-
-	f = fopen (path, "a");
-	for (var = cvar_vars ; var ; var = var.next)
-	{
-		if (var.flags & CVAR_ARCHIVE)
-		{
-			Com_sprintf (buffer, sizeof(buffer), "set %s \"%s\"\n", var.name, var.string);
-			fprintf (f, "%s", buffer);
-		}
-	}
-	fclose (f);
-}
-
 """
+def Cvar_WriteVariables (path): #char *
+
+	#cvar_t	*var;
+	#char	buffer[1024];
+	#FILE	*f;
+
+	f = open (path, "a")
+	for var in cvar_vars:
+	
+		if var.flags & q_shared.CVAR_ARCHIVE:
+		
+			buff = "set {} \"{}\"\n".format(var.name, var.string)
+			f.write(buff)
+		
+	f.close ()
+
 """
 ============
 Cvar_List_f

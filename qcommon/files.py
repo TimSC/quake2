@@ -108,22 +108,20 @@ The "game directory" is the first tree on the search path and directory that all
 ================
 FS_filelength
 ================
-*/
-int FS_filelength (FILE *f)
-{
-	int		pos;
-	int		end;
+"""
+def FS_filelength (f): #FILE * (returns int)
 
-	pos = ftell (f);
-	fseek (f, 0, SEEK_END);
-	end = ftell (f);
-	fseek (f, pos, SEEK_SET);
+	#int		pos;
+	#int		end;
 
-	return end;
-}
+	pos = f.tell ()
+	f.seek (0, 2)
+	end = f.tell ()
+	f.seek (pos, 0)
 
+	return end
 
-/*
+"""
 ============
 FS_CreatePath
 
@@ -278,7 +276,7 @@ def FS_FOpenFile (filename): #char *
 			
 			common.Com_DPrintf ("FindFile: {}\n".format(netpath))
 
-			return FS_filelength (*file), handle
+			return FS_filelength (handle), handle
 	
 	common.Com_DPrintf ("FindFile: can't find {}\n".format(filename))
 	

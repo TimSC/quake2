@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import cvar
+from game import q_shared
+"""
 // cl.input.c  -- builds an intended movement command to send to the server
 
 #include "client.h"
@@ -409,9 +412,11 @@ void IN_CenterView (void)
 ============
 CL_InitInput
 ============
-*/
-void CL_InitInput (void)
-{
+"""
+def CL_InitInput ():
+
+	pass
+	"""
 	Cmd_AddCommand ("centerview",IN_CenterView);
 
 	Cmd_AddCommand ("+moveup",IN_UpDown);
@@ -545,4 +550,4 @@ void CL_SendCmd (void)
 	Netchan_Transmit (&cls.netchan, buf.cursize, buf.data);	
 }
 
-
+"""

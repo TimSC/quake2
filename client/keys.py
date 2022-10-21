@@ -763,18 +763,16 @@ Key_WriteBindings
 
 Writes lines containing "bind key value"
 ============
-*/
-void Key_WriteBindings (FILE *f)
-{
-	int		i;
+"""
+def Key_WriteBindings (f): #FILE *
 
-	for (i=0 ; i<256 ; i++)
-		if (keybindings[i] && keybindings[i][0])
-			fprintf (f, "bind %s \"%s\"\n", Key_KeynumToString(i), keybindings[i]);
-}
+	#int		i;
 
+	for i in range(256):
+		if keybindings[i] is not None and len(keybindings[i])>0:
+			f.write("bind {} \"{}\"\n".format(Key_KeynumToString(i), keybindings[i]))
 
-/*
+"""
 ============
 Key_Bindlist_f
 
