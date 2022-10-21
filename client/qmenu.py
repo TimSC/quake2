@@ -54,34 +54,34 @@ def Draw_Fill(x, y, w, h, c):
 
 def Action_DoEnter( a ): #menuaction_s *
 
-	if a.generic.callback is not None:
-		a.generic.callback( a )
+	if a.callback is not None:
+		a.callback( a )
 
 def Action_Draw( a ): #menuaction_s *
 
-	if a.generic.flags & menumod.QMF_LEFT_JUSTIFY:
+	if a.flags & menumod.QMF_LEFT_JUSTIFY:
 	
-		if a.generic.flags & menumod.QMF_GRAYED:
-			Menu_DrawStringDark( a.generic.x + a.generic.parent.x + LCOLUMN_OFFSET, a.generic.y + a.generic.parent.y, a.generic.name )
+		if a.flags & menumod.QMF_GRAYED:
+			Menu_DrawStringDark( a.x + a.parent.x + LCOLUMN_OFFSET, a.y + a.parent.y, a.name )
 		else:
-			Menu_DrawString( a.generic.x + a.generic.parent.x + LCOLUMN_OFFSET, a.generic.y + a.generic.parent.y, a.generic.name )
+			Menu_DrawString( a.x + a.parent.x + LCOLUMN_OFFSET, a.y + a.parent.y, a.name )
 	
 	else:
 	
-		if a.generic.flags & menumod.QMF_GRAYED:
-			Menu_DrawStringR2LDark( a.generic.x + a.generic.parent.x + LCOLUMN_OFFSET, a.generic.y + a.generic.parent.y, a.generic.name )
+		if a.flags & menumod.QMF_GRAYED:
+			Menu_DrawStringR2LDark( a.x + a.parent.x + LCOLUMN_OFFSET, a.y + a.parent.y, a.name )
 		else:
-			Menu_DrawStringR2L( a.generic.x + a.generic.parent.x + LCOLUMN_OFFSET, a.generic.y + a.generic.parent.y, a.generic.name )
+			Menu_DrawStringR2L( a.x + a.parent.x + LCOLUMN_OFFSET, a.y + a.parent.y, a.name )
 	
-	if a.generic.ownerdraw is not None:
-		a.generic.ownerdraw( a )
+	if a.ownerdraw is not None:
+		a.ownerdraw( a )
 
 """
 qboolean Field_DoEnter( menufield_s *f )
 {
-	if ( f.generic.callback )
+	if ( f.callback )
 	{
-		f.generic.callback( f );
+		f.callback( f );
 		return true;
 	}
 	return false;
@@ -92,26 +92,26 @@ void Field_Draw( menufield_s *f )
 	int i;
 	char tempbuffer[128]="";
 
-	if ( f.generic.name )
-		Menu_DrawStringR2LDark( f.generic.x + f.generic.parent.x + LCOLUMN_OFFSET, f.generic.y + f.generic.parent.y, f.generic.name );
+	if ( f.name )
+		Menu_DrawStringR2LDark( f.x + f.parent.x + LCOLUMN_OFFSET, f.y + f.parent.y, f.name );
 
 	strncpy( tempbuffer, f->buffer + f->visible_offset, f->visible_length );
 
-	Draw_Char( f.generic.x + f.generic.parent.x + 16, f.generic.y + f.generic.parent.y - 4, 18 );
-	Draw_Char( f.generic.x + f.generic.parent.x + 16, f.generic.y + f.generic.parent.y + 4, 24 );
+	Draw_Char( f.x + f.parent.x + 16, f.y + f.parent.y - 4, 18 );
+	Draw_Char( f.x + f.parent.x + 16, f.y + f.parent.y + 4, 24 );
 
-	Draw_Char( f.generic.x + f.generic.parent.x + 24 + f->visible_length * 8, f.generic.y + f.generic.parent.y - 4, 20 );
-	Draw_Char( f.generic.x + f.generic.parent.x + 24 + f->visible_length * 8, f.generic.y + f.generic.parent.y + 4, 26 );
+	Draw_Char( f.x + f.parent.x + 24 + f->visible_length * 8, f.y + f.parent.y - 4, 20 );
+	Draw_Char( f.x + f.parent.x + 24 + f->visible_length * 8, f.y + f.parent.y + 4, 26 );
 
 	for ( i = 0; i < f->visible_length; i++ )
 	{
-		Draw_Char( f.generic.x + f.generic.parent.x + 24 + i * 8, f.generic.y + f.generic.parent.y - 4, 19 );
-		Draw_Char( f.generic.x + f.generic.parent.x + 24 + i * 8, f.generic.y + f.generic.parent.y + 4, 25 );
+		Draw_Char( f.x + f.parent.x + 24 + i * 8, f.y + f.parent.y - 4, 19 );
+		Draw_Char( f.x + f.parent.x + 24 + i * 8, f.y + f.parent.y + 4, 25 );
 	}
 
-	Menu_DrawString( f.generic.x + f.generic.parent.x + 24, f.generic.y + f.generic.parent.y, tempbuffer );
+	Menu_DrawString( f.x + f.parent.x + 24, f.y + f.parent.y, tempbuffer );
 
-	if ( Menu_ItemAtCursor( f.generic.parent ) == f )
+	if ( Menu_ItemAtCursor( f.parent ) == f )
 	{
 		int offset;
 
@@ -122,14 +122,14 @@ void Field_Draw( menufield_s *f )
 
 		if ( ( ( int ) ( q_shlinux.Sys_Milliseconds() / 250 ) ) & 1 )
 		{
-			Draw_Char( f.generic.x + f.generic.parent.x + ( offset + 2 ) * 8 + 8,
-					   f.generic.y + f.generic.parent.y,
+			Draw_Char( f.x + f.parent.x + ( offset + 2 ) * 8 + 8,
+					   f.y + f.parent.y,
 					   11 );
 		}
 		else
 		{
-			Draw_Char( f.generic.x + f.generic.parent.x + ( offset + 2 ) * 8 + 8,
-					   f.generic.y + f.generic.parent.y,
+			Draw_Char( f.x + f.parent.x + ( offset + 2 ) * 8 + 8,
+					   f.y + f.parent.y,
 					   ' ' );
 		}
 	}
@@ -250,7 +250,7 @@ def Field_Key( f,  key ): #menufield_s *, int (returns qboolean)
 
 	case K_SPACE:
 	default:
-		if ( !isdigit( key ) && ( f.generic.flags & QMF_NUMBERSONLY ) )
+		if ( !isdigit( key ) && ( f.flags & QMF_NUMBERSONLY ) )
 			return false;
 
 		if ( f->cursor < f->length )
@@ -276,7 +276,7 @@ def Menu_AddItem( menu, item ): #menuframework_s *, void *
 	if len(menu.items) < menumod.MAXMENUITEMS:
 	
 		menu.items.append(item)
-		item.generic.parent = menu
+		item.parent = menu
 		menu.nitems += 1
 	
 	menu.nslots = Menu_TallySlots( menu )
@@ -303,7 +303,7 @@ def Menu_AdjustCursor( m,  direc ): #menuframework_s *, int
 		citem = Menu_ItemAtCursor( m )
 		if citem is not None:
 		
-			if citem.generic.type != menumod.MTYPE_SEPARATOR:
+			if citem.type != menumod.MTYPE_SEPARATOR:
 				return
 		
 	
@@ -318,7 +318,7 @@ def Menu_AdjustCursor( m,  direc ): #menuframework_s *, int
 		
 			citem = Menu_ItemAtCursor( m )
 			if citem is not None:
-				if citem.generic.type != menumod.MTYPE_SEPARATOR:
+				if citem.type != menumod.MTYPE_SEPARATOR:
 					break
 			m.cursor += direc
 			if m.cursor >= len(m.items):
@@ -331,7 +331,7 @@ def Menu_AdjustCursor( m,  direc ): #menuframework_s *, int
 		
 			citem = Menu_ItemAtCursor( m )
 			if citem is not None:
-				if citem.generic.type != menumod.MTYPE_SEPARATOR:
+				if citem.type != menumod.MTYPE_SEPARATOR:
 					break
 			m.cursor += direc
 			if m.cursor < 0:
@@ -340,7 +340,7 @@ def Menu_AdjustCursor( m,  direc ): #menuframework_s *, int
 
 def Menu_Center( menu ): #menuframework_s *
 
-	height = menu.items[-1].generic.y
+	height = menu.items[-1].y
 	height += 10
 
 	menu.y = ( VID_HEIGHT() - height ) // 2
@@ -355,67 +355,68 @@ def Menu_Draw( menu ): #menuframework_s *
 	#
 	for item in menu.items:
 	
-		if item.generic.type == menumod.MTYPE_FIELD:
+		if item.type == menumod.MTYPE_FIELD:
 			Field_Draw( item )
 
-		elif item.generic.type == menumod.MTYPE_SLIDER:
+		elif item.type == menumod.MTYPE_SLIDER:
 			Slider_Draw( item )
 
-		elif item.generic.type == menumod.MTYPE_LIST:
+		elif item.type == menumod.MTYPE_LIST:
 			MenuList_Draw( item )
 
-		elif item.generic.type == menumod.MTYPE_SPINCONTROL:
+		elif item.type == menumod.MTYPE_SPINCONTROL:
 			SpinControl_Draw( item )
 
-		elif item.generic.type == menumod.MTYPE_ACTION:
+		elif item.type == menumod.MTYPE_ACTION:
 			Action_Draw( item )
 
-		elif item.generic.type == menumod.MTYPE_SEPARATOR:
+		elif item.type == menumod.MTYPE_SEPARATOR:
 			Separator_Draw( item )
 
 	
 
 	item = Menu_ItemAtCursor( menu )
 
-	if item is not None and item.generic.cursordraw is not None:
+	if item is not None and item.cursordraw is not None:
 	
-		item.generic.cursordraw( item )
+		item.cursordraw( item )
 	
 	elif menu.cursordraw is not None:
 	
 		menu.cursordraw( menu )
 	
 	
-	elif item is not None and item.generic.type != menumod.MTYPE_FIELD:
+	elif item is not None and item.type != menumod.MTYPE_FIELD:
 	
-		if item.generic.flags & menumod.QMF_LEFT_JUSTIFY:
+		if item.flags & menumod.QMF_LEFT_JUSTIFY:
 		
-			Draw_Char( menu.x + item.generic.x - 24 + item.generic.cursor_offset, menu.y + item.generic.y, 12 + ( int ( q_shlinux.Sys_Milliseconds()//250 ) & 1 ) )
+			Draw_Char( menu.x + item.x - 24 + item.cursor_offset, menu.y + item.y, 12 + ( int ( q_shlinux.Sys_Milliseconds()//250 ) & 1 ) )
 		
 		else:
 		
-			Draw_Char( menu.x + item.generic.cursor_offset, menu.y + item.generic.y, 12 + ( int ( q_shlinux.Sys_Milliseconds()//250 ) & 1 ) )
+			Draw_Char( menu.x + item.cursor_offset, menu.y + item.y, 12 + ( int ( q_shlinux.Sys_Milliseconds()//250 ) & 1 ) )
 		
 	
+	
+	if item is not None:
+	
+		if item.statusbarfunc is not None:
+			item.statusbarfunc( item )
+		elif item.statusbar is not None:
+			Menu_DrawStatusBar( item.statusbar )
+		else:
+			Menu_DrawStatusBar( menu.statusbar )
+
+	else:
+	
+		Menu_DrawStatusBar( menu.statusbar )
+	
+
+
+def Menu_DrawStatusBar( string ): #const char *
+	
+	pass
 	"""
-	if ( item )
-	{
-		if ( item->statusbarfunc )
-			item->statusbarfunc( ( void * ) item );
-		else if ( item->statusbar )
-			Menu_DrawStatusBar( item->statusbar );
-		else
-			Menu_DrawStatusBar( menu->statusbar );
-
-	}
-	else
-	{
-		Menu_DrawStatusBar( menu->statusbar );
-	}
-
-
-void Menu_DrawStatusBar( const char *string )
-{
 	if ( string )
 	{
 		int l = strlen( string );
@@ -471,51 +472,45 @@ def Menu_SelectItem( s ): #menuframework_s * (returns qboolean)
 
 	if item is not None:
 		
-		if item.generic.type == menumod.MTYPE_FIELD:
+		if item.type == menumod.MTYPE_FIELD:
 			return Field_DoEnter( item )
-		elif item.generic.type == menumod.MTYPE_ACTION:
+		elif item.type == menumod.MTYPE_ACTION:
 			Action_DoEnter( item )
 			return True
-		elif item.generic.type == menumod.MTYPE_LIST:
+		elif item.type == menumod.MTYPE_LIST:
 			## Menulist_DoEnter( item )
 			return False
-		elif item.generic.type == menumod.MTYPE_SPINCONTROL:
+		elif item.type == menumod.MTYPE_SPINCONTROL:
 			## SpinControl_DoEnter( item )
 			return False
 		
 	return False
-"""
 
-void Menu_SetStatusBar( menuframework_s *m, const char *string )
-{
-	m->statusbar = string;
-}
 
-void Menu_SlideItem( menuframework_s *s, int dir )
-{
-	menucommon_s *item = ( menucommon_s * ) Menu_ItemAtCursor( s );
+def Menu_SetStatusBar( m, string ): #menuframework_s *, const char *
 
-	if ( item )
-	{
-		switch ( item->type )
-		{
-		case MTYPE_SLIDER:
-			Slider_DoSlide( ( menuslider_s * ) item, dir );
-			break;
-		case MTYPE_SPINCONTROL:
-			SpinControl_DoSlide( ( menulist_s * ) item, dir );
-			break;
-		}
-	}
-}
-"""
+	m.statusbar = string
+
+
+def Menu_SlideItem( s, direc ): # menuframework_s *, int
+
+	item = Menu_ItemAtCursor( s )
+
+	if item is not None:
+	
+		if item.type == menumod.MTYPE_SLIDER:
+			Slider_DoSlide( item, direc )
+
+		elif item.type == menumod.MTYPE_SPINCONTROL:
+			SpinControl_DoSlide( item, direc )
+
 def Menu_TallySlots( menu ): #menuframework_s * (returns int)
 
 	total = 0 #int
 
 	for item in menu.items:
 	
-		if item.generic.type == menumod.MTYPE_LIST:
+		if item.type == menumod.MTYPE_LIST:
 			total += len(item.itemnames)		
 		else:
 			total += 1
@@ -527,27 +522,28 @@ void Menulist_DoEnter( menulist_s *l )
 {
 	int start;
 
-	start = l.generic.y / 10 + 1;
+	start = l.y / 10 + 1;
 
-	l->curvalue = l.generic.parent->cursor - start;
+	l->curvalue = l.parent->cursor - start;
 
-	if ( l.generic.callback )
-		l.generic.callback( l );
+	if ( l.callback )
+		l.callback( l );
 }
-
-void MenuList_Draw( menulist_s *l )
-{
+"""
+def MenuList_Draw( l ): #menulist_s *
+	pass
+	"""
 	const char **n;
 	int y = 0;
 
-	Menu_DrawStringR2LDark( l.generic.x + l.generic.parent.x + LCOLUMN_OFFSET, l.generic.y + l.generic.parent.y, l.generic.name );
+	Menu_DrawStringR2LDark( l.x + l.parent.x + LCOLUMN_OFFSET, l.y + l.parent.y, l.name );
 
 	n = l->itemnames;
 
-  	Draw_Fill( l.generic.x - 112 + l.generic.parent.x, l.generic.parent.y + l.generic.y + l->curvalue*10 + 10, 128, 10, 16 );
+  	Draw_Fill( l.x - 112 + l.parent.x, l.parent.y + l.y + l->curvalue*10 + 10, 128, 10, 16 );
 	while ( *n )
 	{
-		Menu_DrawStringR2LDark( l.generic.x + l.generic.parent.x + LCOLUMN_OFFSET, l.generic.y + l.generic.parent.y + y + 10, *n );
+		Menu_DrawStringR2LDark( l.x + l.parent.x + LCOLUMN_OFFSET, l.y + l.parent.y + y + 10, *n );
 
 		n++;
 		y += 10;
@@ -556,90 +552,84 @@ void MenuList_Draw( menulist_s *l )
 """
 def Separator_Draw( s ): #menuseparator_s *
 
-	if s.generic.name:
-		Menu_DrawStringR2LDark( s.generic.x + s.generic.parent.x, s.generic.y + s.generic.parent.y, s.generic.name )
+	if s.name:
+		Menu_DrawStringR2LDark( s.x + s.parent.x, s.y + s.parent.y, s.name )
+
+
+def Slider_DoSlide( s, direc ): # menuslider_s *, int
+
+	s.curvalue += direc
+
+	if s.curvalue > s.maxvalue:
+		s.curvalue = s.maxvalue
+	elif s.curvalue < s.minvalue:
+		s.curvalue = s.minvalue
+
+	if s.callback is not None:
+		s.callback( s )
+
+
+SLIDER_RANGE = 10
+
+def Slider_Draw( s ): #menuslider_s *
+
+	#int	i;
+
+	Menu_DrawStringR2LDark( s.x + s.parent.x + LCOLUMN_OFFSET,
+		                s.y + s.parent.y, 
+						s.name )
+
+	s.range = ( s.curvalue - s.minvalue ) / ( s.maxvalue - s.minvalue )
+
+	if s.range < 0.0:
+		s.range = 0.0
+	if s.range > 1.0:
+		s.range = 1.0
+	Draw_Char( s.x + s.parent.x + RCOLUMN_OFFSET, s.y + s.parent.y, 128)
+	for i in range(SLIDER_RANGE):
+		Draw_Char( RCOLUMN_OFFSET + s.x + i*8 + s.parent.x + 8, s.y + s.parent.y, 129)
+	Draw_Char( RCOLUMN_OFFSET + s.x + i*8 + s.parent.x + 8, s.y + s.parent.y, 130)
+	Draw_Char( int ( 8 + RCOLUMN_OFFSET + s.parent.x + s.x + (SLIDER_RANGE-1)*8 * s.range ), s.y + s.parent.y, 131)
 
 """
-void Slider_DoSlide( menuslider_s *s, int dir )
-{
-	s->curvalue += dir;
-
-	if ( s->curvalue > s->maxvalue )
-		s->curvalue = s->maxvalue;
-	else if ( s->curvalue < s->minvalue )
-		s->curvalue = s->minvalue;
-
-	if ( s.generic.callback )
-		s.generic.callback( s );
-}
-
-#define SLIDER_RANGE 10
-
-void Slider_Draw( menuslider_s *s )
-{
-	int	i;
-
-	Menu_DrawStringR2LDark( s.generic.x + s.generic.parent.x + LCOLUMN_OFFSET,
-		                s.generic.y + s.generic.parent.y, 
-						s.generic.name );
-
-	s->range = ( s->curvalue - s->minvalue ) / ( float ) ( s->maxvalue - s->minvalue );
-
-	if ( s->range < 0)
-		s->range = 0;
-	if ( s->range > 1)
-		s->range = 1;
-	Draw_Char( s.generic.x + s.generic.parent.x + RCOLUMN_OFFSET, s.generic.y + s.generic.parent.y, 128);
-	for ( i = 0; i < SLIDER_RANGE; i++ )
-		Draw_Char( RCOLUMN_OFFSET + s.generic.x + i*8 + s.generic.parent.x + 8, s.generic.y + s.generic.parent.y, 129);
-	Draw_Char( RCOLUMN_OFFSET + s.generic.x + i*8 + s.generic.parent.x + 8, s.generic.y + s.generic.parent.y, 130);
-	Draw_Char( ( int ) ( 8 + RCOLUMN_OFFSET + s.generic.parent.x + s.generic.x + (SLIDER_RANGE-1)*8 * s->range ), s.generic.y + s.generic.parent.y, 131);
-}
-
 void SpinControl_DoEnter( menulist_s *s )
 {
 	s->curvalue++;
 	if ( s->itemnames[s->curvalue] == 0 )
 		s->curvalue = 0;
 
-	if ( s.generic.callback )
-		s.generic.callback( s );
-}
-
-void SpinControl_DoSlide( menulist_s *s, int dir )
-{
-	s->curvalue += dir;
-
-	if ( s->curvalue < 0 )
-		s->curvalue = 0;
-	else if ( s->itemnames[s->curvalue] == 0 )
-		s->curvalue--;
-
-	if ( s.generic.callback )
-		s.generic.callback( s );
-}
-
-void SpinControl_Draw( menulist_s *s )
-{
-	char buffer[100];
-
-	if ( s.generic.name )
-	{
-		Menu_DrawStringR2LDark( s.generic.x + s.generic.parent.x + LCOLUMN_OFFSET, 
-							s.generic.y + s.generic.parent.y, 
-							s.generic.name );
-	}
-	if ( !strchr( s->itemnames[s->curvalue], '\n' ) )
-	{
-		Menu_DrawString( RCOLUMN_OFFSET + s.generic.x + s.generic.parent.x, s.generic.y + s.generic.parent.y, s->itemnames[s->curvalue] );
-	}
-	else
-	{
-		strcpy( buffer, s->itemnames[s->curvalue] );
-		*strchr( buffer, '\n' ) = 0;
-		Menu_DrawString( RCOLUMN_OFFSET + s.generic.x + s.generic.parent.x, s.generic.y + s.generic.parent.y, buffer );
-		strcpy( buffer, strchr( s->itemnames[s->curvalue], '\n' ) + 1 );
-		Menu_DrawString( RCOLUMN_OFFSET + s.generic.x + s.generic.parent.x, s.generic.y + s.generic.parent.y + 10, buffer );
-	}
+	if ( s.callback )
+		s.callback( s );
 }
 """
+def SpinControl_DoSlide( s, direc ): #menulist_s *, int
+
+	s.curvalue += direc
+
+	if s.curvalue < 0:
+		s.curvalue = 0
+	elif s.curvalue >= len(s.itemnames):
+		s.curvalue-=1
+
+	if s.callback is not None:
+		s.callback( s )
+
+def SpinControl_Draw( s ): #menulist_s *
+
+	if len(s.name) > 0:
+	
+		Menu_DrawStringR2LDark( s.x + s.parent.x + LCOLUMN_OFFSET, 
+							s.y + s.parent.y, 
+							s.name )
+	
+	if len(s.itemnames) == 0:
+		return
+
+	lineSplit = s.itemnames[s.curvalue].split('\n')
+	if len(lineSplit) == 1:
+		Menu_DrawString( RCOLUMN_OFFSET + s.x + s.parent.x, s.y + s.parent.y, lineSplit[0] )
+	
+	else:
+		Menu_DrawString( RCOLUMN_OFFSET + s.x + s.parent.x, s.y + s.parent.y, lineSplit[0] )
+		Menu_DrawString( RCOLUMN_OFFSET + s.x + s.parent.x, s.y + s.parent.y + 10, lineSplit[1] )
+	

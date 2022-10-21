@@ -18,8 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, common
-from client import cl_main, client, cl_scrn, snd_dma, keys, qmenu
-from linux import vid_so
+from client import cl_main, client, cl_scrn, snd_dma, keys, qmenu, cl_view
+from linux import vid_so, in_linux
 from game import q_shared
 
 """
@@ -61,7 +61,7 @@ class menuframework_s(object):
 class menucommon_s(object):
 
 	def __init__(self):
-		self.type = 0 #int
+		self.type = -1 #int
 		self.name = None #const char *
 		self.x, self.y = 0, 0 #int
 		self.parent = None #menuframework_s *
@@ -76,50 +76,65 @@ class menucommon_s(object):
 		self.ownerdraw = None # void (*)( void *self );
 		self.cursordraw = None # void (*)( void *self );
 
-"""
-typedef struct
-{
-	menucommon_s generic;
 
-	char		buffer[80];
-	int			cursor;
-	int			length;
-	int			visible_length;
-	int			visible_offset;
-} menufield_s;
-
-typedef struct 
-{
-	menucommon_s generic;
-
-	float minvalue;
-	float maxvalue;
-	float curvalue;
-
-	float range;
-} menuslider_s;
-
-typedef struct
-{
-	menucommon_s generic;
-
-	int curvalue;
-
-	const char **itemnames;
-} menulist_s;
-"""
-class menuaction_s(object):
+class menufield_s(menucommon_s):
 
 	def __init__(self):
-		self.generic = menucommon_s()
-		self.generic.type = MTYPE_ACTION
+		super().__init__()
+		self.type = MTYPE_FIELD
+
+		self.buffer = None # char[80]
+		self.cursor = 0 # int
+		self.length = 0 # int
+		self.visible_length = 0 # int
+		self.visible_offse = 0 # int
 
 
-class menuseparator_s(object):
+class menuslider_s(menucommon_s):
 
 	def __init__(self):
-		self.generic = menucommon_s()
-		self.generic.type = MTYPE_SEPARATOR
+		super().__init__()
+		self.type = MTYPE_SLIDER
+
+		self.minvalue = 0.0 #float
+		self.maxvalue = 0.0 #float
+		self.curvalue = 0.0 #float
+
+		self.range = 0.0 #float
+
+
+class menulist_s(menucommon_s):
+
+	def __init__(self):
+		super().__init__()
+		self.type = MTYPE_LIST
+
+		self.curvalue = 0 #int
+
+		self.itemnames = [] #const char **
+
+class menuaction_s(menucommon_s):
+
+	def __init__(self):
+		super().__init__()
+		self.type = MTYPE_ACTION
+
+
+class menuseparator_s(menucommon_s):
+
+	def __init__(self):
+		super().__init__()
+		self.type = MTYPE_SEPARATOR
+
+class menuspincontrol_s(menucommon_s):
+
+	def __init__(self):
+		super().__init__()
+		self.type = MTYPE_SPINCONTROL
+
+		self.curvalue = 0 #int
+
+		self.itemnames = [] #const char **
 
 m_main_cursor = 0 #static int
 
@@ -255,7 +270,7 @@ def Default_MenuKey( m, key ): # menuframework_s *, int (returns const char *)
 		item = qmenu.Menu_ItemAtCursor( m )
 		if item is not None:
 		
-			if item.generic.type == MTYPE_FIELD:
+			if item.type == MTYPE_FIELD:
 			
 				if qmenu.Field_Key( item, key ):
 					return None
@@ -289,13 +304,13 @@ def Default_MenuKey( m, key ): # menuframework_s *, int (returns const char *)
 	elif key == keys.K_KP_LEFTARROW or key == keys.K_LEFTARROW:
 		if m is not None:
 		
-			Menu_SlideItem( m, -1 )
+			qmenu.Menu_SlideItem( m, -1 )
 			sound = menu_move_sound
 
 	elif key == keys.K_KP_RIGHTARROW or key == keys.K_RIGHTARROW:
 		if m is not None:
 		
-			Menu_SlideItem( m, 1 )
+			qmenu.Menu_SlideItem( m, 1 )
 			sound = menu_move_sound
 
 
@@ -333,9 +348,10 @@ void M_DrawCharacter (int cx, int cy, int num)
 {
 	vid_so.re.DrawChar ( cx + ((vid_so.viddef.width - 320)>>1), cy + ((vid_so.viddef.height - 240)>>1), num);
 }
-
-void M_Print (int cx, int cy, char *str)
-{
+"""
+def M_Print (cx, cy, strIn): #int, int, char *
+	pass
+	"""
 	while (*str)
 	{
 		M_DrawCharacter (cx, cy, (*str)+128);
@@ -390,9 +406,10 @@ def M_DrawCursor( x, y, f ): #int, int, int
 	vid_so.re.DrawPic( x, y, cursorname )
 
 
-"""
-void M_DrawTextBox (int x, int y, int width, int lines)
-{
+
+def M_DrawTextBox (x, y, width, lines): #int, int, int, int
+	pass
+	"""
 	int		cx, cy;
 	int		n;
 
@@ -582,30 +599,30 @@ void Multiplayer_MenuInit( void )
 	s_multiplayer_menu.x = vid_so.viddef.width * 0.50 - 64;
 	s_multiplayer_menu.nitems = 0;
 
-	s_join_network_server_action.generic.type	= MTYPE_ACTION;
-	s_join_network_server_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_join_network_server_action.generic.x		= 0;
-	s_join_network_server_action.generic.y		= 0;
-	s_join_network_server_action.generic.name	= " join network server";
-	s_join_network_server_action.generic.callback = JoinNetworkServerFunc;
+	s_join_network_server_action.type	= MTYPE_ACTION;
+	s_join_network_server_action.flags  = QMF_LEFT_JUSTIFY;
+	s_join_network_server_action.x		= 0;
+	s_join_network_server_action.y		= 0;
+	s_join_network_server_action.name	= " join network server";
+	s_join_network_server_action.callback = JoinNetworkServerFunc;
 
-	s_start_network_server_action.generic.type	= MTYPE_ACTION;
-	s_start_network_server_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_start_network_server_action.generic.x		= 0;
-	s_start_network_server_action.generic.y		= 10;
-	s_start_network_server_action.generic.name	= " start network server";
-	s_start_network_server_action.generic.callback = StartNetworkServerFunc;
+	s_start_network_server_action.type	= MTYPE_ACTION;
+	s_start_network_server_action.flags  = QMF_LEFT_JUSTIFY;
+	s_start_network_server_action.x		= 0;
+	s_start_network_server_action.y		= 10;
+	s_start_network_server_action.name	= " start network server";
+	s_start_network_server_action.callback = StartNetworkServerFunc;
 
-	s_player_setup_action.generic.type	= MTYPE_ACTION;
-	s_player_setup_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_player_setup_action.generic.x		= 0;
-	s_player_setup_action.generic.y		= 20;
-	s_player_setup_action.generic.name	= " player setup";
-	s_player_setup_action.generic.callback = PlayerSetupFunc;
+	s_player_setup_action.type	= MTYPE_ACTION;
+	s_player_setup_action.flags  = QMF_LEFT_JUSTIFY;
+	s_player_setup_action.x		= 0;
+	s_player_setup_action.y		= 20;
+	s_player_setup_action.name	= " player setup";
+	s_player_setup_action.callback = PlayerSetupFunc;
 
-	qmenu.Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_join_network_server_action );
-	qmenu.Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_start_network_server_action );
-	qmenu.Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_player_setup_action );
+	qmenu.Menu_AddItem( &s_multiplayer_menu, s_join_network_server_action );
+	qmenu.Menu_AddItem( &s_multiplayer_menu, s_start_network_server_action );
+	qmenu.Menu_AddItem( &s_multiplayer_menu, s_player_setup_action );
 
 	Menu_SetStatusBar( &s_multiplayer_menu, NULL );
 
@@ -746,11 +763,11 @@ static void DrawKeyBindingFunc( void *self )
 	int keys[2];
 	menuaction_s *a = ( menuaction_s * ) self;
 
-	M_FindKeysForCommand( bindnames[a->generic.localdata[0]][0], keys);
+	M_FindKeysForCommand( bindnames[a->localdata[0]][0], keys);
 		
 	if (keys[0] == -1)
 	{
-		qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, "???" );
+		qmenu.Menu_DrawString( a->x + a->parent->x + 16, a->y + a->parent->y, "???" );
 	}
 	else
 	{
@@ -759,14 +776,14 @@ static void DrawKeyBindingFunc( void *self )
 
 		name = Key_KeynumToString (keys[0]);
 
-		qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, name );
+		qmenu.Menu_DrawString( a->x + a->parent->x + 16, a->y + a->parent->y, name );
 
 		x = strlen(name) * 8;
 
 		if (keys[1] != -1)
 		{
-			qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 24 + x, a->generic.y + a->generic.parent->y, "or" );
-			qmenu.Menu_DrawString( a->generic.x + a->generic.parent->x + 48 + x, a->generic.y + a->generic.parent->y, Key_KeynumToString (keys[1]) );
+			qmenu.Menu_DrawString( a->x + a->parent->x + 24 + x, a->y + a->parent->y, "or" );
+			qmenu.Menu_DrawString( a->x + a->parent->x + 48 + x, a->y + a->parent->y, Key_KeynumToString (keys[1]) );
 		}
 	}
 }
@@ -776,14 +793,14 @@ static void KeyBindingFunc( void *self )
 	menuaction_s *a = ( menuaction_s * ) self;
 	int keys[2];
 
-	M_FindKeysForCommand( bindnames[a->generic.localdata[0]][0], keys );
+	M_FindKeysForCommand( bindnames[a->localdata[0]][0], keys );
 
 	if (keys[1] != -1)
-		M_UnbindCommand( bindnames[a->generic.localdata[0]][0]);
+		M_UnbindCommand( bindnames[a->localdata[0]][0]);
 
 	bind_grab = true;
 
-	Menu_SetStatusBar( &s_keys_menu, "press a key or button for this action" );
+	Menu_SetStatusBar( s_keys_menu, "press a key or button for this action" );
 }
 
 static void Keys_MenuInit( void )
@@ -795,229 +812,229 @@ static void Keys_MenuInit( void )
 	s_keys_menu.nitems = 0;
 	s_keys_menu.cursordraw = KeyCursorDrawFunc;
 
-	s_keys_attack_action.generic.type	= MTYPE_ACTION;
-	s_keys_attack_action.generic.flags  = QMF_GRAYED;
-	s_keys_attack_action.generic.x		= 0;
-	s_keys_attack_action.generic.y		= y;
-	s_keys_attack_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_attack_action.generic.localdata[0] = i;
-	s_keys_attack_action.generic.name	= bindnames[s_keys_attack_action.generic.localdata[0]][1];
+	s_keys_attack_action.type	= MTYPE_ACTION;
+	s_keys_attack_action.flags  = QMF_GRAYED;
+	s_keys_attack_action.x		= 0;
+	s_keys_attack_action.y		= y;
+	s_keys_attack_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_attack_action.localdata[0] = i;
+	s_keys_attack_action.name	= bindnames[s_keys_attack_action.localdata[0]][1];
 
-	s_keys_change_weapon_action.generic.type	= MTYPE_ACTION;
-	s_keys_change_weapon_action.generic.flags  = QMF_GRAYED;
-	s_keys_change_weapon_action.generic.x		= 0;
-	s_keys_change_weapon_action.generic.y		= y += 9;
-	s_keys_change_weapon_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_change_weapon_action.generic.localdata[0] = ++i;
-	s_keys_change_weapon_action.generic.name	= bindnames[s_keys_change_weapon_action.generic.localdata[0]][1];
+	s_keys_change_weapon_action.type	= MTYPE_ACTION;
+	s_keys_change_weapon_action.flags  = QMF_GRAYED;
+	s_keys_change_weapon_action.x		= 0;
+	s_keys_change_weapon_action.y		= y += 9;
+	s_keys_change_weapon_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_change_weapon_action.localdata[0] = ++i;
+	s_keys_change_weapon_action.name	= bindnames[s_keys_change_weapon_action.localdata[0]][1];
 
-	s_keys_walk_forward_action.generic.type	= MTYPE_ACTION;
-	s_keys_walk_forward_action.generic.flags  = QMF_GRAYED;
-	s_keys_walk_forward_action.generic.x		= 0;
-	s_keys_walk_forward_action.generic.y		= y += 9;
-	s_keys_walk_forward_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_walk_forward_action.generic.localdata[0] = ++i;
-	s_keys_walk_forward_action.generic.name	= bindnames[s_keys_walk_forward_action.generic.localdata[0]][1];
+	s_keys_walk_forward_action.type	= MTYPE_ACTION;
+	s_keys_walk_forward_action.flags  = QMF_GRAYED;
+	s_keys_walk_forward_action.x		= 0;
+	s_keys_walk_forward_action.y		= y += 9;
+	s_keys_walk_forward_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_walk_forward_action.localdata[0] = ++i;
+	s_keys_walk_forward_action.name	= bindnames[s_keys_walk_forward_action.localdata[0]][1];
 
-	s_keys_backpedal_action.generic.type	= MTYPE_ACTION;
-	s_keys_backpedal_action.generic.flags  = QMF_GRAYED;
-	s_keys_backpedal_action.generic.x		= 0;
-	s_keys_backpedal_action.generic.y		= y += 9;
-	s_keys_backpedal_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_backpedal_action.generic.localdata[0] = ++i;
-	s_keys_backpedal_action.generic.name	= bindnames[s_keys_backpedal_action.generic.localdata[0]][1];
+	s_keys_backpedal_action.type	= MTYPE_ACTION;
+	s_keys_backpedal_action.flags  = QMF_GRAYED;
+	s_keys_backpedal_action.x		= 0;
+	s_keys_backpedal_action.y		= y += 9;
+	s_keys_backpedal_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_backpedal_action.localdata[0] = ++i;
+	s_keys_backpedal_action.name	= bindnames[s_keys_backpedal_action.localdata[0]][1];
 
-	s_keys_turn_left_action.generic.type	= MTYPE_ACTION;
-	s_keys_turn_left_action.generic.flags  = QMF_GRAYED;
-	s_keys_turn_left_action.generic.x		= 0;
-	s_keys_turn_left_action.generic.y		= y += 9;
-	s_keys_turn_left_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_turn_left_action.generic.localdata[0] = ++i;
-	s_keys_turn_left_action.generic.name	= bindnames[s_keys_turn_left_action.generic.localdata[0]][1];
+	s_keys_turn_left_action.type	= MTYPE_ACTION;
+	s_keys_turn_left_action.flags  = QMF_GRAYED;
+	s_keys_turn_left_action.x		= 0;
+	s_keys_turn_left_action.y		= y += 9;
+	s_keys_turn_left_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_turn_left_action.localdata[0] = ++i;
+	s_keys_turn_left_action.name	= bindnames[s_keys_turn_left_action.localdata[0]][1];
 
-	s_keys_turn_right_action.generic.type	= MTYPE_ACTION;
-	s_keys_turn_right_action.generic.flags  = QMF_GRAYED;
-	s_keys_turn_right_action.generic.x		= 0;
-	s_keys_turn_right_action.generic.y		= y += 9;
-	s_keys_turn_right_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_turn_right_action.generic.localdata[0] = ++i;
-	s_keys_turn_right_action.generic.name	= bindnames[s_keys_turn_right_action.generic.localdata[0]][1];
+	s_keys_turn_right_action.type	= MTYPE_ACTION;
+	s_keys_turn_right_action.flags  = QMF_GRAYED;
+	s_keys_turn_right_action.x		= 0;
+	s_keys_turn_right_action.y		= y += 9;
+	s_keys_turn_right_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_turn_right_action.localdata[0] = ++i;
+	s_keys_turn_right_action.name	= bindnames[s_keys_turn_right_action.localdata[0]][1];
 
-	s_keys_run_action.generic.type	= MTYPE_ACTION;
-	s_keys_run_action.generic.flags  = QMF_GRAYED;
-	s_keys_run_action.generic.x		= 0;
-	s_keys_run_action.generic.y		= y += 9;
-	s_keys_run_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_run_action.generic.localdata[0] = ++i;
-	s_keys_run_action.generic.name	= bindnames[s_keys_run_action.generic.localdata[0]][1];
+	s_keys_run_action.type	= MTYPE_ACTION;
+	s_keys_run_action.flags  = QMF_GRAYED;
+	s_keys_run_action.x		= 0;
+	s_keys_run_action.y		= y += 9;
+	s_keys_run_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_run_action.localdata[0] = ++i;
+	s_keys_run_action.name	= bindnames[s_keys_run_action.localdata[0]][1];
 
-	s_keys_step_left_action.generic.type	= MTYPE_ACTION;
-	s_keys_step_left_action.generic.flags  = QMF_GRAYED;
-	s_keys_step_left_action.generic.x		= 0;
-	s_keys_step_left_action.generic.y		= y += 9;
-	s_keys_step_left_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_step_left_action.generic.localdata[0] = ++i;
-	s_keys_step_left_action.generic.name	= bindnames[s_keys_step_left_action.generic.localdata[0]][1];
+	s_keys_step_left_action.type	= MTYPE_ACTION;
+	s_keys_step_left_action.flags  = QMF_GRAYED;
+	s_keys_step_left_action.x		= 0;
+	s_keys_step_left_action.y		= y += 9;
+	s_keys_step_left_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_step_left_action.localdata[0] = ++i;
+	s_keys_step_left_action.name	= bindnames[s_keys_step_left_action.localdata[0]][1];
 
-	s_keys_step_right_action.generic.type	= MTYPE_ACTION;
-	s_keys_step_right_action.generic.flags  = QMF_GRAYED;
-	s_keys_step_right_action.generic.x		= 0;
-	s_keys_step_right_action.generic.y		= y += 9;
-	s_keys_step_right_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_step_right_action.generic.localdata[0] = ++i;
-	s_keys_step_right_action.generic.name	= bindnames[s_keys_step_right_action.generic.localdata[0]][1];
+	s_keys_step_right_action.type	= MTYPE_ACTION;
+	s_keys_step_right_action.flags  = QMF_GRAYED;
+	s_keys_step_right_action.x		= 0;
+	s_keys_step_right_action.y		= y += 9;
+	s_keys_step_right_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_step_right_action.localdata[0] = ++i;
+	s_keys_step_right_action.name	= bindnames[s_keys_step_right_action.localdata[0]][1];
 
-	s_keys_sidestep_action.generic.type	= MTYPE_ACTION;
-	s_keys_sidestep_action.generic.flags  = QMF_GRAYED;
-	s_keys_sidestep_action.generic.x		= 0;
-	s_keys_sidestep_action.generic.y		= y += 9;
-	s_keys_sidestep_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_sidestep_action.generic.localdata[0] = ++i;
-	s_keys_sidestep_action.generic.name	= bindnames[s_keys_sidestep_action.generic.localdata[0]][1];
+	s_keys_sidestep_action.type	= MTYPE_ACTION;
+	s_keys_sidestep_action.flags  = QMF_GRAYED;
+	s_keys_sidestep_action.x		= 0;
+	s_keys_sidestep_action.y		= y += 9;
+	s_keys_sidestep_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_sidestep_action.localdata[0] = ++i;
+	s_keys_sidestep_action.name	= bindnames[s_keys_sidestep_action.localdata[0]][1];
 
-	s_keys_look_up_action.generic.type	= MTYPE_ACTION;
-	s_keys_look_up_action.generic.flags  = QMF_GRAYED;
-	s_keys_look_up_action.generic.x		= 0;
-	s_keys_look_up_action.generic.y		= y += 9;
-	s_keys_look_up_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_look_up_action.generic.localdata[0] = ++i;
-	s_keys_look_up_action.generic.name	= bindnames[s_keys_look_up_action.generic.localdata[0]][1];
+	s_keys_look_up_action.type	= MTYPE_ACTION;
+	s_keys_look_up_action.flags  = QMF_GRAYED;
+	s_keys_look_up_action.x		= 0;
+	s_keys_look_up_action.y		= y += 9;
+	s_keys_look_up_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_look_up_action.localdata[0] = ++i;
+	s_keys_look_up_action.name	= bindnames[s_keys_look_up_action.localdata[0]][1];
 
-	s_keys_look_down_action.generic.type	= MTYPE_ACTION;
-	s_keys_look_down_action.generic.flags  = QMF_GRAYED;
-	s_keys_look_down_action.generic.x		= 0;
-	s_keys_look_down_action.generic.y		= y += 9;
-	s_keys_look_down_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_look_down_action.generic.localdata[0] = ++i;
-	s_keys_look_down_action.generic.name	= bindnames[s_keys_look_down_action.generic.localdata[0]][1];
+	s_keys_look_down_action.type	= MTYPE_ACTION;
+	s_keys_look_down_action.flags  = QMF_GRAYED;
+	s_keys_look_down_action.x		= 0;
+	s_keys_look_down_action.y		= y += 9;
+	s_keys_look_down_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_look_down_action.localdata[0] = ++i;
+	s_keys_look_down_action.name	= bindnames[s_keys_look_down_action.localdata[0]][1];
 
-	s_keys_center_view_action.generic.type	= MTYPE_ACTION;
-	s_keys_center_view_action.generic.flags  = QMF_GRAYED;
-	s_keys_center_view_action.generic.x		= 0;
-	s_keys_center_view_action.generic.y		= y += 9;
-	s_keys_center_view_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_center_view_action.generic.localdata[0] = ++i;
-	s_keys_center_view_action.generic.name	= bindnames[s_keys_center_view_action.generic.localdata[0]][1];
+	s_keys_center_view_action.type	= MTYPE_ACTION;
+	s_keys_center_view_action.flags  = QMF_GRAYED;
+	s_keys_center_view_action.x		= 0;
+	s_keys_center_view_action.y		= y += 9;
+	s_keys_center_view_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_center_view_action.localdata[0] = ++i;
+	s_keys_center_view_action.name	= bindnames[s_keys_center_view_action.localdata[0]][1];
 
-	s_keys_mouse_look_action.generic.type	= MTYPE_ACTION;
-	s_keys_mouse_look_action.generic.flags  = QMF_GRAYED;
-	s_keys_mouse_look_action.generic.x		= 0;
-	s_keys_mouse_look_action.generic.y		= y += 9;
-	s_keys_mouse_look_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_mouse_look_action.generic.localdata[0] = ++i;
-	s_keys_mouse_look_action.generic.name	= bindnames[s_keys_mouse_look_action.generic.localdata[0]][1];
+	s_keys_mouse_look_action.type	= MTYPE_ACTION;
+	s_keys_mouse_look_action.flags  = QMF_GRAYED;
+	s_keys_mouse_look_action.x		= 0;
+	s_keys_mouse_look_action.y		= y += 9;
+	s_keys_mouse_look_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_mouse_look_action.localdata[0] = ++i;
+	s_keys_mouse_look_action.name	= bindnames[s_keys_mouse_look_action.localdata[0]][1];
 
-	s_keys_keyboard_look_action.generic.type	= MTYPE_ACTION;
-	s_keys_keyboard_look_action.generic.flags  = QMF_GRAYED;
-	s_keys_keyboard_look_action.generic.x		= 0;
-	s_keys_keyboard_look_action.generic.y		= y += 9;
-	s_keys_keyboard_look_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_keyboard_look_action.generic.localdata[0] = ++i;
-	s_keys_keyboard_look_action.generic.name	= bindnames[s_keys_keyboard_look_action.generic.localdata[0]][1];
+	s_keys_keyboard_look_action.type	= MTYPE_ACTION;
+	s_keys_keyboard_look_action.flags  = QMF_GRAYED;
+	s_keys_keyboard_look_action.x		= 0;
+	s_keys_keyboard_look_action.y		= y += 9;
+	s_keys_keyboard_look_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_keyboard_look_action.localdata[0] = ++i;
+	s_keys_keyboard_look_action.name	= bindnames[s_keys_keyboard_look_action.localdata[0]][1];
 
-	s_keys_move_up_action.generic.type	= MTYPE_ACTION;
-	s_keys_move_up_action.generic.flags  = QMF_GRAYED;
-	s_keys_move_up_action.generic.x		= 0;
-	s_keys_move_up_action.generic.y		= y += 9;
-	s_keys_move_up_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_move_up_action.generic.localdata[0] = ++i;
-	s_keys_move_up_action.generic.name	= bindnames[s_keys_move_up_action.generic.localdata[0]][1];
+	s_keys_move_up_action.type	= MTYPE_ACTION;
+	s_keys_move_up_action.flags  = QMF_GRAYED;
+	s_keys_move_up_action.x		= 0;
+	s_keys_move_up_action.y		= y += 9;
+	s_keys_move_up_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_move_up_action.localdata[0] = ++i;
+	s_keys_move_up_action.name	= bindnames[s_keys_move_up_action.localdata[0]][1];
 
-	s_keys_move_down_action.generic.type	= MTYPE_ACTION;
-	s_keys_move_down_action.generic.flags  = QMF_GRAYED;
-	s_keys_move_down_action.generic.x		= 0;
-	s_keys_move_down_action.generic.y		= y += 9;
-	s_keys_move_down_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_move_down_action.generic.localdata[0] = ++i;
-	s_keys_move_down_action.generic.name	= bindnames[s_keys_move_down_action.generic.localdata[0]][1];
+	s_keys_move_down_action.type	= MTYPE_ACTION;
+	s_keys_move_down_action.flags  = QMF_GRAYED;
+	s_keys_move_down_action.x		= 0;
+	s_keys_move_down_action.y		= y += 9;
+	s_keys_move_down_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_move_down_action.localdata[0] = ++i;
+	s_keys_move_down_action.name	= bindnames[s_keys_move_down_action.localdata[0]][1];
 
-	s_keys_inventory_action.generic.type	= MTYPE_ACTION;
-	s_keys_inventory_action.generic.flags  = QMF_GRAYED;
-	s_keys_inventory_action.generic.x		= 0;
-	s_keys_inventory_action.generic.y		= y += 9;
-	s_keys_inventory_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_inventory_action.generic.localdata[0] = ++i;
-	s_keys_inventory_action.generic.name	= bindnames[s_keys_inventory_action.generic.localdata[0]][1];
+	s_keys_inventory_action.type	= MTYPE_ACTION;
+	s_keys_inventory_action.flags  = QMF_GRAYED;
+	s_keys_inventory_action.x		= 0;
+	s_keys_inventory_action.y		= y += 9;
+	s_keys_inventory_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_inventory_action.localdata[0] = ++i;
+	s_keys_inventory_action.name	= bindnames[s_keys_inventory_action.localdata[0]][1];
 
-	s_keys_inv_use_action.generic.type	= MTYPE_ACTION;
-	s_keys_inv_use_action.generic.flags  = QMF_GRAYED;
-	s_keys_inv_use_action.generic.x		= 0;
-	s_keys_inv_use_action.generic.y		= y += 9;
-	s_keys_inv_use_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_inv_use_action.generic.localdata[0] = ++i;
-	s_keys_inv_use_action.generic.name	= bindnames[s_keys_inv_use_action.generic.localdata[0]][1];
+	s_keys_inv_use_action.type	= MTYPE_ACTION;
+	s_keys_inv_use_action.flags  = QMF_GRAYED;
+	s_keys_inv_use_action.x		= 0;
+	s_keys_inv_use_action.y		= y += 9;
+	s_keys_inv_use_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_inv_use_action.localdata[0] = ++i;
+	s_keys_inv_use_action.name	= bindnames[s_keys_inv_use_action.localdata[0]][1];
 
-	s_keys_inv_drop_action.generic.type	= MTYPE_ACTION;
-	s_keys_inv_drop_action.generic.flags  = QMF_GRAYED;
-	s_keys_inv_drop_action.generic.x		= 0;
-	s_keys_inv_drop_action.generic.y		= y += 9;
-	s_keys_inv_drop_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_inv_drop_action.generic.localdata[0] = ++i;
-	s_keys_inv_drop_action.generic.name	= bindnames[s_keys_inv_drop_action.generic.localdata[0]][1];
+	s_keys_inv_drop_action.type	= MTYPE_ACTION;
+	s_keys_inv_drop_action.flags  = QMF_GRAYED;
+	s_keys_inv_drop_action.x		= 0;
+	s_keys_inv_drop_action.y		= y += 9;
+	s_keys_inv_drop_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_inv_drop_action.localdata[0] = ++i;
+	s_keys_inv_drop_action.name	= bindnames[s_keys_inv_drop_action.localdata[0]][1];
 
-	s_keys_inv_prev_action.generic.type	= MTYPE_ACTION;
-	s_keys_inv_prev_action.generic.flags  = QMF_GRAYED;
-	s_keys_inv_prev_action.generic.x		= 0;
-	s_keys_inv_prev_action.generic.y		= y += 9;
-	s_keys_inv_prev_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_inv_prev_action.generic.localdata[0] = ++i;
-	s_keys_inv_prev_action.generic.name	= bindnames[s_keys_inv_prev_action.generic.localdata[0]][1];
+	s_keys_inv_prev_action.type	= MTYPE_ACTION;
+	s_keys_inv_prev_action.flags  = QMF_GRAYED;
+	s_keys_inv_prev_action.x		= 0;
+	s_keys_inv_prev_action.y		= y += 9;
+	s_keys_inv_prev_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_inv_prev_action.localdata[0] = ++i;
+	s_keys_inv_prev_action.name	= bindnames[s_keys_inv_prev_action.localdata[0]][1];
 
-	s_keys_inv_next_action.generic.type	= MTYPE_ACTION;
-	s_keys_inv_next_action.generic.flags  = QMF_GRAYED;
-	s_keys_inv_next_action.generic.x		= 0;
-	s_keys_inv_next_action.generic.y		= y += 9;
-	s_keys_inv_next_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_inv_next_action.generic.localdata[0] = ++i;
-	s_keys_inv_next_action.generic.name	= bindnames[s_keys_inv_next_action.generic.localdata[0]][1];
+	s_keys_inv_next_action.type	= MTYPE_ACTION;
+	s_keys_inv_next_action.flags  = QMF_GRAYED;
+	s_keys_inv_next_action.x		= 0;
+	s_keys_inv_next_action.y		= y += 9;
+	s_keys_inv_next_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_inv_next_action.localdata[0] = ++i;
+	s_keys_inv_next_action.name	= bindnames[s_keys_inv_next_action.localdata[0]][1];
 
-	s_keys_help_computer_action.generic.type	= MTYPE_ACTION;
-	s_keys_help_computer_action.generic.flags  = QMF_GRAYED;
-	s_keys_help_computer_action.generic.x		= 0;
-	s_keys_help_computer_action.generic.y		= y += 9;
-	s_keys_help_computer_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_help_computer_action.generic.localdata[0] = ++i;
-	s_keys_help_computer_action.generic.name	= bindnames[s_keys_help_computer_action.generic.localdata[0]][1];
+	s_keys_help_computer_action.type	= MTYPE_ACTION;
+	s_keys_help_computer_action.flags  = QMF_GRAYED;
+	s_keys_help_computer_action.x		= 0;
+	s_keys_help_computer_action.y		= y += 9;
+	s_keys_help_computer_action.ownerdraw = DrawKeyBindingFunc;
+	s_keys_help_computer_action.localdata[0] = ++i;
+	s_keys_help_computer_action.name	= bindnames[s_keys_help_computer_action.localdata[0]][1];
 
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_attack_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_change_weapon_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_walk_forward_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_backpedal_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_left_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_right_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_run_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_step_left_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_step_right_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_sidestep_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_look_up_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_look_down_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_center_view_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_mouse_look_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_keyboard_look_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_move_up_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_move_down_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_attack_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_change_weapon_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_walk_forward_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_backpedal_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_turn_left_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_turn_right_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_run_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_step_left_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_step_right_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_sidestep_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_look_up_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_look_down_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_center_view_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_mouse_look_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_keyboard_look_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_move_up_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_move_down_action );
 
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inventory_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_use_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_drop_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_prev_action );
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_next_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_inventory_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_inv_use_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_inv_drop_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_inv_prev_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_inv_next_action );
 
-	qmenu.Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_help_computer_action );
+	qmenu.Menu_AddItem( s_keys_menu, s_keys_help_computer_action );
 	
-	Menu_SetStatusBar( &s_keys_menu, "enter to change, backspace to clear" );
-	qmenu.Menu_Center( &s_keys_menu );
+	Menu_SetStatusBar( s_keys_menu, "enter to change, backspace to clear" );
+	qmenu.Menu_Center( s_keys_menu );
 }
 
 static void Keys_MenuDraw (void)
 {
-	qmenu.Menu_AdjustCursor( &s_keys_menu, 1 );
-	qmenu.Menu_Draw( &s_keys_menu );
+	qmenu.Menu_AdjustCursor( s_keys_menu, 1 );
+	qmenu.Menu_Draw( s_keys_menu );
 }
 
 static const char *Keys_MenuKey( int key )
 {
-	menuaction_s *item = ( menuaction_s * ) qmenu.Menu_ItemAtCursor( &s_keys_menu );
+	menuaction_s *item = ( menuaction_s * ) qmenu.Menu_ItemAtCursor( s_keys_menu );
 
 	if ( bind_grab )
 	{	
@@ -1025,11 +1042,11 @@ static const char *Keys_MenuKey( int key )
 		{
 			char cmd[1024];
 
-			Com_sprintf (cmd, sizeof(cmd), "bind \"%s\" \"%s\"\n", Key_KeynumToString(key), bindnames[item->generic.localdata[0]][0]);
+			Com_sprintf (cmd, sizeof(cmd), "bind \"%s\" \"%s\"\n", Key_KeynumToString(key), bindnames[item->localdata[0]][0]);
 			Cbuf_InsertText (cmd);
 		}
 		
-		Menu_SetStatusBar( &s_keys_menu, "enter to change, backspace to clear" );
+		Menu_SetStatusBar( s_keys_menu, "enter to change, backspace to clear" );
 		bind_grab = false;
 		return menu_out_sound;
 	}
@@ -1043,10 +1060,10 @@ static const char *Keys_MenuKey( int key )
 	case K_BACKSPACE:		// delete bindings
 	case K_DEL:				// delete bindings
 	case K_KP_DEL:
-		M_UnbindCommand( bindnames[item->generic.localdata[0]][0] );
+		M_UnbindCommand( bindnames[item->localdata[0]][0] );
 		return menu_out_sound;
 	default:
-		return Default_MenuKey( &s_keys_menu, key );
+		return Default_MenuKey( s_keys_menu, key );
 	}
 }
 """
@@ -1064,373 +1081,347 @@ def M_Menu_Keys_f ():
 CONTROLS MENU
 
 =======================================================================
-*/
-static cvar_t *win_noalttab;
-extern cvar_t *in_joystick;
+"""
+win_noalttab = None #static cvar_t *
 
-static menuframework_s	s_options_menu;
-static menuaction_s		s_options_defaults_action;
-static menuaction_s		s_options_customize_options_action;
-static menuslider_s		s_options_sensitivity_slider;
-static menulist_s		s_options_freelook_box;
-static menulist_s		s_options_noalttab_box;
-static menulist_s		s_options_alwaysrun_box;
-static menulist_s		s_options_invertmouse_box;
-static menulist_s		s_options_lookspring_box;
-static menulist_s		s_options_lookstrafe_box;
-static menulist_s		s_options_crosshair_box;
-static menuslider_s		s_options_sfxvolume_slider;
-static menulist_s		s_options_joystick_box;
-static menulist_s		s_options_cdvolume_box;
-static menulist_s		s_options_quality_list;
-static menulist_s		s_options_compatibility_list;
-static menulist_s		s_options_console_action;
+s_options_menu = menuframework_s()
+s_options_defaults_action = menuaction_s()
+s_options_customize_options_action = menuaction_s()
+s_options_sensitivity_slider = menuslider_s()
+s_options_freelook_box = menuspincontrol_s()
+s_options_noalttab_box = menuspincontrol_s()
+s_options_alwaysrun_box = menuspincontrol_s()
+s_options_invertmouse_box = menuspincontrol_s()
+s_options_lookspring_box = menuspincontrol_s()
+s_options_lookstrafe_box = menuspincontrol_s()
+s_options_crosshair_box = menuspincontrol_s()
+s_options_sfxvolume_slider = menuslider_s()
+s_options_joystick_box = menuspincontrol_s()
+s_options_cdvolume_box = menuspincontrol_s()
+s_options_quality_list = menuspincontrol_s()
+s_options_compatibility_list = menuspincontrol_s()
+s_options_console_action = menuspincontrol_s()
 
-static void CrosshairFunc( void *unused )
-{
-	Cvar_SetValue( "crosshair", s_options_crosshair_box.curvalue );
-}
 
-static void JoystickFunc( void *unused )
-{
-	Cvar_SetValue( "in_joystick", s_options_joystick_box.curvalue );
-}
+def CrosshairFunc( unused ):
 
-static void CustomizeControlsFunc( void *unused )
-{
-	M_Menu_Keys_f();
-}
+	cvar.Cvar_SetValue( "crosshair", s_options_crosshair_box.curvalue )
 
-static void AlwaysRunFunc( void *unused )
-{
-	Cvar_SetValue( "cl_run", s_options_alwaysrun_box.curvalue );
-}
 
-static void FreeLookFunc( void *unused )
-{
-	Cvar_SetValue( "freelook", s_options_freelook_box.curvalue );
-}
+def JoystickFunc( unused ):
 
-static void MouseSpeedFunc( void *unused )
-{
-	Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 2.0F );
-}
+	cvar.Cvar_SetValue( "in_joystick", s_options_joystick_box.curvalue )
 
-static void NoAltTabFunc( void *unused )
-{
-	Cvar_SetValue( "win_noalttab", s_options_noalttab_box.curvalue );
-}
 
-static float ClampCvar( float min, float max, float value )
-{
-	if ( value < min ) return min;
-	if ( value > max ) return max;
-	return value;
-}
+def CustomizeControlsFunc( unused ):
 
-static void ControlsSetMenuItemValues( void )
-{
-	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
-	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
-	s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
-	s_options_sensitivity_slider.curvalue	= ( sensitivity->value ) * 2;
+	M_Menu_Keys_f()
 
-	Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_run->value ) );
-	s_options_alwaysrun_box.curvalue		= cl_run->value;
 
-	s_options_invertmouse_box.curvalue		= m_pitch->value < 0;
+def AlwaysRunFunc( unused ):
 
-	Cvar_SetValue( "lookspring", ClampCvar( 0, 1, lookspring->value ) );
-	s_options_lookspring_box.curvalue		= lookspring->value;
+	cvar.Cvar_SetValue( "cl_run", s_options_alwaysrun_box.curvalue )
 
-	Cvar_SetValue( "lookstrafe", ClampCvar( 0, 1, lookstrafe->value ) );
-	s_options_lookstrafe_box.curvalue		= lookstrafe->value;
 
-	Cvar_SetValue( "freelook", ClampCvar( 0, 1, freelook->value ) );
-	s_options_freelook_box.curvalue			= freelook->value;
+def FreeLookFunc( unused ):
 
-	Cvar_SetValue( "crosshair", ClampCvar( 0, 3, crosshair->value ) );
-	s_options_crosshair_box.curvalue		= crosshair->value;
+	cvar.Cvar_SetValue( "freelook", s_options_freelook_box.curvalue )
 
-	Cvar_SetValue( "in_joystick", ClampCvar( 0, 1, in_joystick->value ) );
-	s_options_joystick_box.curvalue		= in_joystick->value;
 
-	s_options_noalttab_box.curvalue			= win_noalttab->value;
-}
+def MouseSpeedFunc( unused ):
 
-static void ControlsResetDefaultsFunc( void *unused )
-{
-	Cbuf_AddText ("exec default.cfg\n");
-	Cbuf_Execute();
+	cvar.Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 2.0 )
 
-	ControlsSetMenuItemValues();
-}
 
-static void InvertMouseFunc( void *unused )
-{
-	Cvar_SetValue( "m_pitch", -m_pitch->value );
-}
+def NoAltTabFunc( unused ):
 
-static void LookspringFunc( void *unused )
-{
-	Cvar_SetValue( "lookspring", !lookspring->value );
-}
+	cvar.Cvar_SetValue( "win_noalttab", s_options_noalttab_box.curvalue )
 
-static void LookstrafeFunc( void *unused )
-{
-	Cvar_SetValue( "lookstrafe", !lookstrafe->value );
-}
 
-static void UpdateVolumeFunc( void *unused )
-{
-	Cvar_SetValue( "s_volume", s_options_sfxvolume_slider.curvalue / 10 );
-}
+def ClampCvar( minIn, maxIn, value ): #float, float, float (returns float)
 
-static void UpdateCDVolumeFunc( void *unused )
-{
-	Cvar_SetValue( "cd_nocd", !s_options_cdvolume_box.curvalue );
-}
+	if value < minIn: return minIn
+	if value > maxIn: return maxIn
+	return value
 
-static void ConsoleFunc( void *unused )
-{
-	/*
-	** the proper way to do this is probably to have ToggleConsole_f accept a parameter
-	*/
-	extern void Key_ClearTyping( void );
 
-	if ( cl_main.cl.attractloop )
-	{
-		Cbuf_AddText ("killserver\n");
-		return;
-	}
+def ControlsSetMenuItemValues( ):
 
-	Key_ClearTyping ();
-	Con_ClearNotify ();
+	s_options_sfxvolume_slider.curvalue		= int(cvar.Cvar_VariableValue( "s_volume" ) * 10)
+	s_options_cdvolume_box.curvalue 		= cvar.Cvar_VariableValue("cd_nocd") != 0.0
+	s_options_quality_list.curvalue			= cvar.Cvar_VariableValue( "s_loadas8bit" ) != 0.0
+	s_options_sensitivity_slider.curvalue	= int (( cl_main.sensitivity.value ) * 2)
 
-	M_ForceMenuOff ();
-	cl_main.cls.key_dest = client.keydest_t.key_console;
-}
+	cvar.Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_main.cl_run.value ) )
+	s_options_alwaysrun_box.curvalue		= int(cl_main.cl_run.value)
 
-static void UpdateSoundQualityFunc( void *unused )
-{
-	if ( s_options_quality_list.curvalue )
-	{
-		Cvar_SetValue( "s_khz", 22 );
-		Cvar_SetValue( "s_loadas8bit", false );
-	}
-	else
-	{
-		Cvar_SetValue( "s_khz", 11 );
-		Cvar_SetValue( "s_loadas8bit", true );
-	}
+	s_options_invertmouse_box.curvalue		= int(cl_main.m_pitch.value < 0)
+
+	cvar.Cvar_SetValue( "lookspring", ClampCvar( 0, 1, cl_main.lookspring.value ) )
+	s_options_lookspring_box.curvalue		= int(cl_main.lookspring.value)
+
+	cvar.Cvar_SetValue( "lookstrafe", ClampCvar( 0, 1, cl_main.lookstrafe.value ) )
+	s_options_lookstrafe_box.curvalue		= int(cl_main.lookstrafe.value)
+
+	cvar.Cvar_SetValue( "freelook", ClampCvar( 0, 1, cl_main.freelook.value ) )
+	s_options_freelook_box.curvalue			= int(cl_main.freelook.value)
+
+	cvar.Cvar_SetValue( "crosshair", ClampCvar( 0, 3, cl_view.crosshair.value ) )
+	s_options_crosshair_box.curvalue		= int(cl_view.crosshair.value)
+
+	cvar.Cvar_SetValue( "in_joystick", ClampCvar( 0, 1, in_linux.in_joystick.value ) )
+	s_options_joystick_box.curvalue		= int(in_linux.in_joystick.value)
+
+	if win_noalttab is not None:
+		s_options_noalttab_box.curvalue			= int(win_noalttab.value)
+
+
+def ControlsResetDefaultsFunc( unused ):
+
+	cmd.Cbuf_AddText ("exec default.cfg\n")
+	cmd.Cbuf_Execute()
+
+	ControlsSetMenuItemValues()
+
+def InvertMouseFunc( unused ):
+
+	cvar.Cvar_SetValue( "m_pitch", -cl_main.m_pitch.value )
+
+
+def LookspringFunc( unused ):
+
+	cvar.Cvar_SetValue( "lookspring", cl_main.lookspring.value != 0.0 )
+
+
+def LookstrafeFunc( unused ):
+
+	cvar.Cvar_SetValue( "lookstrafe", cl_main.lookstrafe.value != 0.0 )
+
+
+def UpdateVolumeFunc( unused ):
+
+	cvar.Cvar_SetValue( "s_volume", s_options_sfxvolume_slider.curvalue // 10 )
+
+
+def UpdateCDVolumeFunc( unused ):
+
+	cvar.Cvar_SetValue( "cd_nocd", not s_options_cdvolume_box.curvalue )
+
+
+def ConsoleFunc( unused ):
+
+	#
+	# the proper way to do this is probably to have ToggleConsole_f accept a parameter
+	#
+	#extern void Key_ClearTyping( void )
+
+	if cl_main.cl.attractloop :
 	
-	Cvar_SetValue( "s_primary", s_options_compatibility_list.curvalue );
+		cmd.Cbuf_AddText ("killserver\n")
+		return
+	
+	console.Key_ClearTyping ()
+	console.Con_ClearNotify ()
+
+	M_ForceMenuOff ()
+	cl_main.cls.key_dest = client.keydest_t.key_console
+
+
+def UpdateSoundQualityFunc( unused ):
+
+	if s_options_quality_list.curvalue:
+	
+		cvar.Cvar_SetValue( "s_khz", 22 )
+		cvar.Cvar_SetValue( "s_loadas8bit", False )
+	
+	else:
+	
+		cvar.Cvar_SetValue( "s_khz", 11 )
+		cvar.Cvar_SetValue( "s_loadas8bit", True )
+	
+	
+	cvar.Cvar_SetValue( "s_primary", s_options_compatibility_list.curvalue )
 
 	M_DrawTextBox( 8, 120 - 48, 36, 3 );
-	M_Print( 16 + 16, 120 - 48 + 8,  "Restarting the sound system. This" );
-	M_Print( 16 + 16, 120 - 48 + 16, "could take up to a minute, so" );
-	M_Print( 16 + 16, 120 - 48 + 24, "please be patient." );
+	M_Print( 16 + 16, 120 - 48 + 8,  "Restarting the sound system. This" )
+	M_Print( 16 + 16, 120 - 48 + 16, "could take up to a minute, so" )
+	M_Print( 16 + 16, 120 - 48 + 24, "please be patient." )
 
-	// the text box won't show up unless we do a buffer swap
-	vid_so.re.EndFrame();
+	# the text box won't show up unless we do a buffer swap
+	vid_so.re.EndFrame()
 
-	CL_Snd_Restart_f();
-}
+	snd_dma.CL_Snd_Restart_f()
 
-void Options_MenuInit( void )
-{
-	static const char *cd_music_items[] =
-	{
+
+def Options_MenuInit( ):
+
+	cd_music_items = [
 		"disabled",
 		"enabled",
-		0
-	};
-	static const char *quality_items[] =
-	{
-		"low", "high", 0
-	};
+	] #static const char *
 
-	static const char *compatibility_items[] =
-	{
-		"max compatibility", "max performance", 0
-	};
+	quality_items = [
+		"low", "high",
+	] #static const char *
 
-	static const char *yesno_names[] =
-	{
+	compatibility_items = [
+		"max compatibility", "max performance",
+	] #static const char *
+
+	yesno_names = [
 		"no",
 		"yes",
-		0
-	};
+	] #static const char *
 
-	static const char *crosshair_names[] =
-	{
+	crosshair_names = [
 		"none",
 		"cross",
 		"dot",
 		"angle",
-		0
-	};
+	] #static const char *
 
-	win_noalttab = Cvar_Get( "win_noalttab", "0", CVAR_ARCHIVE );
+	win_noalttab = cvar.Cvar_Get( "win_noalttab", "0", q_shared.CVAR_ARCHIVE )
 
-	/*
-	** configure controls menu and menu items
-	*/
-	s_options_menu.x = vid_so.viddef.width / 2;
-	s_options_menu.y = vid_so.viddef.height / 2 - 58;
-	s_options_menu.nitems = 0;
+	#
+	# configure controls menu and menu items
+	#
+	s_options_menu.x = vid_so.viddef.width // 2
+	s_options_menu.y = vid_so.viddef.height // 2 - 58
+	s_options_menu.nitems = 0
 
-	s_options_sfxvolume_slider.generic.type	= MTYPE_SLIDER;
-	s_options_sfxvolume_slider.generic.x	= 0;
-	s_options_sfxvolume_slider.generic.y	= 0;
-	s_options_sfxvolume_slider.generic.name	= "effects volume";
-	s_options_sfxvolume_slider.generic.callback	= UpdateVolumeFunc;
-	s_options_sfxvolume_slider.minvalue		= 0;
-	s_options_sfxvolume_slider.maxvalue		= 10;
-	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
+	s_options_sfxvolume_slider.x	= 0
+	s_options_sfxvolume_slider.y	= 0
+	s_options_sfxvolume_slider.name	= "effects volume"
+	s_options_sfxvolume_slider.callback	= UpdateVolumeFunc
+	s_options_sfxvolume_slider.minvalue		= 0
+	s_options_sfxvolume_slider.maxvalue		= 10
+	s_options_sfxvolume_slider.curvalue		= int(cvar.Cvar_VariableValue( "s_volume" ) * 10)
 
-	s_options_cdvolume_box.generic.type	= MTYPE_SPINCONTROL;
-	s_options_cdvolume_box.generic.x		= 0;
-	s_options_cdvolume_box.generic.y		= 10;
-	s_options_cdvolume_box.generic.name	= "CD music";
-	s_options_cdvolume_box.generic.callback	= UpdateCDVolumeFunc;
-	s_options_cdvolume_box.itemnames		= cd_music_items;
-	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
+	s_options_cdvolume_box.x		= 0
+	s_options_cdvolume_box.y		= 10
+	s_options_cdvolume_box.name	= "CD music"
+	s_options_cdvolume_box.callback	= UpdateCDVolumeFunc
+	s_options_cdvolume_box.itemnames		= cd_music_items
+	s_options_cdvolume_box.curvalue 		= cvar.Cvar_VariableValue("cd_nocd") != 0
 
-	s_options_quality_list.generic.type	= MTYPE_SPINCONTROL;
-	s_options_quality_list.generic.x		= 0;
-	s_options_quality_list.generic.y		= 20;;
-	s_options_quality_list.generic.name		= "sound quality";
-	s_options_quality_list.generic.callback = UpdateSoundQualityFunc;
-	s_options_quality_list.itemnames		= quality_items;
-	s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
+	s_options_quality_list.x		= 0
+	s_options_quality_list.y		= 20
+	s_options_quality_list.name		= "sound quality"
+	s_options_quality_list.callback = UpdateSoundQualityFunc
+	s_options_quality_list.itemnames		= quality_items
+	s_options_quality_list.curvalue			= cvar.Cvar_VariableValue( "s_loadas8bit" ) != 0
 
-	s_options_compatibility_list.generic.type	= MTYPE_SPINCONTROL;
-	s_options_compatibility_list.generic.x		= 0;
-	s_options_compatibility_list.generic.y		= 30;
-	s_options_compatibility_list.generic.name	= "sound compatibility";
-	s_options_compatibility_list.generic.callback = UpdateSoundQualityFunc;
-	s_options_compatibility_list.itemnames		= compatibility_items;
-	s_options_compatibility_list.curvalue		= Cvar_VariableValue( "s_primary" );
+	s_options_compatibility_list.x		= 0
+	s_options_compatibility_list.y		= 30
+	s_options_compatibility_list.name	= "sound compatibility"
+	s_options_compatibility_list.callback = UpdateSoundQualityFunc
+	s_options_compatibility_list.itemnames		= compatibility_items
+	s_options_compatibility_list.curvalue		= int(cvar.Cvar_VariableValue( "s_primary" ))
 
-	s_options_sensitivity_slider.generic.type	= MTYPE_SLIDER;
-	s_options_sensitivity_slider.generic.x		= 0;
-	s_options_sensitivity_slider.generic.y		= 50;
-	s_options_sensitivity_slider.generic.name	= "mouse speed";
-	s_options_sensitivity_slider.generic.callback = MouseSpeedFunc;
-	s_options_sensitivity_slider.minvalue		= 2;
-	s_options_sensitivity_slider.maxvalue		= 22;
+	s_options_sensitivity_slider.x		= 0
+	s_options_sensitivity_slider.y		= 50
+	s_options_sensitivity_slider.name	= "mouse speed"
+	s_options_sensitivity_slider.callback = MouseSpeedFunc
+	s_options_sensitivity_slider.minvalue		= 2
+	s_options_sensitivity_slider.maxvalue		= 22
 
-	s_options_alwaysrun_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_alwaysrun_box.generic.x	= 0;
-	s_options_alwaysrun_box.generic.y	= 60;
-	s_options_alwaysrun_box.generic.name	= "always run";
-	s_options_alwaysrun_box.generic.callback = AlwaysRunFunc;
-	s_options_alwaysrun_box.itemnames = yesno_names;
+	s_options_alwaysrun_box.x	= 0
+	s_options_alwaysrun_box.y	= 60
+	s_options_alwaysrun_box.name	= "always run"
+	s_options_alwaysrun_box.callback = AlwaysRunFunc
+	s_options_alwaysrun_box.itemnames = yesno_names
 
-	s_options_invertmouse_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_invertmouse_box.generic.x	= 0;
-	s_options_invertmouse_box.generic.y	= 70;
-	s_options_invertmouse_box.generic.name	= "invert mouse";
-	s_options_invertmouse_box.generic.callback = InvertMouseFunc;
-	s_options_invertmouse_box.itemnames = yesno_names;
+	s_options_invertmouse_box.x	= 0
+	s_options_invertmouse_box.y	= 70
+	s_options_invertmouse_box.name	= "invert mouse"
+	s_options_invertmouse_box.callback = InvertMouseFunc
+	s_options_invertmouse_box.itemnames = yesno_names
 
-	s_options_lookspring_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_lookspring_box.generic.x	= 0;
-	s_options_lookspring_box.generic.y	= 80;
-	s_options_lookspring_box.generic.name	= "lookspring";
-	s_options_lookspring_box.generic.callback = LookspringFunc;
-	s_options_lookspring_box.itemnames = yesno_names;
+	s_options_lookspring_box.x	= 0
+	s_options_lookspring_box.y	= 80
+	s_options_lookspring_box.name	= "lookspring"
+	s_options_lookspring_box.callback = LookspringFunc
+	s_options_lookspring_box.itemnames = yesno_names
 
-	s_options_lookstrafe_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_lookstrafe_box.generic.x	= 0;
-	s_options_lookstrafe_box.generic.y	= 90;
-	s_options_lookstrafe_box.generic.name	= "lookstrafe";
-	s_options_lookstrafe_box.generic.callback = LookstrafeFunc;
-	s_options_lookstrafe_box.itemnames = yesno_names;
+	s_options_lookstrafe_box.x	= 0
+	s_options_lookstrafe_box.y	= 90
+	s_options_lookstrafe_box.name	= "lookstrafe"
+	s_options_lookstrafe_box.callback = LookstrafeFunc
+	s_options_lookstrafe_box.itemnames = yesno_names
 
-	s_options_freelook_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_freelook_box.generic.x	= 0;
-	s_options_freelook_box.generic.y	= 100;
-	s_options_freelook_box.generic.name	= "free look";
-	s_options_freelook_box.generic.callback = FreeLookFunc;
-	s_options_freelook_box.itemnames = yesno_names;
+	s_options_freelook_box.x	= 0
+	s_options_freelook_box.y	= 100
+	s_options_freelook_box.name	= "free look"
+	s_options_freelook_box.callback = FreeLookFunc
+	s_options_freelook_box.itemnames = yesno_names
 
-	s_options_crosshair_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_crosshair_box.generic.x	= 0;
-	s_options_crosshair_box.generic.y	= 110;
-	s_options_crosshair_box.generic.name	= "crosshair";
-	s_options_crosshair_box.generic.callback = CrosshairFunc;
-	s_options_crosshair_box.itemnames = crosshair_names;
-/*
-	s_options_noalttab_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_noalttab_box.generic.x	= 0;
-	s_options_noalttab_box.generic.y	= 110;
-	s_options_noalttab_box.generic.name	= "disable alt-tab";
-	s_options_noalttab_box.generic.callback = NoAltTabFunc;
-	s_options_noalttab_box.itemnames = yesno_names;
-*/
-	s_options_joystick_box.generic.type = MTYPE_SPINCONTROL;
-	s_options_joystick_box.generic.x	= 0;
-	s_options_joystick_box.generic.y	= 120;
-	s_options_joystick_box.generic.name	= "use joystick";
-	s_options_joystick_box.generic.callback = JoystickFunc;
-	s_options_joystick_box.itemnames = yesno_names;
+	s_options_crosshair_box.x	= 0
+	s_options_crosshair_box.y	= 110
+	s_options_crosshair_box.name	= "crosshair"
+	s_options_crosshair_box.callback = CrosshairFunc
+	s_options_crosshair_box.itemnames = crosshair_names
 
-	s_options_customize_options_action.generic.type	= MTYPE_ACTION;
-	s_options_customize_options_action.generic.x		= 0;
-	s_options_customize_options_action.generic.y		= 140;
-	s_options_customize_options_action.generic.name	= "customize controls";
-	s_options_customize_options_action.generic.callback = CustomizeControlsFunc;
+	##s_options_noalttab_box.x	= 0;
+	##s_options_noalttab_box.y	= 110;
+	##s_options_noalttab_box.name	= "disable alt-tab";
+	##s_options_noalttab_box.callback = NoAltTabFunc;
+	##s_options_noalttab_box.itemnames = yesno_names;
 
-	s_options_defaults_action.generic.type	= MTYPE_ACTION;
-	s_options_defaults_action.generic.x		= 0;
-	s_options_defaults_action.generic.y		= 150;
-	s_options_defaults_action.generic.name	= "reset defaults";
-	s_options_defaults_action.generic.callback = ControlsResetDefaultsFunc;
+	s_options_joystick_box.x	= 0
+	s_options_joystick_box.y	= 120
+	s_options_joystick_box.name	= "use joystick"
+	s_options_joystick_box.callback = JoystickFunc
+	s_options_joystick_box.itemnames = yesno_names
 
-	s_options_console_action.generic.type	= MTYPE_ACTION;
-	s_options_console_action.generic.x		= 0;
-	s_options_console_action.generic.y		= 160;
-	s_options_console_action.generic.name	= "go to console";
-	s_options_console_action.generic.callback = ConsoleFunc;
+	s_options_customize_options_action.x		= 0
+	s_options_customize_options_action.y		= 140
+	s_options_customize_options_action.name	= "customize controls"
+	s_options_customize_options_action.callback = CustomizeControlsFunc
 
-	ControlsSetMenuItemValues();
+	s_options_defaults_action.x		= 0
+	s_options_defaults_action.y		= 150
+	s_options_defaults_action.name	= "reset defaults"
+	s_options_defaults_action.callback = ControlsResetDefaultsFunc
 
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_sfxvolume_slider );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdvolume_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookstrafe_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_crosshair_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_customize_options_action );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_defaults_action );
-	qmenu.Menu_AddItem( &s_options_menu, ( void * ) &s_options_console_action );
-}
+	s_options_console_action.x		= 0
+	s_options_console_action.y		= 160
+	s_options_console_action.name	= "go to console"
+	s_options_console_action.callback = ConsoleFunc
 
-void Options_MenuDraw (void)
-{
-	M_Banner( "m_banner_options" );
-	qmenu.Menu_AdjustCursor( &s_options_menu, 1 );
-	qmenu.Menu_Draw( &s_options_menu );
-}
+	ControlsSetMenuItemValues()
 
-const char *Options_MenuKey( int key )
-{
-	return Default_MenuKey( &s_options_menu, key );
-}
-"""
+	qmenu.Menu_AddItem( s_options_menu, s_options_sfxvolume_slider )
+	qmenu.Menu_AddItem( s_options_menu, s_options_cdvolume_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_quality_list )
+	qmenu.Menu_AddItem( s_options_menu, s_options_compatibility_list )
+	qmenu.Menu_AddItem( s_options_menu, s_options_sensitivity_slider )
+	qmenu.Menu_AddItem( s_options_menu, s_options_alwaysrun_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_invertmouse_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_lookspring_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_lookstrafe_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_freelook_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_crosshair_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_joystick_box )
+	qmenu.Menu_AddItem( s_options_menu, s_options_customize_options_action )
+	qmenu.Menu_AddItem( s_options_menu, s_options_defaults_action )
+	qmenu.Menu_AddItem( s_options_menu, s_options_console_action )
+
+
+def Options_MenuDraw ():
+
+	M_Banner( "m_banner_options" )
+	qmenu.Menu_AdjustCursor( s_options_menu, 1 )
+	qmenu.Menu_Draw( s_options_menu )
+
+def Options_MenuKey( key ):
+
+	return Default_MenuKey( s_options_menu, key )
+
+
 def M_Menu_Options_f ():
 
-	pass
-	#Options_MenuInit();
-	#M_PushMenu ( Options_MenuDraw, Options_MenuKey )
+	Options_MenuInit()
+	M_PushMenu ( Options_MenuDraw, Options_MenuKey )
 
 
 """
@@ -2006,41 +1997,41 @@ def Game_MenuInit( ):
 	s_game_menu.x = vid_so.viddef.width * 0.50
 	s_game_menu.nitems = 0
 
-	s_easy_game_action.generic.flags  = QMF_LEFT_JUSTIFY
-	s_easy_game_action.generic.x		= 0
-	s_easy_game_action.generic.y		= 0
-	s_easy_game_action.generic.name	= "easy"
-	s_easy_game_action.generic.callback = EasyGameFunc
+	s_easy_game_action.flags  = QMF_LEFT_JUSTIFY
+	s_easy_game_action.x		= 0
+	s_easy_game_action.y		= 0
+	s_easy_game_action.name	= "easy"
+	s_easy_game_action.callback = EasyGameFunc
 
-	s_medium_game_action.generic.flags  = QMF_LEFT_JUSTIFY
-	s_medium_game_action.generic.x		= 0
-	s_medium_game_action.generic.y		= 10
-	s_medium_game_action.generic.name	= "medium"
-	s_medium_game_action.generic.callback = MediumGameFunc
+	s_medium_game_action.flags  = QMF_LEFT_JUSTIFY
+	s_medium_game_action.x		= 0
+	s_medium_game_action.y		= 10
+	s_medium_game_action.name	= "medium"
+	s_medium_game_action.callback = MediumGameFunc
 
-	s_hard_game_action.generic.flags  = QMF_LEFT_JUSTIFY
-	s_hard_game_action.generic.x		= 0
-	s_hard_game_action.generic.y		= 20
-	s_hard_game_action.generic.name	= "hard"
-	s_hard_game_action.generic.callback = HardGameFunc
+	s_hard_game_action.flags  = QMF_LEFT_JUSTIFY
+	s_hard_game_action.x		= 0
+	s_hard_game_action.y		= 20
+	s_hard_game_action.name	= "hard"
+	s_hard_game_action.callback = HardGameFunc
 
-	s_load_game_action.generic.flags  = QMF_LEFT_JUSTIFY
-	s_load_game_action.generic.x		= 0
-	s_load_game_action.generic.y		= 40
-	s_load_game_action.generic.name	= "load game"
-	s_load_game_action.generic.callback = LoadGameFunc
+	s_load_game_action.flags  = QMF_LEFT_JUSTIFY
+	s_load_game_action.x		= 0
+	s_load_game_action.y		= 40
+	s_load_game_action.name	= "load game"
+	s_load_game_action.callback = LoadGameFunc
 
-	s_save_game_action.generic.flags  = QMF_LEFT_JUSTIFY
-	s_save_game_action.generic.x		= 0
-	s_save_game_action.generic.y		= 50
-	s_save_game_action.generic.name	= "save game"
-	s_save_game_action.generic.callback = SaveGameFunc
+	s_save_game_action.flags  = QMF_LEFT_JUSTIFY
+	s_save_game_action.x		= 0
+	s_save_game_action.y		= 50
+	s_save_game_action.name	= "save game"
+	s_save_game_action.callback = SaveGameFunc
 
-	s_credits_action.generic.flags  = QMF_LEFT_JUSTIFY
-	s_credits_action.generic.x		= 0
-	s_credits_action.generic.y		= 60
-	s_credits_action.generic.name	= "credits"
-	s_credits_action.generic.callback = CreditsFunc
+	s_credits_action.flags  = QMF_LEFT_JUSTIFY
+	s_credits_action.x		= 0
+	s_credits_action.y		= 60
+	s_credits_action.name	= "credits"
+	s_credits_action.callback = CreditsFunc
 	
 	qmenu.Menu_AddItem( s_game_menu, s_easy_game_action )
 	qmenu.Menu_AddItem( s_game_menu, s_medium_game_action )
@@ -2120,8 +2111,8 @@ void LoadGameCallback( void *self )
 {
 	menuaction_s *a = ( menuaction_s * ) self;
 
-	if ( m_savevalid[ a->generic.localdata[0] ] )
-		Cbuf_AddText (va("load save%i\n",  a->generic.localdata[0] ) );
+	if ( m_savevalid[ a->localdata[0] ] )
+		Cbuf_AddText (va("load save%i\n",  a->localdata[0] ) );
 	M_ForceMenuOff ();
 }
 
@@ -2137,17 +2128,17 @@ void LoadGame_MenuInit( void )
 
 	for ( i = 0; i < MAX_SAVEGAMES; i++ )
 	{
-		s_loadgame_actions[i].generic.name			= m_savestrings[i];
-		s_loadgame_actions[i].generic.flags			= QMF_LEFT_JUSTIFY;
-		s_loadgame_actions[i].generic.localdata[0]	= i;
-		s_loadgame_actions[i].generic.callback		= LoadGameCallback;
+		s_loadgame_actions[i].name			= m_savestrings[i];
+		s_loadgame_actions[i].flags			= QMF_LEFT_JUSTIFY;
+		s_loadgame_actions[i].localdata[0]	= i;
+		s_loadgame_actions[i].callback		= LoadGameCallback;
 
-		s_loadgame_actions[i].generic.x = 0;
-		s_loadgame_actions[i].generic.y = ( i ) * 10;
+		s_loadgame_actions[i].x = 0;
+		s_loadgame_actions[i].y = ( i ) * 10;
 		if (i>0)	// separate from autosave
-			s_loadgame_actions[i].generic.y += 10;
+			s_loadgame_actions[i].y += 10;
 
-		s_loadgame_actions[i].generic.type = MTYPE_ACTION;
+		s_loadgame_actions[i].type = MTYPE_ACTION;
 
 		qmenu.Menu_AddItem( &s_loadgame_menu, &s_loadgame_actions[i] );
 	}
@@ -2192,7 +2183,7 @@ void SaveGameCallback( void *self )
 {
 	menuaction_s *a = ( menuaction_s * ) self;
 
-	Cbuf_AddText (va("save save%i\n", a->generic.localdata[0] ));
+	Cbuf_AddText (va("save save%i\n", a->localdata[0] ));
 	M_ForceMenuOff ();
 }
 
@@ -2216,15 +2207,15 @@ void SaveGame_MenuInit( void )
 	// don't include the autosave slot
 	for ( i = 0; i < MAX_SAVEGAMES-1; i++ )
 	{
-		s_savegame_actions[i].generic.name = m_savestrings[i+1];
-		s_savegame_actions[i].generic.localdata[0] = i+1;
-		s_savegame_actions[i].generic.flags = QMF_LEFT_JUSTIFY;
-		s_savegame_actions[i].generic.callback = SaveGameCallback;
+		s_savegame_actions[i].name = m_savestrings[i+1];
+		s_savegame_actions[i].localdata[0] = i+1;
+		s_savegame_actions[i].flags = QMF_LEFT_JUSTIFY;
+		s_savegame_actions[i].callback = SaveGameCallback;
 
-		s_savegame_actions[i].generic.x = 0;
-		s_savegame_actions[i].generic.y = ( i ) * 10;
+		s_savegame_actions[i].x = 0;
+		s_savegame_actions[i].y = ( i ) * 10;
 
-		s_savegame_actions[i].generic.type = MTYPE_ACTION;
+		s_savegame_actions[i].type = MTYPE_ACTION;
 
 		qmenu.Menu_AddItem( &s_savegame_menu, &s_savegame_actions[i] );
 	}
@@ -2357,36 +2348,36 @@ void JoinServer_MenuInit( void )
 	s_joinserver_menu.x = vid_so.viddef.width * 0.50 - 120;
 	s_joinserver_menu.nitems = 0;
 
-	s_joinserver_address_book_action.generic.type	= MTYPE_ACTION;
-	s_joinserver_address_book_action.generic.name	= "address book";
-	s_joinserver_address_book_action.generic.flags	= QMF_LEFT_JUSTIFY;
-	s_joinserver_address_book_action.generic.x		= 0;
-	s_joinserver_address_book_action.generic.y		= 0;
-	s_joinserver_address_book_action.generic.callback = AddressBookFunc;
+	s_joinserver_address_book_action.type	= MTYPE_ACTION;
+	s_joinserver_address_book_action.name	= "address book";
+	s_joinserver_address_book_action.flags	= QMF_LEFT_JUSTIFY;
+	s_joinserver_address_book_action.x		= 0;
+	s_joinserver_address_book_action.y		= 0;
+	s_joinserver_address_book_action.callback = AddressBookFunc;
 
-	s_joinserver_search_action.generic.type = MTYPE_ACTION;
-	s_joinserver_search_action.generic.name	= "refresh server list";
-	s_joinserver_search_action.generic.flags	= QMF_LEFT_JUSTIFY;
-	s_joinserver_search_action.generic.x	= 0;
-	s_joinserver_search_action.generic.y	= 10;
-	s_joinserver_search_action.generic.callback = SearchLocalGamesFunc;
-	s_joinserver_search_action.generic.statusbar = "search for servers";
+	s_joinserver_search_action.type = MTYPE_ACTION;
+	s_joinserver_search_action.name	= "refresh server list";
+	s_joinserver_search_action.flags	= QMF_LEFT_JUSTIFY;
+	s_joinserver_search_action.x	= 0;
+	s_joinserver_search_action.y	= 10;
+	s_joinserver_search_action.callback = SearchLocalGamesFunc;
+	s_joinserver_search_action.statusbar = "search for servers";
 
-	s_joinserver_server_title.generic.type = MTYPE_SEPARATOR;
-	s_joinserver_server_title.generic.name = "connect to...";
-	s_joinserver_server_title.generic.x    = 80;
-	s_joinserver_server_title.generic.y	   = 30;
+	s_joinserver_server_title.type = MTYPE_SEPARATOR;
+	s_joinserver_server_title.name = "connect to...";
+	s_joinserver_server_title.x    = 80;
+	s_joinserver_server_title.y	   = 30;
 
 	for ( i = 0; i < MAX_LOCAL_SERVERS; i++ )
 	{
-		s_joinserver_server_actions[i].generic.type	= MTYPE_ACTION;
+		s_joinserver_server_actions[i].type	= MTYPE_ACTION;
 		strcpy (local_server_names[i], NO_SERVER_STRING);
-		s_joinserver_server_actions[i].generic.name	= local_server_names[i];
-		s_joinserver_server_actions[i].generic.flags	= QMF_LEFT_JUSTIFY;
-		s_joinserver_server_actions[i].generic.x		= 0;
-		s_joinserver_server_actions[i].generic.y		= 40 + i*10;
-		s_joinserver_server_actions[i].generic.callback = JoinServerFunc;
-		s_joinserver_server_actions[i].generic.statusbar = "press ENTER to connect";
+		s_joinserver_server_actions[i].name	= local_server_names[i];
+		s_joinserver_server_actions[i].flags	= QMF_LEFT_JUSTIFY;
+		s_joinserver_server_actions[i].x		= 0;
+		s_joinserver_server_actions[i].y		= 40 + i*10;
+		s_joinserver_server_actions[i].callback = JoinServerFunc;
+		s_joinserver_server_actions[i].statusbar = "press ENTER to connect";
 	}
 
 	qmenu.Menu_AddItem( &s_joinserver_menu, &s_joinserver_address_book_action );
@@ -2452,15 +2443,15 @@ void RulesChangeFunc ( void *self )
 	// DM
 	if (s_rules_box.curvalue == 0)
 	{
-		s_maxclients_field.generic.statusbar = NULL;
-		s_startserver_dmoptions_action.generic.statusbar = NULL;
+		s_maxclients_field.statusbar = NULL;
+		s_startserver_dmoptions_action.statusbar = NULL;
 	}
 	else if(s_rules_box.curvalue == 1)		// coop				// PGM
 	{
-		s_maxclients_field.generic.statusbar = "4 maximum for cooperative";
+		s_maxclients_field.statusbar = "4 maximum for cooperative";
 		if (atoi(s_maxclients_field.buffer) > 4)
 			strcpy( s_maxclients_field.buffer, "4" );
-		s_startserver_dmoptions_action.generic.statusbar = "N/A for cooperative";
+		s_startserver_dmoptions_action.statusbar = "N/A for cooperative";
 	}
 //=====
 //PGM
@@ -2469,14 +2460,14 @@ void RulesChangeFunc ( void *self )
 	{
 		if (s_rules_box.curvalue == 2)			// tag	
 		{
-			s_maxclients_field.generic.statusbar = NULL;
-			s_startserver_dmoptions_action.generic.statusbar = NULL;
+			s_maxclients_field.statusbar = NULL;
+			s_startserver_dmoptions_action.statusbar = NULL;
 		}
 /*
 		else if(s_rules_box.curvalue == 3)		// deathball
 		{
-			s_maxclients_field.generic.statusbar = NULL;
-			s_startserver_dmoptions_action.generic.statusbar = NULL;
+			s_maxclients_field.statusbar = NULL;
+			s_startserver_dmoptions_action.statusbar = NULL;
 		}
 */
 	}
@@ -2657,16 +2648,16 @@ void StartServer_MenuInit( void )
 	s_startserver_menu.x = vid_so.viddef.width * 0.50;
 	s_startserver_menu.nitems = 0;
 
-	s_startmap_list.generic.type = MTYPE_SPINCONTROL;
-	s_startmap_list.generic.x	= 0;
-	s_startmap_list.generic.y	= 0;
-	s_startmap_list.generic.name	= "initial map";
+	s_startmap_list.type = MTYPE_SPINCONTROL;
+	s_startmap_list.x	= 0;
+	s_startmap_list.y	= 0;
+	s_startmap_list.name	= "initial map";
 	s_startmap_list.itemnames = mapnames;
 
-	s_rules_box.generic.type = MTYPE_SPINCONTROL;
-	s_rules_box.generic.x	= 0;
-	s_rules_box.generic.y	= 20;
-	s_rules_box.generic.name	= "rules";
+	s_rules_box.type = MTYPE_SPINCONTROL;
+	s_rules_box.x	= 0;
+	s_rules_box.y	= 20;
+	s_rules_box.name	= "rules";
 	
 //PGM - rogue games only available with rogue DLL.
 	if(Developer_searchpath(2) == 2)
@@ -2679,24 +2670,24 @@ void StartServer_MenuInit( void )
 		s_rules_box.curvalue = 1;
 	else
 		s_rules_box.curvalue = 0;
-	s_rules_box.generic.callback = RulesChangeFunc;
+	s_rules_box.callback = RulesChangeFunc;
 
-	s_timelimit_field.generic.type = MTYPE_FIELD;
-	s_timelimit_field.generic.name = "time limit";
-	s_timelimit_field.generic.flags = QMF_NUMBERSONLY;
-	s_timelimit_field.generic.x	= 0;
-	s_timelimit_field.generic.y	= 36;
-	s_timelimit_field.generic.statusbar = "0 = no limit";
+	s_timelimit_field.type = MTYPE_FIELD;
+	s_timelimit_field.name = "time limit";
+	s_timelimit_field.flags = QMF_NUMBERSONLY;
+	s_timelimit_field.x	= 0;
+	s_timelimit_field.y	= 36;
+	s_timelimit_field.statusbar = "0 = no limit";
 	s_timelimit_field.length = 3;
 	s_timelimit_field.visible_length = 3;
 	strcpy( s_timelimit_field.buffer, Cvar_VariableString("timelimit") );
 
-	s_fraglimit_field.generic.type = MTYPE_FIELD;
-	s_fraglimit_field.generic.name = "frag limit";
-	s_fraglimit_field.generic.flags = QMF_NUMBERSONLY;
-	s_fraglimit_field.generic.x	= 0;
-	s_fraglimit_field.generic.y	= 54;
-	s_fraglimit_field.generic.statusbar = "0 = no limit";
+	s_fraglimit_field.type = MTYPE_FIELD;
+	s_fraglimit_field.name = "frag limit";
+	s_fraglimit_field.flags = QMF_NUMBERSONLY;
+	s_fraglimit_field.x	= 0;
+	s_fraglimit_field.y	= 54;
+	s_fraglimit_field.statusbar = "0 = no limit";
 	s_fraglimit_field.length = 3;
 	s_fraglimit_field.visible_length = 3;
 	strcpy( s_fraglimit_field.buffer, Cvar_VariableString("fraglimit") );
@@ -2707,12 +2698,12 @@ void StartServer_MenuInit( void )
 	** option to 8 players, otherwise use whatever its current value is. 
 	** Clamping will be done when the server is actually started.
 	*/
-	s_maxclients_field.generic.type = MTYPE_FIELD;
-	s_maxclients_field.generic.name = "max players";
-	s_maxclients_field.generic.flags = QMF_NUMBERSONLY;
-	s_maxclients_field.generic.x	= 0;
-	s_maxclients_field.generic.y	= 72;
-	s_maxclients_field.generic.statusbar = NULL;
+	s_maxclients_field.type = MTYPE_FIELD;
+	s_maxclients_field.name = "max players";
+	s_maxclients_field.flags = QMF_NUMBERSONLY;
+	s_maxclients_field.x	= 0;
+	s_maxclients_field.y	= 72;
+	s_maxclients_field.statusbar = NULL;
 	s_maxclients_field.length = 3;
 	s_maxclients_field.visible_length = 3;
 	if ( Cvar_VariableValue( "maxclients" ) == 1 )
@@ -2720,30 +2711,30 @@ void StartServer_MenuInit( void )
 	else 
 		strcpy( s_maxclients_field.buffer, Cvar_VariableString("maxclients") );
 
-	s_hostname_field.generic.type = MTYPE_FIELD;
-	s_hostname_field.generic.name = "hostname";
-	s_hostname_field.generic.flags = 0;
-	s_hostname_field.generic.x	= 0;
-	s_hostname_field.generic.y	= 90;
-	s_hostname_field.generic.statusbar = NULL;
+	s_hostname_field.type = MTYPE_FIELD;
+	s_hostname_field.name = "hostname";
+	s_hostname_field.flags = 0;
+	s_hostname_field.x	= 0;
+	s_hostname_field.y	= 90;
+	s_hostname_field.statusbar = NULL;
 	s_hostname_field.length = 12;
 	s_hostname_field.visible_length = 12;
 	strcpy( s_hostname_field.buffer, Cvar_VariableString("hostname") );
 
-	s_startserver_dmoptions_action.generic.type = MTYPE_ACTION;
-	s_startserver_dmoptions_action.generic.name	= " deathmatch flags";
-	s_startserver_dmoptions_action.generic.flags= QMF_LEFT_JUSTIFY;
-	s_startserver_dmoptions_action.generic.x	= 24;
-	s_startserver_dmoptions_action.generic.y	= 108;
-	s_startserver_dmoptions_action.generic.statusbar = NULL;
-	s_startserver_dmoptions_action.generic.callback = DMOptionsFunc;
+	s_startserver_dmoptions_action.type = MTYPE_ACTION;
+	s_startserver_dmoptions_action.name	= " deathmatch flags";
+	s_startserver_dmoptions_action.flags= QMF_LEFT_JUSTIFY;
+	s_startserver_dmoptions_action.x	= 24;
+	s_startserver_dmoptions_action.y	= 108;
+	s_startserver_dmoptions_action.statusbar = NULL;
+	s_startserver_dmoptions_action.callback = DMOptionsFunc;
 
-	s_startserver_start_action.generic.type = MTYPE_ACTION;
-	s_startserver_start_action.generic.name	= " begin";
-	s_startserver_start_action.generic.flags= QMF_LEFT_JUSTIFY;
-	s_startserver_start_action.generic.x	= 24;
-	s_startserver_start_action.generic.y	= 128;
-	s_startserver_start_action.generic.callback = StartServerActionFunc;
+	s_startserver_start_action.type = MTYPE_ACTION;
+	s_startserver_start_action.name	= " begin";
+	s_startserver_start_action.flags= QMF_LEFT_JUSTIFY;
+	s_startserver_start_action.x	= 24;
+	s_startserver_start_action.y	= 128;
+	s_startserver_start_action.callback = StartServerActionFunc;
 
 	qmenu.Menu_AddItem( &s_startserver_menu, &s_startmap_list );
 	qmenu.Menu_AddItem( &s_startserver_menu, &s_rules_box );
@@ -2983,122 +2974,122 @@ void DMOptions_MenuInit( void )
 	s_dmoptions_menu.x = vid_so.viddef.width * 0.50;
 	s_dmoptions_menu.nitems = 0;
 
-	s_falls_box.generic.type = MTYPE_SPINCONTROL;
-	s_falls_box.generic.x	= 0;
-	s_falls_box.generic.y	= y;
-	s_falls_box.generic.name	= "falling damage";
-	s_falls_box.generic.callback = DMFlagCallback;
+	s_falls_box.type = MTYPE_SPINCONTROL;
+	s_falls_box.x	= 0;
+	s_falls_box.y	= y;
+	s_falls_box.name	= "falling damage";
+	s_falls_box.callback = DMFlagCallback;
 	s_falls_box.itemnames = yes_no_names;
 	s_falls_box.curvalue = ( dmflags & DF_NO_FALLING ) == 0;
 
-	s_weapons_stay_box.generic.type = MTYPE_SPINCONTROL;
-	s_weapons_stay_box.generic.x	= 0;
-	s_weapons_stay_box.generic.y	= y += 10;
-	s_weapons_stay_box.generic.name	= "weapons stay";
-	s_weapons_stay_box.generic.callback = DMFlagCallback;
+	s_weapons_stay_box.type = MTYPE_SPINCONTROL;
+	s_weapons_stay_box.x	= 0;
+	s_weapons_stay_box.y	= y += 10;
+	s_weapons_stay_box.name	= "weapons stay";
+	s_weapons_stay_box.callback = DMFlagCallback;
 	s_weapons_stay_box.itemnames = yes_no_names;
 	s_weapons_stay_box.curvalue = ( dmflags & DF_WEAPONS_STAY ) != 0;
 
-	s_instant_powerups_box.generic.type = MTYPE_SPINCONTROL;
-	s_instant_powerups_box.generic.x	= 0;
-	s_instant_powerups_box.generic.y	= y += 10;
-	s_instant_powerups_box.generic.name	= "instant powerups";
-	s_instant_powerups_box.generic.callback = DMFlagCallback;
+	s_instant_powerups_box.type = MTYPE_SPINCONTROL;
+	s_instant_powerups_box.x	= 0;
+	s_instant_powerups_box.y	= y += 10;
+	s_instant_powerups_box.name	= "instant powerups";
+	s_instant_powerups_box.callback = DMFlagCallback;
 	s_instant_powerups_box.itemnames = yes_no_names;
 	s_instant_powerups_box.curvalue = ( dmflags & DF_INSTANT_ITEMS ) != 0;
 
-	s_powerups_box.generic.type = MTYPE_SPINCONTROL;
-	s_powerups_box.generic.x	= 0;
-	s_powerups_box.generic.y	= y += 10;
-	s_powerups_box.generic.name	= "allow powerups";
-	s_powerups_box.generic.callback = DMFlagCallback;
+	s_powerups_box.type = MTYPE_SPINCONTROL;
+	s_powerups_box.x	= 0;
+	s_powerups_box.y	= y += 10;
+	s_powerups_box.name	= "allow powerups";
+	s_powerups_box.callback = DMFlagCallback;
 	s_powerups_box.itemnames = yes_no_names;
 	s_powerups_box.curvalue = ( dmflags & DF_NO_ITEMS ) == 0;
 
-	s_health_box.generic.type = MTYPE_SPINCONTROL;
-	s_health_box.generic.x	= 0;
-	s_health_box.generic.y	= y += 10;
-	s_health_box.generic.callback = DMFlagCallback;
-	s_health_box.generic.name	= "allow health";
+	s_health_box.type = MTYPE_SPINCONTROL;
+	s_health_box.x	= 0;
+	s_health_box.y	= y += 10;
+	s_health_box.callback = DMFlagCallback;
+	s_health_box.name	= "allow health";
 	s_health_box.itemnames = yes_no_names;
 	s_health_box.curvalue = ( dmflags & DF_NO_HEALTH ) == 0;
 
-	s_armor_box.generic.type = MTYPE_SPINCONTROL;
-	s_armor_box.generic.x	= 0;
-	s_armor_box.generic.y	= y += 10;
-	s_armor_box.generic.name	= "allow armor";
-	s_armor_box.generic.callback = DMFlagCallback;
+	s_armor_box.type = MTYPE_SPINCONTROL;
+	s_armor_box.x	= 0;
+	s_armor_box.y	= y += 10;
+	s_armor_box.name	= "allow armor";
+	s_armor_box.callback = DMFlagCallback;
 	s_armor_box.itemnames = yes_no_names;
 	s_armor_box.curvalue = ( dmflags & DF_NO_ARMOR ) == 0;
 
-	s_spawn_farthest_box.generic.type = MTYPE_SPINCONTROL;
-	s_spawn_farthest_box.generic.x	= 0;
-	s_spawn_farthest_box.generic.y	= y += 10;
-	s_spawn_farthest_box.generic.name	= "spawn farthest";
-	s_spawn_farthest_box.generic.callback = DMFlagCallback;
+	s_spawn_farthest_box.type = MTYPE_SPINCONTROL;
+	s_spawn_farthest_box.x	= 0;
+	s_spawn_farthest_box.y	= y += 10;
+	s_spawn_farthest_box.name	= "spawn farthest";
+	s_spawn_farthest_box.callback = DMFlagCallback;
 	s_spawn_farthest_box.itemnames = yes_no_names;
 	s_spawn_farthest_box.curvalue = ( dmflags & DF_SPAWN_FARTHEST ) != 0;
 
-	s_samelevel_box.generic.type = MTYPE_SPINCONTROL;
-	s_samelevel_box.generic.x	= 0;
-	s_samelevel_box.generic.y	= y += 10;
-	s_samelevel_box.generic.name	= "same map";
-	s_samelevel_box.generic.callback = DMFlagCallback;
+	s_samelevel_box.type = MTYPE_SPINCONTROL;
+	s_samelevel_box.x	= 0;
+	s_samelevel_box.y	= y += 10;
+	s_samelevel_box.name	= "same map";
+	s_samelevel_box.callback = DMFlagCallback;
 	s_samelevel_box.itemnames = yes_no_names;
 	s_samelevel_box.curvalue = ( dmflags & DF_SAME_LEVEL ) != 0;
 
-	s_force_respawn_box.generic.type = MTYPE_SPINCONTROL;
-	s_force_respawn_box.generic.x	= 0;
-	s_force_respawn_box.generic.y	= y += 10;
-	s_force_respawn_box.generic.name	= "force respawn";
-	s_force_respawn_box.generic.callback = DMFlagCallback;
+	s_force_respawn_box.type = MTYPE_SPINCONTROL;
+	s_force_respawn_box.x	= 0;
+	s_force_respawn_box.y	= y += 10;
+	s_force_respawn_box.name	= "force respawn";
+	s_force_respawn_box.callback = DMFlagCallback;
 	s_force_respawn_box.itemnames = yes_no_names;
 	s_force_respawn_box.curvalue = ( dmflags & DF_FORCE_RESPAWN ) != 0;
 
-	s_teamplay_box.generic.type = MTYPE_SPINCONTROL;
-	s_teamplay_box.generic.x	= 0;
-	s_teamplay_box.generic.y	= y += 10;
-	s_teamplay_box.generic.name	= "teamplay";
-	s_teamplay_box.generic.callback = DMFlagCallback;
+	s_teamplay_box.type = MTYPE_SPINCONTROL;
+	s_teamplay_box.x	= 0;
+	s_teamplay_box.y	= y += 10;
+	s_teamplay_box.name	= "teamplay";
+	s_teamplay_box.callback = DMFlagCallback;
 	s_teamplay_box.itemnames = teamplay_names;
 
-	s_allow_exit_box.generic.type = MTYPE_SPINCONTROL;
-	s_allow_exit_box.generic.x	= 0;
-	s_allow_exit_box.generic.y	= y += 10;
-	s_allow_exit_box.generic.name	= "allow exit";
-	s_allow_exit_box.generic.callback = DMFlagCallback;
+	s_allow_exit_box.type = MTYPE_SPINCONTROL;
+	s_allow_exit_box.x	= 0;
+	s_allow_exit_box.y	= y += 10;
+	s_allow_exit_box.name	= "allow exit";
+	s_allow_exit_box.callback = DMFlagCallback;
 	s_allow_exit_box.itemnames = yes_no_names;
 	s_allow_exit_box.curvalue = ( dmflags & DF_ALLOW_EXIT ) != 0;
 
-	s_infinite_ammo_box.generic.type = MTYPE_SPINCONTROL;
-	s_infinite_ammo_box.generic.x	= 0;
-	s_infinite_ammo_box.generic.y	= y += 10;
-	s_infinite_ammo_box.generic.name	= "infinite ammo";
-	s_infinite_ammo_box.generic.callback = DMFlagCallback;
+	s_infinite_ammo_box.type = MTYPE_SPINCONTROL;
+	s_infinite_ammo_box.x	= 0;
+	s_infinite_ammo_box.y	= y += 10;
+	s_infinite_ammo_box.name	= "infinite ammo";
+	s_infinite_ammo_box.callback = DMFlagCallback;
 	s_infinite_ammo_box.itemnames = yes_no_names;
 	s_infinite_ammo_box.curvalue = ( dmflags & DF_INFINITE_AMMO ) != 0;
 
-	s_fixed_fov_box.generic.type = MTYPE_SPINCONTROL;
-	s_fixed_fov_box.generic.x	= 0;
-	s_fixed_fov_box.generic.y	= y += 10;
-	s_fixed_fov_box.generic.name	= "fixed FOV";
-	s_fixed_fov_box.generic.callback = DMFlagCallback;
+	s_fixed_fov_box.type = MTYPE_SPINCONTROL;
+	s_fixed_fov_box.x	= 0;
+	s_fixed_fov_box.y	= y += 10;
+	s_fixed_fov_box.name	= "fixed FOV";
+	s_fixed_fov_box.callback = DMFlagCallback;
 	s_fixed_fov_box.itemnames = yes_no_names;
 	s_fixed_fov_box.curvalue = ( dmflags & DF_FIXED_FOV ) != 0;
 
-	s_quad_drop_box.generic.type = MTYPE_SPINCONTROL;
-	s_quad_drop_box.generic.x	= 0;
-	s_quad_drop_box.generic.y	= y += 10;
-	s_quad_drop_box.generic.name	= "quad drop";
-	s_quad_drop_box.generic.callback = DMFlagCallback;
+	s_quad_drop_box.type = MTYPE_SPINCONTROL;
+	s_quad_drop_box.x	= 0;
+	s_quad_drop_box.y	= y += 10;
+	s_quad_drop_box.name	= "quad drop";
+	s_quad_drop_box.callback = DMFlagCallback;
 	s_quad_drop_box.itemnames = yes_no_names;
 	s_quad_drop_box.curvalue = ( dmflags & DF_QUAD_DROP ) != 0;
 
-	s_friendlyfire_box.generic.type = MTYPE_SPINCONTROL;
-	s_friendlyfire_box.generic.x	= 0;
-	s_friendlyfire_box.generic.y	= y += 10;
-	s_friendlyfire_box.generic.name	= "friendly fire";
-	s_friendlyfire_box.generic.callback = DMFlagCallback;
+	s_friendlyfire_box.type = MTYPE_SPINCONTROL;
+	s_friendlyfire_box.x	= 0;
+	s_friendlyfire_box.y	= y += 10;
+	s_friendlyfire_box.name	= "friendly fire";
+	s_friendlyfire_box.callback = DMFlagCallback;
 	s_friendlyfire_box.itemnames = yes_no_names;
 	s_friendlyfire_box.curvalue = ( dmflags & DF_NO_FRIENDLY_FIRE ) == 0;
 
@@ -3106,35 +3097,35 @@ void DMOptions_MenuInit( void )
 //ROGUE
 	if(Developer_searchpath(2) == 2)
 	{
-		s_no_mines_box.generic.type = MTYPE_SPINCONTROL;
-		s_no_mines_box.generic.x	= 0;
-		s_no_mines_box.generic.y	= y += 10;
-		s_no_mines_box.generic.name	= "remove mines";
-		s_no_mines_box.generic.callback = DMFlagCallback;
+		s_no_mines_box.type = MTYPE_SPINCONTROL;
+		s_no_mines_box.x	= 0;
+		s_no_mines_box.y	= y += 10;
+		s_no_mines_box.name	= "remove mines";
+		s_no_mines_box.callback = DMFlagCallback;
 		s_no_mines_box.itemnames = yes_no_names;
 		s_no_mines_box.curvalue = ( dmflags & DF_NO_MINES ) != 0;
 
-		s_no_nukes_box.generic.type = MTYPE_SPINCONTROL;
-		s_no_nukes_box.generic.x	= 0;
-		s_no_nukes_box.generic.y	= y += 10;
-		s_no_nukes_box.generic.name	= "remove nukes";
-		s_no_nukes_box.generic.callback = DMFlagCallback;
+		s_no_nukes_box.type = MTYPE_SPINCONTROL;
+		s_no_nukes_box.x	= 0;
+		s_no_nukes_box.y	= y += 10;
+		s_no_nukes_box.name	= "remove nukes";
+		s_no_nukes_box.callback = DMFlagCallback;
 		s_no_nukes_box.itemnames = yes_no_names;
 		s_no_nukes_box.curvalue = ( dmflags & DF_NO_NUKES ) != 0;
 
-		s_stack_double_box.generic.type = MTYPE_SPINCONTROL;
-		s_stack_double_box.generic.x	= 0;
-		s_stack_double_box.generic.y	= y += 10;
-		s_stack_double_box.generic.name	= "2x/4x stacking off";
-		s_stack_double_box.generic.callback = DMFlagCallback;
+		s_stack_double_box.type = MTYPE_SPINCONTROL;
+		s_stack_double_box.x	= 0;
+		s_stack_double_box.y	= y += 10;
+		s_stack_double_box.name	= "2x/4x stacking off";
+		s_stack_double_box.callback = DMFlagCallback;
 		s_stack_double_box.itemnames = yes_no_names;
 		s_stack_double_box.curvalue = ( dmflags & DF_NO_STACK_DOUBLE ) != 0;
 
-		s_no_spheres_box.generic.type = MTYPE_SPINCONTROL;
-		s_no_spheres_box.generic.x	= 0;
-		s_no_spheres_box.generic.y	= y += 10;
-		s_no_spheres_box.generic.name	= "remove spheres";
-		s_no_spheres_box.generic.callback = DMFlagCallback;
+		s_no_spheres_box.type = MTYPE_SPINCONTROL;
+		s_no_spheres_box.x	= 0;
+		s_no_spheres_box.y	= y += 10;
+		s_no_spheres_box.name	= "remove spheres";
+		s_no_spheres_box.callback = DMFlagCallback;
 		s_no_spheres_box.itemnames = yes_no_names;
 		s_no_spheres_box.curvalue = ( dmflags & DF_NO_SPHERES ) != 0;
 
@@ -3250,48 +3241,48 @@ void DownloadOptions_MenuInit( void )
 	s_downloadoptions_menu.x = vid_so.viddef.width * 0.50;
 	s_downloadoptions_menu.nitems = 0;
 
-	s_download_title.generic.type = MTYPE_SEPARATOR;
-	s_download_title.generic.name = "Download Options";
-	s_download_title.generic.x    = 48;
-	s_download_title.generic.y	 = y;
+	s_download_title.type = MTYPE_SEPARATOR;
+	s_download_title.name = "Download Options";
+	s_download_title.x    = 48;
+	s_download_title.y	 = y;
 
-	s_allow_download_box.generic.type = MTYPE_SPINCONTROL;
-	s_allow_download_box.generic.x	= 0;
-	s_allow_download_box.generic.y	= y += 20;
-	s_allow_download_box.generic.name	= "allow downloading";
-	s_allow_download_box.generic.callback = DownloadCallback;
+	s_allow_download_box.type = MTYPE_SPINCONTROL;
+	s_allow_download_box.x	= 0;
+	s_allow_download_box.y	= y += 20;
+	s_allow_download_box.name	= "allow downloading";
+	s_allow_download_box.callback = DownloadCallback;
 	s_allow_download_box.itemnames = yes_no_names;
 	s_allow_download_box.curvalue = (Cvar_VariableValue("allow_download") != 0);
 
-	s_allow_download_maps_box.generic.type = MTYPE_SPINCONTROL;
-	s_allow_download_maps_box.generic.x	= 0;
-	s_allow_download_maps_box.generic.y	= y += 20;
-	s_allow_download_maps_box.generic.name	= "maps";
-	s_allow_download_maps_box.generic.callback = DownloadCallback;
+	s_allow_download_maps_box.type = MTYPE_SPINCONTROL;
+	s_allow_download_maps_box.x	= 0;
+	s_allow_download_maps_box.y	= y += 20;
+	s_allow_download_maps_box.name	= "maps";
+	s_allow_download_maps_box.callback = DownloadCallback;
 	s_allow_download_maps_box.itemnames = yes_no_names;
 	s_allow_download_maps_box.curvalue = (Cvar_VariableValue("allow_download_maps") != 0);
 
-	s_allow_download_players_box.generic.type = MTYPE_SPINCONTROL;
-	s_allow_download_players_box.generic.x	= 0;
-	s_allow_download_players_box.generic.y	= y += 10;
-	s_allow_download_players_box.generic.name	= "player models/skins";
-	s_allow_download_players_box.generic.callback = DownloadCallback;
+	s_allow_download_players_box.type = MTYPE_SPINCONTROL;
+	s_allow_download_players_box.x	= 0;
+	s_allow_download_players_box.y	= y += 10;
+	s_allow_download_players_box.name	= "player models/skins";
+	s_allow_download_players_box.callback = DownloadCallback;
 	s_allow_download_players_box.itemnames = yes_no_names;
 	s_allow_download_players_box.curvalue = (Cvar_VariableValue("allow_download_players") != 0);
 
-	s_allow_download_models_box.generic.type = MTYPE_SPINCONTROL;
-	s_allow_download_models_box.generic.x	= 0;
-	s_allow_download_models_box.generic.y	= y += 10;
-	s_allow_download_models_box.generic.name	= "models";
-	s_allow_download_models_box.generic.callback = DownloadCallback;
+	s_allow_download_models_box.type = MTYPE_SPINCONTROL;
+	s_allow_download_models_box.x	= 0;
+	s_allow_download_models_box.y	= y += 10;
+	s_allow_download_models_box.name	= "models";
+	s_allow_download_models_box.callback = DownloadCallback;
 	s_allow_download_models_box.itemnames = yes_no_names;
 	s_allow_download_models_box.curvalue = (Cvar_VariableValue("allow_download_models") != 0);
 
-	s_allow_download_sounds_box.generic.type = MTYPE_SPINCONTROL;
-	s_allow_download_sounds_box.generic.x	= 0;
-	s_allow_download_sounds_box.generic.y	= y += 10;
-	s_allow_download_sounds_box.generic.name	= "sounds";
-	s_allow_download_sounds_box.generic.callback = DownloadCallback;
+	s_allow_download_sounds_box.type = MTYPE_SPINCONTROL;
+	s_allow_download_sounds_box.x	= 0;
+	s_allow_download_sounds_box.y	= y += 10;
+	s_allow_download_sounds_box.name	= "sounds";
+	s_allow_download_sounds_box.callback = DownloadCallback;
 	s_allow_download_sounds_box.itemnames = yes_no_names;
 	s_allow_download_sounds_box.curvalue = (Cvar_VariableValue("allow_download_sounds") != 0);
 
@@ -3351,14 +3342,14 @@ void AddressBook_MenuInit( void )
 
 		Com_sprintf( buffer, sizeof( buffer ), "adr%d", i );
 
-		adr = Cvar_Get( buffer, "", CVAR_ARCHIVE );
+		adr = Cvar_Get( buffer, "", q_shared.CVAR_ARCHIVE );
 
-		s_addressbook_fields[i].generic.type = MTYPE_FIELD;
-		s_addressbook_fields[i].generic.name = 0;
-		s_addressbook_fields[i].generic.callback = 0;
-		s_addressbook_fields[i].generic.x		= 0;
-		s_addressbook_fields[i].generic.y		= i * 18 + 0;
-		s_addressbook_fields[i].generic.localdata[0] = i;
+		s_addressbook_fields[i].type = MTYPE_FIELD;
+		s_addressbook_fields[i].name = 0;
+		s_addressbook_fields[i].callback = 0;
+		s_addressbook_fields[i].x		= 0;
+		s_addressbook_fields[i].y		= i * 18 + 0;
+		s_addressbook_fields[i].localdata[0] = i;
 		s_addressbook_fields[i].cursor			= 0;
 		s_addressbook_fields[i].length			= 60;
 		s_addressbook_fields[i].visible_length	= 30;
@@ -3664,7 +3655,7 @@ qboolean PlayerConfig_MenuInit( void )
 	int currentdirectoryindex = 0;
 	int currentskinindex = 0;
 
-	cvar_t *hand = Cvar_Get( "hand", "0", CVAR_USERINFO | CVAR_ARCHIVE );
+	cvar_t *hand = Cvar_Get( "hand", "0", CVAR_USERINFO | q_shared.CVAR_ARCHIVE );
 
 	static const char *handedness[] = { "right", "left", "center", 0 };
 
@@ -3721,54 +3712,54 @@ qboolean PlayerConfig_MenuInit( void )
 	s_player_config_menu.y = vid_so.viddef.height / 2 - 97;
 	s_player_config_menu.nitems = 0;
 
-	s_player_name_field.generic.type = MTYPE_FIELD;
-	s_player_name_field.generic.name = "name";
-	s_player_name_field.generic.callback = 0;
-	s_player_name_field.generic.x		= 0;
-	s_player_name_field.generic.y		= 0;
+	s_player_name_field.type = MTYPE_FIELD;
+	s_player_name_field.name = "name";
+	s_player_name_field.callback = 0;
+	s_player_name_field.x		= 0;
+	s_player_name_field.y		= 0;
 	s_player_name_field.length	= 20;
 	s_player_name_field.visible_length = 20;
 	strcpy( s_player_name_field.buffer, name->string );
 	s_player_name_field.cursor = strlen( name->string );
 
-	s_player_model_title.generic.type = MTYPE_SEPARATOR;
-	s_player_model_title.generic.name = "model";
-	s_player_model_title.generic.x    = -8;
-	s_player_model_title.generic.y	 = 60;
+	s_player_model_title.type = MTYPE_SEPARATOR;
+	s_player_model_title.name = "model";
+	s_player_model_title.x    = -8;
+	s_player_model_title.y	 = 60;
 
-	s_player_model_box.generic.type = MTYPE_SPINCONTROL;
-	s_player_model_box.generic.x	= -56;
-	s_player_model_box.generic.y	= 70;
-	s_player_model_box.generic.callback = ModelCallback;
-	s_player_model_box.generic.cursor_offset = -48;
+	s_player_model_box.type = MTYPE_SPINCONTROL;
+	s_player_model_box.x	= -56;
+	s_player_model_box.y	= 70;
+	s_player_model_box.callback = ModelCallback;
+	s_player_model_box.cursor_offset = -48;
 	s_player_model_box.curvalue = currentdirectoryindex;
 	s_player_model_box.itemnames = s_pmnames;
 
-	s_player_skin_title.generic.type = MTYPE_SEPARATOR;
-	s_player_skin_title.generic.name = "skin";
-	s_player_skin_title.generic.x    = -16;
-	s_player_skin_title.generic.y	 = 84;
+	s_player_skin_title.type = MTYPE_SEPARATOR;
+	s_player_skin_title.name = "skin";
+	s_player_skin_title.x    = -16;
+	s_player_skin_title.y	 = 84;
 
-	s_player_skin_box.generic.type = MTYPE_SPINCONTROL;
-	s_player_skin_box.generic.x	= -56;
-	s_player_skin_box.generic.y	= 94;
-	s_player_skin_box.generic.name	= 0;
-	s_player_skin_box.generic.callback = 0;
-	s_player_skin_box.generic.cursor_offset = -48;
+	s_player_skin_box.type = MTYPE_SPINCONTROL;
+	s_player_skin_box.x	= -56;
+	s_player_skin_box.y	= 94;
+	s_player_skin_box.name	= 0;
+	s_player_skin_box.callback = 0;
+	s_player_skin_box.cursor_offset = -48;
 	s_player_skin_box.curvalue = currentskinindex;
 	s_player_skin_box.itemnames = s_pmi[currentdirectoryindex].skindisplaynames;
 
-	s_player_hand_title.generic.type = MTYPE_SEPARATOR;
-	s_player_hand_title.generic.name = "handedness";
-	s_player_hand_title.generic.x    = 32;
-	s_player_hand_title.generic.y	 = 108;
+	s_player_hand_title.type = MTYPE_SEPARATOR;
+	s_player_hand_title.name = "handedness";
+	s_player_hand_title.x    = 32;
+	s_player_hand_title.y	 = 108;
 
-	s_player_handedness_box.generic.type = MTYPE_SPINCONTROL;
-	s_player_handedness_box.generic.x	= -56;
-	s_player_handedness_box.generic.y	= 118;
-	s_player_handedness_box.generic.name	= 0;
-	s_player_handedness_box.generic.cursor_offset = -48;
-	s_player_handedness_box.generic.callback = HandednessCallback;
+	s_player_handedness_box.type = MTYPE_SPINCONTROL;
+	s_player_handedness_box.x	= -56;
+	s_player_handedness_box.y	= 118;
+	s_player_handedness_box.name	= 0;
+	s_player_handedness_box.cursor_offset = -48;
+	s_player_handedness_box.callback = HandednessCallback;
 	s_player_handedness_box.curvalue = Cvar_VariableValue( "hand" );
 	s_player_handedness_box.itemnames = handedness;
 
@@ -3776,27 +3767,27 @@ qboolean PlayerConfig_MenuInit( void )
 		if (Cvar_VariableValue("rate") == rate_tbl[i])
 			break;
 
-	s_player_rate_title.generic.type = MTYPE_SEPARATOR;
-	s_player_rate_title.generic.name = "connect speed";
-	s_player_rate_title.generic.x    = 56;
-	s_player_rate_title.generic.y	 = 156;
+	s_player_rate_title.type = MTYPE_SEPARATOR;
+	s_player_rate_title.name = "connect speed";
+	s_player_rate_title.x    = 56;
+	s_player_rate_title.y	 = 156;
 
-	s_player_rate_box.generic.type = MTYPE_SPINCONTROL;
-	s_player_rate_box.generic.x	= -56;
-	s_player_rate_box.generic.y	= 166;
-	s_player_rate_box.generic.name	= 0;
-	s_player_rate_box.generic.cursor_offset = -48;
-	s_player_rate_box.generic.callback = RateCallback;
+	s_player_rate_box.type = MTYPE_SPINCONTROL;
+	s_player_rate_box.x	= -56;
+	s_player_rate_box.y	= 166;
+	s_player_rate_box.name	= 0;
+	s_player_rate_box.cursor_offset = -48;
+	s_player_rate_box.callback = RateCallback;
 	s_player_rate_box.curvalue = i;
 	s_player_rate_box.itemnames = rate_names;
 
-	s_player_download_action.generic.type = MTYPE_ACTION;
-	s_player_download_action.generic.name	= "download options";
-	s_player_download_action.generic.flags= QMF_LEFT_JUSTIFY;
-	s_player_download_action.generic.x	= -24;
-	s_player_download_action.generic.y	= 186;
-	s_player_download_action.generic.statusbar = NULL;
-	s_player_download_action.generic.callback = DownloadOptionsFunc;
+	s_player_download_action.type = MTYPE_ACTION;
+	s_player_download_action.name	= "download options";
+	s_player_download_action.flags= QMF_LEFT_JUSTIFY;
+	s_player_download_action.x	= -24;
+	s_player_download_action.y	= 186;
+	s_player_download_action.statusbar = NULL;
+	s_player_download_action.callback = DownloadOptionsFunc;
 
 	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_name_field );
 	qmenu.Menu_AddItem( &s_player_config_menu, &s_player_model_title );

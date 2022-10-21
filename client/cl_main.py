@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 from qcommon import cvar, common, cmd
 from game import q_shared
 from client import console, snd_dma, cl_scrn, client, cl_view, menu
-from linux import q_shlinux, vid_so
+from linux import q_shlinux, vid_so, in_linux
 
 """
 // cl_main.c  -- client main loop
@@ -1789,7 +1789,7 @@ def CL_Init ():
 	
 	#CDAudio_Init ();
 	CL_InitLocal ()
-	#IN_Init ();
+	in_linux.IN_Init ()
 
 	## Cbuf_AddText ("exec autoexec.cfg\n");
 	#FS_ExecAutoexec ();

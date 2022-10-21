@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,20 +16,25 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import cvar
+from game import q_shared
+"""
 // in_null.c -- for systems without a mouse
 
 #include "../client/client.h"
+"""
+in_mouse = None #cvar_t	*
+in_joystick = None # cvar_t	*
 
-cvar_t	*in_mouse;
-cvar_t	*in_joystick;
+def IN_Init ():
 
-void IN_Init (void)
-{
-    in_mouse = Cvar_Get ("in_mouse", "1", CVAR_ARCHIVE);
-    in_joystick = Cvar_Get ("in_joystick", "0", CVAR_ARCHIVE);
-}
+	global in_mouse, in_joystick
 
+	in_mouse = cvar.Cvar_Get ("in_mouse", "1", q_shared.CVAR_ARCHIVE)
+	in_joystick = cvar.Cvar_Get ("in_joystick", "0", q_shared.CVAR_ARCHIVE)
+
+"""
 void IN_Shutdown (void)
 {
 }
@@ -45,4 +50,4 @@ void IN_Move (usercmd_t *cmd)
 void IN_Activate (qboolean active)
 {
 }
-
+"""
