@@ -152,7 +152,7 @@ Responds with all the info that qplug or qspy can see
 */
 void SVC_Status (void)
 {
-	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "print\n%s", SV_StatusString());
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, net_chan.net_from, "print\n%s", SV_StatusString());
 #if 0
 	Com_BeginRedirect (RD_PACKET, sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
 	Com_Printf (SV_StatusString());
@@ -168,7 +168,7 @@ SVC_Ack
 */
 void SVC_Ack (void)
 {
-	Com_Printf ("Ping acknowledge from %s\n", NET_AdrToString(net_chan.net_from));
+	Com_Printf ("Ping acknowledge from %s\n", net_udp.NET_AdrToString(net_chan.net_from));
 }
 
 /*
@@ -202,7 +202,7 @@ void SVC_Info (void)
 		Com_sprintf (string, sizeof(string), "%16s %8s %2i/%2i\n", hostname->string, sv_init.sv.name, count, (int)maxclients->value);
 	}
 
-	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "info\n%s", string);
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, net_chan.net_from, "info\n%s", string);
 }
 
 /*
@@ -214,7 +214,7 @@ Just responds with an acknowledgement
 */
 void SVC_Ping (void)
 {
-	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "ack");
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, net_chan.net_from, "ack");
 }
 
 
@@ -260,7 +260,7 @@ void SVC_GetChallenge (void)
 	}
 
 	// send it back
-	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "challenge %i", sv_init.svs.challenges[i].challenge);
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, net_chan.net_from, "challenge %i", sv_init.svs.challenges[i].challenge);
 }
 
 /*
@@ -287,98 +287,97 @@ def SVC_DirectConnect ():
 
 	common.Com_DPrintf ("SVC_DirectConnect ()\n")
 
-	print ("SVC_DirectConnect")
-	"""
-	version = atoi(Cmd_Argv(1));
-	if (version != PROTOCOL_VERSION)
-	{
-		Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nServer is version %4.2f.\n", VERSION);
-		Com_DPrintf ("    rejected connect from version %i\n", version);
-		return;
-	}
+	try:
+		version = int(cmd.Cmd_Argv(1))
+	except ValueError:
+		version = None
+	if version != qcommon.PROTOCOL_VERSION:
+	
+		net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nServer is version {:4.2f}.\n".format(VERSION))
+		common.Com_DPrintf ("    rejected connect from version {}\n".format(version))
+		return
+	
+	try:
+		qport = int(cmd.Cmd_Argv(2))
+		challenge = int(cmd.Cmd_Argv(3))
+	except ValueError:
+		qport = None
+		challenge = None
 
-	qport = atoi(Cmd_Argv(2));
+	userinfo = cmd.Cmd_Argv(4)
 
-	challenge = atoi(Cmd_Argv(3));
+	# force the IP key/value pair so the game can filter based on ip
+	userinfo = q_shared.Info_RemoveKey(userinfo, "ip")
+	userinfo += q_shared.Info_SetValueForKey ("ip", net_udp.NET_AdrToString(net_chan.net_from))
 
-	strncpy (userinfo, Cmd_Argv(4), sizeof(userinfo)-1);
-	userinfo[sizeof(userinfo) - 1] = 0;
+	# attractloop servers are ONLY for local clients
+	if sv_init.sv.attractloop:
+	
+		if not net_udp.NET_IsLocalAddress (adr):
+		
+			common.Com_Printf ("Remote connect in attract loop.  Ignored.\n")
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nConnection refused.\n")
+			return
 
-	// force the IP key/value pair so the game can filter based on ip
-	Info_SetValueForKey (userinfo, "ip", NET_AdrToString(net_chan.net_from));
-
-	// attractloop servers are ONLY for local clients
-	if (sv_init.sv.attractloop)
-	{
-		if (!NET_IsLocalAddress (adr))
-		{
-			Com_Printf ("Remote connect in attract loop.  Ignored.\n");
-			Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nConnection refused.\n");
-			return;
-		}
-	}
-
-	// see if the challenge is valid
-	if (!NET_IsLocalAddress (adr))
-	{
+	# see if the challenge is valid
+	if not net_udp.NET_IsLocalAddress (adr):
+		
+		pass
+		"""
 		for (i=0 ; i<MAX_CHALLENGES ; i++)
 		{
 			if (NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
 			{
 				if (challenge == sv_init.svs.challenges[i].challenge)
 					break;		// good
-				Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nBad challenge.\n");
+				net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nBad challenge.\n");
 				return;
 			}
 		}
 		if (i == MAX_CHALLENGES)
 		{
-			Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nNo challenge for address.\n");
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nNo challenge for address.\n");
 			return;
 		}
-	}
+		"""
 
-	newcl = &temp;
-	memset (newcl, 0, sizeof(client_t));
+	newcl = sv_init.client_t()
 
-	// if there is already a slot for this ip, reuse it
-	for (i=0,cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
-	{
-		if (cl->state == cs_free)
-			continue;
-		if (NET_CompareBaseAdr (adr, cl->netchan.remote_address)
-			&& ( cl->netchan.qport == qport 
-			|| adr.port == cl->netchan.remote_address.port ) )
-		{
-			if (!NET_IsLocalAddress (adr) && (sv_init.svs.realtime - cl->lastconnect) < ((int)sv_reconnect_limit->value * 1000))
-			{
-				Com_DPrintf ("%s:reconnect rejected : too soon\n", NET_AdrToString (adr));
-				return;
-			}
-			Com_Printf ("%s:reconnect\n", NET_AdrToString (adr));
-			newcl = cl;
-			goto gotnewcl;
-		}
-	}
-
-	// find a client slot
-	newcl = NULL;
-	for (i=0,cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
-	{
-		if (cl->state == cs_free)
-		{
-			newcl = cl;
-			break;
-		}
-	}
-	if (!newcl)
-	{
-		Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nServer is full.\n");
+	# if there is already a slot for this ip, reuse it
+	for cl in sv_init.svs.clients:
+	
+		#if (cl->state == cs_free)
+		#	continue;
+		if NET_CompareBaseAdr (adr, cl.netchan.remote_address) \
+			and ( cl.netchan.qport == qport 
+			or adr.port == cl.netchan.remote_address.port ):
+		
+			if not net_udp.NET_IsLocalAddress (adr) and (sv_init.svs.realtime - cl.lastconnect) < int(sv_reconnect_limit.value * 1000):
+			
+				common.Com_DPrintf ("{}:reconnect rejected : too soon\n".format(net_udp.NET_AdrToString (adr)))
+				return
+			
+			common.Com_Printf ("{}:reconnect\n".format(net_udp.NET_AdrToString (adr)))
+			newcl = cl
+			SVC_DirectConnect_NewClient(newcl)
+			return
+		
+	if len(sv_init.svs.clients) >= int(maxclients.value):
+	
+		net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nServer is full.\n");
 		Com_DPrintf ("Rejected a connection.\n");
-		return;
-	}
+		return;	
 
-gotnewcl:	
+	# find a client slot
+	sv_init.svs.clients.append(newcl)
+
+	SVC_DirectConnect_NewClient(newcl)
+
+
+def SVC_DirectConnect_NewClient(newcl):
+	
+	pass
+	"""
 	// build a new connection
 	// accept the new client
 	// this is the only place a client_t is ever initialized
@@ -393,10 +392,10 @@ gotnewcl:
 	if (!(ge->ClientConnect (ent, userinfo)))
 	{
 		if (*Info_ValueForKey (userinfo, "rejmsg")) 
-			Netchan_OutOfBandPrint (NS_SERVER, adr, "print\n%s\nConnection refused.\n",  
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\n%s\nConnection refused.\n",  
 				Info_ValueForKey (userinfo, "rejmsg"));
 		else
-			Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nConnection refused.\n" );
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nConnection refused.\n" );
 		Com_DPrintf ("Game rejected a connection.\n");
 		return;
 	}
@@ -406,17 +405,17 @@ gotnewcl:
 	SV_UserinfoChanged (newcl);
 
 	// send the connect packet to the client
-	Netchan_OutOfBandPrint (NS_SERVER, adr, "client_connect");
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "client_connect");
 
-	Netchan_Setup (NS_SERVER, &newcl->netchan , adr, qport);
+	Netchan_Setup (qcommon.netsrc_t.NS_SERVER, &newcl->netchan , adr, qport);
 
 	newcl->state = cs_connected;
 	
 	SZ_Init (&newcl->datagram, newcl->datagram_buf, sizeof(newcl->datagram_buf) );
 	newcl->datagram.allowoverflow = true;
-	newcl->lastmessage = sv_init.svs.realtime;	// don't timeout
+	newcl->lastmessage = sv_init.svs.realtime;	# don't timeout
 	newcl->lastconnect = sv_init.svs.realtime;
-}
+
 
 int Rcon_Validate (void)
 {
@@ -446,9 +445,9 @@ void SVC_RemoteCommand (void)
 	i = Rcon_Validate ();
 
 	if (i == 0)
-		Com_Printf ("Bad rcon from %s:\n%s\n", NET_AdrToString (net_chan.net_from), net_message.data+4);
+		Com_Printf ("Bad rcon from %s:\n%s\n", net_udp.NET_AdrToString (net_chan.net_from), net_message.data+4);
 	else
-		Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (net_chan.net_from), net_message.data+4);
+		Com_Printf ("Rcon from %s:\n%s\n", net_udp.NET_AdrToString (net_chan.net_from), net_message.data+4);
 
 	Com_BeginRedirect (RD_PACKET, sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
 
@@ -870,8 +869,8 @@ void Master_Heartbeat (void)
 	for (i=0 ; i<MAX_MASTERS ; i++)
 		if (master_adr[i].port)
 		{
-			Com_Printf ("Sending heartbeat to %s\n", NET_AdrToString (master_adr[i]));
-			Netchan_OutOfBandPrint (NS_SERVER, master_adr[i], "heartbeat\n%s", string);
+			Com_Printf ("Sending heartbeat to %s\n", net_udp.NET_AdrToString (master_adr[i]));
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, master_adr[i], "heartbeat\n%s", string);
 		}
 }
 
@@ -899,8 +898,8 @@ void Master_Shutdown (void)
 		if (master_adr[i].port)
 		{
 			if (i > 0)
-				Com_Printf ("Sending heartbeat to %s\n", NET_AdrToString (master_adr[i]));
-			Netchan_OutOfBandPrint (NS_SERVER, master_adr[i], "shutdown");
+				Com_Printf ("Sending heartbeat to %s\n", net_udp.NET_AdrToString (master_adr[i]));
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, master_adr[i], "shutdown");
 		}
 }
 

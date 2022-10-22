@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import struct
 from server import sv_init
-from qcommon import qcommon
+from qcommon import qcommon, net_chan
 from game import q_shared
 """
 // sv_main.c -- server main program
@@ -425,7 +425,7 @@ qboolean SV_SendClientDatagram (client_t *client)
 	}
 
 	// send the datagram
-	Netchan_Transmit (&client->netchan, msg.cursize, msg.data);
+	net_chan.Netchan_Transmit (&client->netchan, msg.cursize, msg.data);
 
 	// record the size for rate estimation
 	client->message_size[sv_init.sv.framenum % RATE_MESSAGES] = msg.cursize;
@@ -493,11 +493,9 @@ def SV_SendClientMessages ():
 
 	#int			i;
 	#client_t	*c;
-	#int			msglen;
-	#byte		msgbuf[MAX_MSGLEN];
 	#int			r;
-
-	msglen = 0
+	msgbuf = b"" # byte[MAX_MSGLEN]
+	msglen = 0 # int
 
 	# read the next demo message if needed
 	if sv_init.sv.state == sv_init.server_state_t.ss_demo and sv_init.sv.demofile is not None:
@@ -548,10 +546,9 @@ def SV_SendClientMessages ():
 		
 		if (sv_init.sv.state == sv_init.server_state_t.ss_cinematic 
 			or sv_init.sv.state == sv_init.server_state_t.ss_demo 
-			or sv_init.sv.state == sv_init.server_state_t.ss_pic
-			):
+			or sv_init.sv.state == sv_init.server_state_t.ss_pic):
 
-			Netchan_Transmit (c.netchan, msgbuf)
+			net_chan.Netchan_Transmit (c.netchan, msgbuf)
 
 		elif c.state == cs_spawned:
 		
@@ -563,8 +560,8 @@ def SV_SendClientMessages ():
 		
 		else:
 		
-			# just update reliable	if needed
+			# just update reliableif needed
 			if c.netchan.message is not None or curtime - c.netchan.last_sent > 1000:
-				Netchan_Transmit (c.netchan, 0, None)
+				net_chan.Netchan_Transmit (c.netchan, 0, None)
 		
 	

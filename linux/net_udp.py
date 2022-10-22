@@ -93,14 +93,14 @@ void SockadrToNetadr (struct sockaddr_in *s, netadr_t *a)
 	a->type = NA_IP;
 }
 
+"""
+def NET_CompareAdr (a, b): #netadr_t, netadr_t (returns qboolean)
 
-qboolean	NET_CompareAdr (netadr_t a, netadr_t b)
-{
-	if (a.ip[0] == b.ip[0] && a.ip[1] == b.ip[1] && a.ip[2] == b.ip[2] && a.ip[3] == b.ip[3] && a.port == b.port)
-		return true;
-	return false;
-}
+	if a.ip == b.ip and a.port == b.port:
+		return True
+	return False
 
+"""
 /*
 ===================
 NET_CompareBaseAdr
@@ -223,13 +223,13 @@ def NET_StringToAdr (s): #char * (returns netadr_t *)
 
 	#return a
 
+
+
+def NET_IsLocalAddress (adr): #netadr_t (returns qboolean)
+
+	return NET_CompareAdr (adr, net_local_adr)
+
 """
-
-qboolean	NET_IsLocalAddress (netadr_t adr)
-{
-	return NET_CompareAdr (adr, net_local_adr);
-}
-
 /*
 =============================================================================
 

@@ -447,22 +447,29 @@ def Cvar_BitInfo (bit): # int (returns char	*)
 	#static char	info[MAX_INFO_STRING];
 	#cvar_t	*var;
 
-	info = []
+	info = {}
+	total = 0
 
 	for var in cvar_vars:
 	
-		total = 0
 		if var.flags & bit:
+
+			if var.name in info:
+				del info[var.name]
+				total = sum([len(st) for st in info.values()])
+
+			if len(var.string) == 0: continue
+
 			enc = q_shared.Info_SetValueForKey (var.name, var.string)
 
 			if total + len(enc) > q_shared.MAX_INFO_STRING:	
 				common.Com_Printf ("Info string length exceeded\n")
 
 			else:
-				info.append(enc)
-				total += len(enc)
+				info[var.name] = enc
+				total = sum([len(st) for st in info.values()])
 
-	return "".join(info)
+	return "".join(info.values())
 
 
 # returns an info string containing all the CVAR_USERINFO cvars

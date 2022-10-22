@@ -2465,9 +2465,22 @@ char *Info_ValueForKey (char *s, char *key)
 		s++;
 	}
 }
+"""
+def Info_RemoveKey (s, key): #char *, char *
 
-void Info_RemoveKey (char *s, char *key)
-{
+	ssplit = (s.split("\\"))
+	data = dict(zip(ssplit[1::2], ssplit[2::2]))
+	if key not in data:
+		return s
+
+	del data[key]
+
+	out = []
+	for k, v in data.items():
+		out.append("\\{}\\{}".format(k, v))
+	return "".join(out)
+
+	"""
 	char	*start;
 	char	pkey[512];
 	char	value[512];
@@ -2563,7 +2576,7 @@ def Info_SetValueForKey (key, value): #char*, char*
 	if value is None or len(value)==0:
 		return ""
 
-	newi = "\\{}\\%s".format(key, value)
+	newi = "\\{}\\{}".format(key, value)
 
 	#if len(newi) + len(s) > maxsize:
 	#

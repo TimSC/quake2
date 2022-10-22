@@ -77,17 +77,16 @@ class server_t(object):
 """
 #define EDICT_NUM(n) ((edict_t *)((byte *)ge->edicts + ge->edict_size*(n)))
 #define NUM_FOR_EDICT(e) ( ((byte *)(e)-(byte *)ge->edicts ) / ge->edict_size)
+"""
+class client_state_t(Enum):
 
+	cs_free = 0			# can be reused for a new connection
+	cs_zombie = 1		# client has been disconnected, but don't reuse
+						# connection for a couple seconds
+	cs_connected = 2	# has been assigned to a client_t, but not in game yet
+	cs_spawned = 3		# client is fully in game
 
-typedef enum
-{
-	cs_free,		// can be reused for a new connection
-	cs_zombie,		// client has been disconnected, but don't reuse
-					// connection for a couple seconds
-	cs_connected,	// has been assigned to a client_t, but not in game yet
-	cs_spawned		// client is fully in game
-} client_state_t;
-
+"""
 typedef struct
 {
 	int					areabytes;
@@ -100,49 +99,53 @@ typedef struct
 
 #define	LATENCY_COUNTS	16
 #define	RATE_MESSAGES	10
+"""
+class client_t(object):
 
-typedef struct client_s
-{
-	client_state_t	state;
+	def __init__(self):
 
-	char			userinfo[MAX_INFO_STRING];		// name, etc
+		self.state = client_state_t.cs_free
+		"""
 
-	int				lastframe;			// for delta compression
-	usercmd_t		lastcmd;			// for filling in big drops
+		char			userinfo[MAX_INFO_STRING];		// name, etc
 
-	int				commandMsec;		// every seconds this is reset, if user
-										// commands exhaust it, assume time cheating
+		int				lastframe;			// for delta compression
+		usercmd_t		lastcmd;			// for filling in big drops
 
-	int				frame_latency[LATENCY_COUNTS];
-	int				ping;
+		int				commandMsec;		// every seconds this is reset, if user
+											// commands exhaust it, assume time cheating
 
-	int				message_size[RATE_MESSAGES];	// used to rate drop packets
-	int				rate;
-	int				surpressCount;		// number of messages rate supressed
+		int				frame_latency[LATENCY_COUNTS];
+		int				ping;
 
-	edict_t			*edict;				// EDICT_NUM(clientnum+1)
-	char			name[32];			// extracted from userinfo, high bits masked
-	int				messagelevel;		// for filtering printed messages
+		int				message_size[RATE_MESSAGES];	// used to rate drop packets
+		int				rate;
+		int				surpressCount;		// number of messages rate supressed
 
-	// The datagram is written to by sound calls, prints, temp ents, etc.
-	// It can be harmlessly overflowed.
-	sizebuf_t		datagram;
-	byte			datagram_buf[MAX_MSGLEN];
+		edict_t			*edict;				// EDICT_NUM(clientnum+1)
+		char			name[32];			// extracted from userinfo, high bits masked
+		int				messagelevel;		// for filtering printed messages
 
-	client_frame_t	frames[UPDATE_BACKUP];	// updates can be delta'd from here
+		// The datagram is written to by sound calls, prints, temp ents, etc.
+		// It can be harmlessly overflowed.
+		sizebuf_t		datagram;
+		byte			datagram_buf[MAX_MSGLEN];
 
-	byte			*download;			// file being downloaded
-	int				downloadsize;		// total bytes (can't use EOF because of paks)
-	int				downloadcount;		// bytes sent
+		client_frame_t	frames[UPDATE_BACKUP];	// updates can be delta'd from here
 
-	int				lastmessage;		// sv.framenum when packet was last received
-	int				lastconnect;
+		byte			*download;			// file being downloaded
+		int				downloadsize;		// total bytes (can't use EOF because of paks)
+		int				downloadcount;		// bytes sent
 
-	int				challenge;			// challenge of this user, randomly generated
+		int				lastmessage;		// sv.framenum when packet was last received
+		int				lastconnect;
 
-	netchan_t		netchan;
-} client_t;
+		int				challenge;			// challenge of this user, randomly generated
+		"""
+		self.netchan = qcommon.netchan_t()
 
+
+"""
 // a client can leave the server in one of four ways:
 // dropping properly by quiting or disconnecting
 // timing out if no valid messages are received for timeout.value seconds

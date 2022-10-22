@@ -208,9 +208,11 @@ transmition / retransmition of the reliable messages.
 
 A 0 length will still generate a packet and deal with the reliable messages.
 ================
-*/
-void Netchan_Transmit (netchan_t *chan, int length, byte *data)
-{
+"""
+def Netchan_Transmit (chan, data): #netchan_t *
+
+	pass
+	"""
 	sizebuf_t	send;
 	byte		send_buf[MAX_MSGLEN];
 	qboolean	send_reliable;

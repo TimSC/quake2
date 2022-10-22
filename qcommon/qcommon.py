@@ -73,17 +73,19 @@ BASEDIRNAME	= "baseq2"
 #endif
 
 //============================================================================
+"""
+class sizebuf_t(object):
 
-typedef struct sizebuf_s
-{
-	qboolean	allowoverflow;	// if false, do a Com_Error
-	qboolean	overflowed;		// set to true if the buffer size failed
-	byte	*data;
-	int		maxsize;
-	int		cursize;
-	int		readcount;
-} sizebuf_t;
+	def __init__(self):
 
+		self.allowoverflow = False #qboolean, if false, do a Com_Error
+		self.overflowed = False #qboolean, set to true if the buffer size failed
+		self.data = None #byte	*
+		self.maxsize = 0 # int
+		self.cursize = 0 # int
+		self.readcount = 0 # int
+
+"""
 void SZ_Init (sizebuf_t *buf, byte *data, int length);
 void SZ_Clear (sizebuf_t *buf);
 void *SZ_GetSpace (sizebuf_t *buf, int length);
@@ -601,7 +603,7 @@ class netchan_t(object):
 		self.last_reliable_sequence = 0		# int, sequence number of last send
 
 		# reliable staging and holding areas
-		self.message = None		# sizebuf_t, writing buffer to send to server
+		self.message = sizebuf_t()		# sizebuf_t, writing buffer to send to server
 		self.message_buf = None #byte[MAX_MSGLEN-16]		# leave space for header
 
 		# message is copied to this buffer when it is first transfered
