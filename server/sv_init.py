@@ -23,6 +23,7 @@ from server import sv_main, sv_send, sv_game
 from client import cl_main, cl_scrn
 from qcommon import cvar, common, cmd, qcommon, cmodel
 from game import q_shared
+from linux import net_udp
 """
 #include "server.h"
 
@@ -377,9 +378,9 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 		strcpy(sv.configstrings[CS_AIRACCEL], "0");
 		pm_airaccelerate = 0;
 	}
-
-	SZ_Init (&sv.multicast, sv.multicast_buf, sizeof(sv.multicast_buf));
 	"""
+	sv.multicast = common.SZ_Init (sv.multicast_buf);
+
 	sv.name = server
 
 	"""
@@ -526,10 +527,10 @@ def SV_InitGame ():
 	#svs.clients = Z_Malloc (sizeof(client_t)*maxclients->value)
 	svs.num_client_entities = int(sv_main.maxclients.value*qcommon.UPDATE_BACKUP*64)
 	#svs.client_entities = Z_Malloc (sizeof(entity_state_t)*svs.num_client_entities)
-	"""
-	# init network stuff
-	NET_Config ( (maxclients->value > 1) );
 
+	# init network stuff
+	net_udp.NET_Config (sv_main.maxclients.value > 1)
+	"""
 	# heartbeats will always be sent to the id master
 	svs.last_heartbeat = -99999;		// send immediately
 	Com_sprintf(idmaster, sizeof(idmaster), "192.246.40.37:%i", PORT_MASTER);
@@ -610,28 +611,28 @@ def SV_Map ( attractloop, levelstring, loadgame): #qboolean, char *, qboolean
 
 	l = len(level)
 	if l > 4 and level[-4:] == ".cin":
-	
+
 		cl_scrn.SCR_BeginLoadingPlaque ()			# for local system
 		sv_send.SV_BroadcastCommand ("changing\n")
 		SV_SpawnServer (level, spawnpoint, server_state_t.ss_cinematic, attractloop, loadgame)
 	
 	elif l > 4 and level[-4:] == ".dm2":
-	
+
 		cl_scrn.SCR_BeginLoadingPlaque ()			# for local system
 		sv_send.SV_BroadcastCommand ("changing\n")
 		SV_SpawnServer (level, spawnpoint, server_state_t.ss_demo, attractloop, loadgame)
 	
 	elif l > 4 and level[-4:] == ".pcx":
-	
+
 		cl_scrn.SCR_BeginLoadingPlaque ()			# for local system
 		sv_send.SV_BroadcastCommand ("changing\n")
 		SV_SpawnServer (level, spawnpoint, server_state_t.ss_pic, attractloop, loadgame)
 	
 	else:
-	
+
 		cl_scrn.SCR_BeginLoadingPlaque ()			# for local system
 		sv_send.SV_BroadcastCommand ("changing\n")
-		SV_SendClientMessages ()
+		sv_send.SV_SendClientMessages ()
 		SV_SpawnServer (level, spawnpoint, server_state_t.ss_game, attractloop, loadgame)
 		cmd.Cbuf_CopyToDefer ()
 	

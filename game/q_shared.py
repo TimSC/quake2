@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
+from enum import Enum
 """
 // q_shared.h -- included first by ALL program modules
 
@@ -103,19 +104,18 @@ ERR_DISCONNECT		= 2		# don't kill server
 PRINT_ALL			= 0
 PRINT_DEVELOPER		= 1		# only print when "developer 1"
 PRINT_ALERT			= 2		
+
+# destination class for gi.multicast()
+class multicast_t(Enum):
+
+	MULTICAST_ALL = 0
+	MULTICAST_PHS = 1
+	MULTICAST_PVS = 2
+	MULTICAST_ALL_R = 3
+	MULTICAST_PHS_R = 4
+	MULTICAST_PVS_R = 5
+
 """
-
-// destination class for gi.multicast()
-typedef enum
-{
-MULTICAST_ALL,
-MULTICAST_PHS,
-MULTICAST_PVS,
-MULTICAST_ALL_R,
-MULTICAST_PHS_R,
-MULTICAST_PVS_R
-} multicast_t;
-
 
 /*
 ==============================================================
@@ -245,14 +245,14 @@ void	Swap_Init (void);
 char	*va(char *format, ...);
 
 //=============================================
-
-//
-// key / value info strings
-//
-#define	MAX_INFO_KEY		64
-#define	MAX_INFO_VALUE		64
-#define	MAX_INFO_STRING		512
-
+"""
+#
+# key / value info strings
+#
+MAX_INFO_KEY		= 64
+MAX_INFO_VALUE		= 64
+MAX_INFO_STRING		= 512
+"""
 char *Info_ValueForKey (char *s, char *key);
 void Info_RemoveKey (char *s, char *key);
 void Info_SetValueForKey (char *s, char *key, char *value);
@@ -502,26 +502,26 @@ typedef struct
 									// changed by spawns, rotating objects, and teleporters
 } pmove_state_t;
 
+"""
+#
+# button bits
+#
+BUTTON_ATTACK		= 1
+BUTTON_USE			= 2
+BUTTON_ANY			= 128			# any key whatsoever
 
-//
-// button bits
-//
-#define	BUTTON_ATTACK		1
-#define	BUTTON_USE			2
-#define	BUTTON_ANY			128			// any key whatsoever
+# usercmd_t is sent to the server each client frame
+class usercmd_t(object):
+	def __init__(self):
 
+		self.msec = 0 #byte	
+		self.buttons = 0 #byte	
+		self.angles = 0, 0, 0 #short	[3]
+		self.forwardmove, self.sidemove, self.upmove = 0, 0, 0 #short	
+		self.impulse = 0 #byte			// remove?
+		self.lightlevel = 0 #byte			// light level the player is standing on
 
-// usercmd_t is sent to the server each client frame
-typedef struct usercmd_s
-{
-	byte	msec;
-	byte	buttons;
-	short	angles[3];
-	short	forwardmove, sidemove, upmove;
-	byte	impulse;		// remove?
-	byte	lightlevel;		// light level the player is standing on
-} usercmd_t;
-
+"""
 
 #define	MAXTOUCH	32
 typedef struct
@@ -2532,61 +2532,57 @@ qboolean Info_Validate (char *s)
 		return false;
 	return true;
 }
+"""
+def Info_SetValueForKey (key, value): #char*, char*
 
-void Info_SetValueForKey (char *s, char *key, char *value)
-{
-	char	newi[MAX_INFO_STRING], *v;
-	int		c;
-	int		maxsize = MAX_INFO_STRING;
+	#char	newi[MAX_INFO_STRING], *v;
+	#int		c;
+	#int		maxsize = MAX_INFO_STRING;
 
-	if (strstr (key, "\\") || strstr (value, "\\") )
-	{
-		Com_Printf ("Can't use keys or values with a \\\n");
-		return;
-	}
+	if key.find("\\") != -1 or value.find("\\") != -1 :
+	
+		common.Com_Printf ("Can't use keys or values with a \\\n")
+		return ""
+	
+	if key.find(";") != -1:
+	
+		common.Com_Printf ("Can't use keys or values with a semicolon\n")
+		return ""
+	 
+	if key.find("\"") != -1 or value.find("\"") != -1:
+	
+		common.Com_Printf ("Can't use keys or values with a \"\n")
+		return ""
+	
+	if len(key) > MAX_INFO_KEY-1 or len(value) > MAX_INFO_KEY-1:
+	
+		common.Com_Printf ("Keys and values must be < 64 characters.\n")
+		return ""
+	
+	#Info_RemoveKey (s, key)
+	if value is None or len(value)==0:
+		return ""
 
-	if (strstr (key, ";") )
-	{
-		Com_Printf ("Can't use keys or values with a semicolon\n");
-		return;
-	}
+	newi = "\\{}\\%s".format(key, value)
 
-	if (strstr (key, "\"") || strstr (value, "\"") )
-	{
-		Com_Printf ("Can't use keys or values with a \"\n");
-		return;
-	}
+	#if len(newi) + len(s) > maxsize:
+	#
+	#	common.Com_Printf ("Info string length exceeded\n")
+	#	return
+	
+	# only copy ascii values
+	#s += strlen(s);
+	out = []
+	for v in newi:
+	
+		v = ord(v)
+		v &= 127		# strip high bits
+		if v >= 32 and v < 127:
+			out.append(chr(v))
+	
+	return "".join(out)
 
-	if (strlen(key) > MAX_INFO_KEY-1 || strlen(value) > MAX_INFO_KEY-1)
-	{
-		Com_Printf ("Keys and values must be < 64 characters.\n");
-		return;
-	}
-	Info_RemoveKey (s, key);
-	if (!value || !strlen(value))
-		return;
-
-	Com_sprintf (newi, sizeof(newi), "\\%s\\%s", key, value);
-
-	if (strlen(newi) + strlen(s) > maxsize)
-	{
-		Com_Printf ("Info string length exceeded\n");
-		return;
-	}
-
-	// only copy ascii values
-	s += strlen(s);
-	v = newi;
-	while (*v)
-	{
-		c = *v++;
-		c &= 127;		// strip high bits
-		if (c >= 32 && c < 127)
-			*s++ = c;
-	}
-	*s = 0;
-}
-
+"""
 //====================================================================
 
 

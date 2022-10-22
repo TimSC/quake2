@@ -893,14 +893,17 @@ void MSG_ReadData (sizebuf_t *msg_read, void *data, int len)
 
 
 //===========================================================================
+"""
+def SZ_Init (data): #sizebuf_t *, byte *, int
 
-void SZ_Init (sizebuf_t *buf, byte *data, int length)
-{
-	memset (buf, 0, sizeof(*buf));
-	buf->data = data;
-	buf->maxsize = length;
-}
+	#memset (buf, 0, sizeof(*buf));
+	#buf->data = data;
+	#buf->maxsize = length;
+	if data is None:
+		return None
+	return data.serialize()
 
+"""
 void SZ_Clear (sizebuf_t *buf)
 {
 	buf->cursize = 0;
@@ -1515,6 +1518,8 @@ def Qcommon_Frame (msec): #int
 	
 	global host_speeds
 	global time_before_game, time_after_game, time_before_ref, time_after_ref
+
+	sys_linux.Sys_SendKeyEvents()
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:

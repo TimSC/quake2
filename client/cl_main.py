@@ -18,10 +18,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import os
-from qcommon import cvar, common, cmd, files
+import struct
+from qcommon import cvar, common, cmd, files, net_chan, qcommon
 from game import q_shared
-from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys
-from linux import q_shlinux, vid_so, in_linux
+from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin
+from linux import q_shlinux, vid_so, in_linux, net_udp
 
 """
 // cl_main.c  -- client main loop
@@ -168,7 +169,7 @@ void CL_Record_f (void)
 
 	// send the serverdata
 	MSG_WriteByte (&buf, svc_serverdata);
-	MSG_WriteLong (&buf, PROTOCOL_VERSION);
+	MSG_WriteLong (&buf, qcommon.PROTOCOL_VERSION);
 	MSG_WriteLong (&buf, 0x10000 + cl.servercount);
 	MSG_WriteByte (&buf, 1);	// demos are always attract loops
 	MSG_WriteString (&buf, cl.gamedir);
@@ -299,9 +300,12 @@ void CL_Setenv_f( void )
 ==================
 CL_ForwardToServer_f
 ==================
-*/
-void CL_ForwardToServer_f (void)
-{
+"""
+def CL_ForwardToServer_f ():
+
+	print ("CL_ForwardToServer_f")
+
+	"""
 	if (cls.state != ca_connected && cls.state != ca_active)
 	{
 		Com_Printf ("Can't \"%s\", not connected\n", Cmd_Argv(0));
@@ -321,20 +325,19 @@ void CL_ForwardToServer_f (void)
 ==================
 CL_Pause_f
 ==================
-*/
-void CL_Pause_f (void)
-{
-	// never pause in multiplayer
-	if (Cvar_VariableValue ("maxclients") > 1 || !Com_ServerState ())
-	{
-		Cvar_SetValue ("paused", 0);
-		return;
-	}
+"""
+def CL_Pause_f ():
 
-	Cvar_SetValue ("paused", !cl_paused->value);
-}
+	# never pause in multiplayer
+	if cvar.Cvar_VariableValue ("maxclients") > 1 or not common.Com_ServerState ():
+	
+		cvar.Cvar_SetValue ("paused", 0)
+		return
+	
+	cvar.Cvar_SetValue ("paused", cl_paused.value == 0.0)
 
-/*
+
+"""
 ==================
 CL_Quit_f
 ==================
@@ -357,7 +360,7 @@ def CL_Drop ():
 	"""
 	if (cls.state == client.connstate_t.ca_uninitialized)
 		return;
-	if (cls.state == ca_disconnected)
+	if (cls.state == client.connstate_t.ca_disconnected)
 		return;
 
 	CL_Disconnect ();
@@ -375,53 +378,54 @@ CL_SendConnectPacket
 We have gotten a challenge from the server, so try and
 connect.
 ======================
-*/
-void CL_SendConnectPacket (void)
-{
-	netadr_t	adr;
-	int		port;
+"""
+def CL_SendConnectPacket ():
 
-	if (!NET_StringToAdr (cls.servername, &adr))
-	{
-		Com_Printf ("Bad server address\n");
-		cls.connect_time = 0;
-		return;
-	}
-	if (adr.port == 0)
-		adr.port = BigShort (PORT_SERVER);
+	#netadr_t	adr;
+	#int		port;
 
-	port = Cvar_VariableValue ("qport");
-	userinfo_modified = false;
+	adr = net_udp.NET_StringToAdr (cls.servername)
+	if adr is None:
+	
+		common.Com_Printf ("Bad server address\n")
+		cls.connect_time = 0
+		return
+	
+	if adr.port == 0 or adr.port is None:
+		adr.port = struct.pack(">H", qcommon.PORT_SERVER)
 
-	Netchan_OutOfBandPrint (NS_CLIENT, adr, "connect %i %i %i \"%s\"\n",
-		PROTOCOL_VERSION, port, cls.challenge, Cvar_Userinfo() );
-}
+	port = int(cvar.Cvar_VariableValue ("qport"))
+	cvar.userinfo_modified = False
 
-/*
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, "connect {:d} {:d} {:d} \"{}\"\n".format(
+		qcommon.PROTOCOL_VERSION, port, cls.challenge, cvar.Cvar_Userinfo()).encode('ascii') )
+
+
+"""
 =================
 CL_CheckForResend
 
 Resend a connect message if the last one has timed out
 =================
-*/
-void CL_CheckForResend (void)
-{
-	netadr_t	adr;
+"""
+def CL_CheckForResend ():
 
-	// if the local server is running and we aren't
-	// then connect
-	if (cls.state == ca_disconnected && Com_ServerState() )
-	{
-		cls.state = ca_connecting;
-		strncpy (cls.servername, "localhost", sizeof(cls.servername)-1);
-		// we don't need a challenge on the localhost
-		CL_SendConnectPacket ();
-		return;
-//		cls.connect_time = -99999;	// CL_CheckForResend() will fire immediately
-	}
+	#netadr_t	adr;
 
+	# if the local server is running and we aren't
+	# then connect
+	if cls.state == client.connstate_t.ca_disconnected and common.Com_ServerState():
+	
+		cls.state = client.connstate_t.ca_connecting
+		cls.servername = "localhost"
+		# we don't need a challenge on the localhost
+		CL_SendConnectPacket ()
+		return
+		##cls.connect_time = -99999;	// CL_CheckForResend() will fire immediately
+	
+	"""
 	// resend if we haven't gotten a reply yet
-	if (cls.state != ca_connecting)
+	if (cls.state != client.connstate_t.ca_connecting)
 		return;
 
 	if (cls.realtime - cls.connect_time < 3000)
@@ -430,17 +434,17 @@ void CL_CheckForResend (void)
 	if (!NET_StringToAdr (cls.servername, &adr))
 	{
 		Com_Printf ("Bad server address\n");
-		cls.state = ca_disconnected;
+		cls.state = client.connstate_t.ca_disconnected;
 		return;
 	}
 	if (adr.port == 0)
-		adr.port = BigShort (PORT_SERVER);
+		adr.port = BigShort (qcommon.PORT_SERVER);
 
 	cls.connect_time = cls.realtime;	// for retransmit requests
 
 	Com_Printf ("Connecting to %s...\n", cls.servername);
 
-	Netchan_OutOfBandPrint (NS_CLIENT, adr, "getchallenge\n");
+	Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, "getchallenge\n");
 }
 
 
@@ -449,9 +453,11 @@ void CL_CheckForResend (void)
 CL_Connect_f
 
 ================
-*/
-void CL_Connect_f (void)
-{
+"""
+def CL_Connect_f ():
+
+	print ("CL_Connect_f")
+	"""
 	char	*server;
 
 	if (Cmd_Argc() != 2)
@@ -471,11 +477,11 @@ void CL_Connect_f (void)
 
 	server = Cmd_Argv (1);
 
-	NET_Config (true);		// allow remote
+	net_udp.NET_Config (true);		// allow remote
 
 	CL_Disconnect ();
 
-	cls.state = ca_connecting;
+	cls.state = client.connstate_t.ca_connecting;
 	strncpy (cls.servername, server, sizeof(cls.servername)-1);
 	cls.connect_time = -99999;	// CL_CheckForResend() will fire immediately
 }
@@ -508,7 +514,7 @@ void CL_Rcon_f (void)
 	message[3] = (char)255;
 	message[4] = 0;
 
-	NET_Config (true);		// allow remote
+	net_udp.NET_Config (true);		// allow remote
 
 	strcat (message, "rcon ");
 
@@ -535,10 +541,10 @@ void CL_Rcon_f (void)
 		}
 		NET_StringToAdr (rcon_address->string, &to);
 		if (to.port == 0)
-			to.port = BigShort (PORT_SERVER);
+			to.port = BigShort (qcommon.PORT_SERVER);
 	}
 	
-	NET_SendPacket (NS_CLIENT, strlen(message)+1, message, to);
+	NET_SendPacket (qcommon.netsrc_t.NS_CLIENT, strlen(message)+1, message, to);
 }
 
 
@@ -573,11 +579,12 @@ This is also called on Com_Error, so it shouldn't cause any errors
 """
 def CL_Disconnect ():
 
-	pass
+	print ("CL_Disconnect")
+
 	"""
 	byte	final[32];
 
-	if (cls.state == ca_disconnected)
+	if (cls.state == client.connstate_t.ca_disconnected)
 		return;
 
 	if (cl_timedemo && cl_timedemo->value)
@@ -617,16 +624,16 @@ def CL_Disconnect ():
 		cls.download = NULL;
 	}
 
-	cls.state = ca_disconnected;
+	cls.state = client.connstate_t.ca_disconnected;
 }
+"""
+def CL_Disconnect_f ():
 
-void CL_Disconnect_f (void)
-{
-	Com_Error (ERR_DROP, "Disconnected from server");
-}
+	common.Com_Error (ERR_DROP, "Disconnected from server");
 
 
-/*
+
+"""
 ====================
 CL_Packet_f
 
@@ -634,21 +641,22 @@ packet <destination> <contents>
 
 Contents allows \n escape character
 ====================
-*/
-void CL_Packet_f (void)
-{
-	char	send[2048];
-	int		i, l;
-	char	*in, *out;
-	netadr_t	adr;
+"""
+def CL_Packet_f ():
 
-	if (Cmd_Argc() != 3)
-	{
-		Com_Printf ("packet <destination> <contents>\n");
-		return;
-	}
+	#char	send[2048];
+	#int		i, l;
+	#char	*in, *out;
+	#netadr_t	adr;
 
-	NET_Config (true);		// allow remote
+	if cmds.Cmd_Argc() != 3:
+	
+		common.Com_Printf ("packet <destination> <contents>\n")
+		return
+	
+	
+	"""
+	net_udp.NET_Config (true);		// allow remote
 
 	if (!NET_StringToAdr (Cmd_Argv(1), &adr))
 	{
@@ -656,7 +664,7 @@ void CL_Packet_f (void)
 		return;
 	}
 	if (!adr.port)
-		adr.port = BigShort (PORT_SERVER);
+		adr.port = BigShort (qcommon.PORT_SERVER);
 
 	in = Cmd_Argv(2);
 	out = send+4;
@@ -675,8 +683,8 @@ void CL_Packet_f (void)
 	}
 	*out = 0;
 
-	NET_SendPacket (NS_CLIENT, out-send, send, adr);
-}
+	NET_SendPacket (qcommon.netsrc_t.NS_CLIENT, out-send, send, adr);
+
 
 /*
 =================
@@ -685,9 +693,11 @@ CL_Changing_f
 Just sent as a hint to the client that they should
 drop to full console
 =================
-*/
-void CL_Changing_f (void)
-{
+"""
+def CL_Changing_f ():
+
+	print ("CL_Changing_f")
+	"""
 	//ZOID
 	//if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
 	if (cls.download)
@@ -699,15 +709,17 @@ void CL_Changing_f (void)
 }
 
 
-/*
+
 =================
 CL_Reconnect_f
 
 The server is changing levels
 =================
-*/
-void CL_Reconnect_f (void)
-{
+"""
+def CL_Reconnect_f ():
+
+	print ("CL_Reconnect_f")
+	"""
 	//ZOID
 	//if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
 	if (cls.download)
@@ -729,7 +741,7 @@ void CL_Reconnect_f (void)
 		} else
 			cls.connect_time = -99999; // fire immediately
 
-		cls.state = ca_connecting;
+		cls.state = client.connstate_t.ca_connecting;
 		Com_Printf ("reconnecting...\n");
 	}
 }
@@ -748,7 +760,7 @@ void CL_ParseStatusMessage (void)
 	s = MSG_ReadString(&net_message);
 
 	Com_Printf ("%s\n", s);
-	M_AddToServerList (net_from, s);
+	M_AddToServerList (net_chan.net_from, s);
 }
 
 
@@ -766,7 +778,7 @@ void CL_PingServers_f (void)
 	cvar_t		*noudp;
 	cvar_t		*noipx;
 
-	NET_Config (true);		// allow remote
+	net_udp.NET_Config (true);		// allow remote
 
 	// send a broadcast packet
 	Com_Printf ("pinging broadcast...\n");
@@ -775,16 +787,16 @@ void CL_PingServers_f (void)
 	if (!noudp->value)
 	{
 		adr.type = NA_BROADCAST;
-		adr.port = BigShort(PORT_SERVER);
-		Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
+		adr.port = BigShort(qcommon.PORT_SERVER);
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, va("info %i", qcommon.PROTOCOL_VERSION));
 	}
 
 	noipx = Cvar_Get ("noipx", "0", CVAR_NOSET);
 	if (!noipx->value)
 	{
 		adr.type = NA_BROADCAST_IPX;
-		adr.port = BigShort(PORT_SERVER);
-		Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
+		adr.port = BigShort(qcommon.PORT_SERVER);
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, va("info %i", qcommon.PROTOCOL_VERSION));
 	}
 
 	// send a packet to each address book entry
@@ -802,8 +814,8 @@ void CL_PingServers_f (void)
 			continue;
 		}
 		if (!adr.port)
-			adr.port = BigShort(PORT_SERVER);
-		Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
+			adr.port = BigShort(qcommon.PORT_SERVER);
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, va("info %i", qcommon.PROTOCOL_VERSION));
 	}
 }
 
@@ -852,7 +864,7 @@ void CL_ConnectionlessPacket (void)
 
 	c = Cmd_Argv(0);
 
-	Com_Printf ("%s: %s\n", NET_AdrToString (net_from), c);
+	Com_Printf ("%s: %s\n", NET_AdrToString (net_chan.net_from), c);
 
 	// server connection
 	if (!strcmp(c, "client_connect"))
@@ -862,7 +874,7 @@ void CL_ConnectionlessPacket (void)
 			Com_Printf ("Dup connect received.  Ignored.\n");
 			return;
 		}
-		Netchan_Setup (NS_CLIENT, &cls.netchan, net_from, cls.quakePort);
+		Netchan_Setup (qcommon.netsrc_t.NS_CLIENT, &cls.netchan, net_chan.net_from, cls.quakePort);
 		MSG_WriteChar (&cls.netchan.message, clc_stringcmd);
 		MSG_WriteString (&cls.netchan.message, "new");	
 		cls.state = ca_connected;
@@ -879,7 +891,7 @@ void CL_ConnectionlessPacket (void)
 	// remote command from gui front end
 	if (!strcmp(c, "cmd"))
 	{
-		if (!NET_IsLocalAddress(net_from))
+		if (!NET_IsLocalAddress(net_chan.net_from))
 		{
 			Com_Printf ("Command packet from remote host.  Ignored.\n");
 			return;
@@ -901,7 +913,7 @@ void CL_ConnectionlessPacket (void)
 	// ping from somewhere
 	if (!strcmp(c, "ping"))
 	{
-		Netchan_OutOfBandPrint (NS_CLIENT, net_from, "ack");
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "ack");
 		return;
 	}
 
@@ -916,7 +928,7 @@ void CL_ConnectionlessPacket (void)
 	// echo request from server
 	if (!strcmp(c, "echo"))
 	{
-		Netchan_OutOfBandPrint (NS_CLIENT, net_from, "%s", Cmd_Argv(1) );
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "%s", Cmd_Argv(1) );
 		return;
 	}
 
@@ -934,7 +946,7 @@ when they overflow
 */
 void CL_DumpPackets (void)
 {
-	while (NET_GetPacket (NS_CLIENT, &net_from, &net_message))
+	while (NET_GetPacket (qcommon.netsrc_t.NS_CLIENT, &net_chan.net_from, &net_message))
 	{
 		Com_Printf ("dumnping a packet\n");
 	}
@@ -944,44 +956,49 @@ void CL_DumpPackets (void)
 =================
 CL_ReadPackets
 =================
-*/
-void CL_ReadPackets (void)
-{
-	while (NET_GetPacket (NS_CLIENT, &net_from, &net_message))
-	{
-//	Com_Printf ("packet\n");
-		//
-		// remote command packet
-		//
+"""
+def CL_ReadPackets ():
+	
+	rx, net_chan.net_from, net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+	while rx:
+	
+		print (net_message)
+		##Com_Printf ("packet\n");
+		#
+		# remote command packet
+		#
+		"""
 		if (*(int *)net_message.data == -1)
 		{
 			CL_ConnectionlessPacket ();
 			continue;
 		}
 
-		if (cls.state == ca_disconnected || cls.state == ca_connecting)
+		if (cls.state == client.connstate_t.ca_disconnected || cls.state == client.connstate_t.ca_connecting)
 			continue;		// dump it if not connected
 
 		if (net_message.cursize < 8)
 		{
-			Com_Printf ("%s: Runt packet\n",NET_AdrToString(net_from));
+			Com_Printf ("%s: Runt packet\n",NET_AdrToString(net_chan.net_from));
 			continue;
 		}
 
-		//
-		// packet from server
-		//
-		if (!NET_CompareAdr (net_from, cls.netchan.remote_address))
+		#
+		# packet from server
+		#
+		if (!NET_CompareAdr (net_chan.net_from, cls.netchan.remote_address))
 		{
 			Com_DPrintf ("%s:sequenced packet without connection\n"
-				,NET_AdrToString(net_from));
+				,NET_AdrToString(net_chan.net_from));
 			continue;
 		}
 		if (!Netchan_Process(&cls.netchan, &net_message))
 			continue;		// wasn't accepted for some reason
 		CL_ParseServerMessage ();
-	}
-
+		"""
+		rx, net_chan.net_from, net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+	
+	"""
 	//
 	// check timeout
 	//
@@ -1461,27 +1478,30 @@ def CL_InitLocal ():
 	//
 	// register our commands
 	//
-	Cmd_AddCommand ("cmd", CL_ForwardToServer_f);
-	Cmd_AddCommand ("pause", CL_Pause_f);
+	"""
+	cmd.Cmd_AddCommand ("cmd", CL_ForwardToServer_f)
+	cmd.Cmd_AddCommand ("pause", CL_Pause_f)
+	"""
 	Cmd_AddCommand ("pingservers", CL_PingServers_f);
 	Cmd_AddCommand ("skins", CL_Skins_f);
 
 	Cmd_AddCommand ("userinfo", CL_Userinfo_f);
 	Cmd_AddCommand ("snd_restart", CL_Snd_Restart_f);
-
-	Cmd_AddCommand ("changing", CL_Changing_f);
-	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
+	"""
+	cmd.Cmd_AddCommand ("changing", CL_Changing_f)
+	cmd.Cmd_AddCommand ("disconnect", CL_Disconnect_f)
+	"""
 	Cmd_AddCommand ("record", CL_Record_f);
 	Cmd_AddCommand ("stop", CL_Stop_f);
 	"""
 	cmd.Cmd_AddCommand ("quit", CL_Quit_f)
+	
+	cmd.Cmd_AddCommand ("connect", CL_Connect_f)
+	cmd.Cmd_AddCommand ("reconnect", CL_Reconnect_f)
 	"""
-	Cmd_AddCommand ("connect", CL_Connect_f);
-	Cmd_AddCommand ("reconnect", CL_Reconnect_f);
-
 	Cmd_AddCommand ("rcon", CL_Rcon_f);
 
-// 	Cmd_AddCommand ("packet", CL_Packet_f); // this is dangerous to leave in
+ 	## Cmd_AddCommand ("packet", CL_Packet_f); # this is dangerous to leave in
 
 	Cmd_AddCommand ("setenv", CL_Setenv_f );
 
@@ -1615,9 +1635,10 @@ void CL_FixCvarCheats (void)
 CL_SendCommand
 
 ==================
-*/
-void CL_SendCommand (void)
-{
+"""
+def CL_SendCommand ():
+	
+	"""
 	// get new key events
 	Sys_SendKeyEvents ();
 
@@ -1629,32 +1650,35 @@ void CL_SendCommand (void)
 
 	// fix any cheating cvars
 	CL_FixCvarCheats ();
+	"""
+	# send intentions now
+	cl_input.CL_SendCmd ()
 
-	// send intentions now
-	CL_SendCmd ();
-
-	// resend a connection request if necessary
-	CL_CheckForResend ();
-}
+	# resend a connection request if necessary
+	CL_CheckForResend ()
 
 
-/*
+
+"""
 ==================
 CL_Frame
 
 ==================
 """
+extratime = 0
+lasttimecalled = 0
+
 def CL_Frame (msec): #int
 
+	global extratime, lasttimecalled
+	#static int	extratime;
+	#static int  lasttimecalled;
+
+	if common.dedicated.value != 0:
+		return
+
+	extratime += msec
 	"""
-	static int	extratime;
-	static int  lasttimecalled;
-
-	if (dedicated->value)
-		return;
-
-	extratime += msec;
-
 	if (!cl_timedemo->value)
 	{
 		if (cls.state == ca_connected && extratime < 100)
@@ -1665,32 +1689,32 @@ def CL_Frame (msec): #int
 
 	// let the mouse activate or deactivate
 	IN_Frame ();
-
-	// decide the simulation time
-	cls.frametime = extratime/1000.0;
-	cl.time += extratime;
 	"""
+	# decide the simulation time
+	cls.frametime = extratime/1000.0
+	cl.time += extratime
+
 	cls.realtime = q_shlinux.curtime
-	"""
+
 	extratime = 0;
-#if 0
-	if (cls.frametime > (1.0 / cl_minfps->value))
-		cls.frametime = (1.0 / cl_minfps->value);
-#else
-	if (cls.frametime > (1.0 / 5))
-		cls.frametime = (1.0 / 5);
-#endif
+	#if 0
+	##if (cls.frametime > (1.0 / cl_minfps->value))
+	##	cls.frametime = (1.0 / cl_minfps->value);
+	#else
+	if cls.frametime > (1.0 / 5.0):
+		cls.frametime = (1.0 / 5.0)
+	#endif
 
-	// if in the debugger last frame, don't timeout
-	if (msec > 5000)
-		cls.netchan.last_received = Sys_Milliseconds ();
+	# if in the debugger last frame, don't timeout
+	if msec > 5000:
+		cls.netchan.last_received = q_shlinux.Sys_Milliseconds ()
 
-	// fetch results from server
-	CL_ReadPackets ();
+	# fetch results from server
+	CL_ReadPackets ()
 
-	// send a new command message to the server
-	CL_SendCommand ();
-
+	# send a new command message to the server
+	CL_SendCommand ()
+	"""
 	// predict all unacknowledged movements
 	CL_PredictMovement ();
 
@@ -1710,17 +1734,18 @@ def CL_Frame (msec): #int
 	#S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up)
 	snd_dma.S_Update (None, cl.v_forward, cl.v_right, cl.v_up) #FIXME Simplified while porting
 
-"""	
+	"""	
 	CDAudio_Update();
 
 	// advance local effects for next frame
 	CL_RunDLights ();
 	CL_RunLightStyles ();
-	SCR_RunCinematic ();
-	SCR_RunConsole ();
+	"""
+	cl_cin.SCR_RunCinematic ()
+	cl_scrn.SCR_RunConsole ()
 
-	cls.framecount++;
-
+	cls.framecount+=1
+	"""
 	if ( log_stats->value )
 	{
 		if ( cls.state == ca_active )
@@ -1741,7 +1766,7 @@ def CL_Frame (msec): #int
 			}
 		}
 	}
-}
+
 
 
 //============================================================================
@@ -1758,7 +1783,7 @@ def CL_Init ():
 
 	# all archived variables will now be loaded
 
-	console.Con_Init ();	
+	console.Con_Init ()
 
 	#if defined __linux__ || defined __sgi
 	snd_dma.S_Init ()
@@ -1795,18 +1820,18 @@ FIXME: this is a callback from Sys_Quit and Com_Error.  It would be better
 to run quit through here before the final handoff to the sys code.
 ===============
 """
+isdown = False
+
 def CL_Shutdown():
 
-	"""
-	static qboolean isdown = false;
+	#static qboolean isdown = false;
+	if isdown:
 	
-	if (isdown)
-	{
-		printf ("recursive shutdown\n");
-		return;
-	}
-	isdown = true;
-	"""
+		print ("recursive shutdown\n")
+		return
+	
+	isdown = True
+
 	CL_WriteConfiguration ()
 
 	#CDAudio_Shutdown ()

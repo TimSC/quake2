@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+import struct
+from linux import net_udp
+"""
 #include "qcommon.h"
 
 /*
@@ -77,9 +79,10 @@ unacknowledged reliable
 cvar_t		*showpackets;
 cvar_t		*showdrop;
 cvar_t		*qport;
-
-netadr_t	net_from;
-sizebuf_t	net_message;
+"""
+net_from = None #netadr_t
+net_message = None #sizebuf_t
+"""
 byte		net_message_buffer[MAX_MSGLEN];
 
 /*
@@ -106,43 +109,39 @@ Netchan_OutOfBand
 
 Sends an out-of-band datagram
 ================
-*/
-void Netchan_OutOfBand (int net_socket, netadr_t adr, int length, byte *data)
-{
-	sizebuf_t	send;
-	byte		send_buf[MAX_MSGLEN];
+"""
+def Netchan_OutOfBand (net_socket, adr, data): #int, netadr_t, byte *
 
-// write the packet header
-	SZ_Init (&send, send_buf, sizeof(send_buf));
-	
-	MSG_WriteLong (&send, -1);	// -1 sequence means out of band
-	SZ_Write (&send, data, length);
+	#sizebuf_t	send;
+	#byte		send_buf[MAX_MSGLEN];
 
-// send the datagram
-	NET_SendPacket (net_socket, send.cursize, send.data, adr);
-}
+	# write the packet header
+	send = struct.pack(">l", -1)	# -1 sequence means out of band
+	send += data
 
-/*
+	# send the datagram
+	net_udp.NET_SendPacket (net_socket, send, adr)
+
+
+"""
 ===============
 Netchan_OutOfBandPrint
 
 Sends a text message in an out-of-band datagram
 ================
-*/
-void Netchan_OutOfBandPrint (int net_socket, netadr_t adr, char *format, ...)
-{
-	va_list		argptr;
-	static char		string[MAX_MSGLEN - 4];
+"""
+def Netchan_OutOfBandPrint (net_socket, adr, msg): #int, netadr_t, char *
+
+	#va_list		argptr;
+	#static char		string[MAX_MSGLEN - 4];
 	
-	va_start (argptr, format);
-	vsprintf (string, format,argptr);
-	va_end (argptr);
+	#va_start (argptr, format);
+	#vsprintf (string, format,argptr);
+	#va_end (argptr);
 
-	Netchan_OutOfBand (net_socket, adr, strlen(string), (byte *)string);
-}
+	Netchan_OutOfBand (net_socket, adr, msg)
 
-
-/*
+"""
 ==============
 Netchan_Setup
 
@@ -384,4 +383,4 @@ qboolean Netchan_Process (netchan_t *chan, sizebuf_t *msg)
 
 	return true;
 }
-
+"""

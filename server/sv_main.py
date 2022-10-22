@@ -17,9 +17,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from server import sv_ccmds
-from qcommon import cvar, qcommon, common
+import random
+import struct
+from server import sv_ccmds, sv_send, sv_init
+from qcommon import cvar, qcommon, common, net_chan, cmd
 from game import q_shared
+from linux import net_udp
 """
 #include "server.h"
 
@@ -124,7 +127,7 @@ char	*SV_StatusString (void)
 
 	for (i=0 ; i<maxclients->value ; i++)
 	{
-		cl = &svs.clients[i];
+		cl = &sv_init.svs.clients[i];
 		if (cl->state == cs_connected || cl->state == cs_spawned )
 		{
 			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
@@ -149,7 +152,7 @@ Responds with all the info that qplug or qspy can see
 */
 void SVC_Status (void)
 {
-	Netchan_OutOfBandPrint (NS_SERVER, net_from, "print\n%s", SV_StatusString());
+	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "print\n%s", SV_StatusString());
 #if 0
 	Com_BeginRedirect (RD_PACKET, sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
 	Com_Printf (SV_StatusString());
@@ -165,7 +168,7 @@ SVC_Ack
 */
 void SVC_Ack (void)
 {
-	Com_Printf ("Ping acknowledge from %s\n", NET_AdrToString(net_from));
+	Com_Printf ("Ping acknowledge from %s\n", NET_AdrToString(net_chan.net_from));
 }
 
 /*
@@ -193,13 +196,13 @@ void SVC_Info (void)
 	{
 		count = 0;
 		for (i=0 ; i<maxclients->value ; i++)
-			if (svs.clients[i].state >= cs_connected)
+			if (sv_init.svs.clients[i].state >= cs_connected)
 				count++;
 
-		Com_sprintf (string, sizeof(string), "%16s %8s %2i/%2i\n", hostname->string, sv.name, count, (int)maxclients->value);
+		Com_sprintf (string, sizeof(string), "%16s %8s %2i/%2i\n", hostname->string, sv_init.sv.name, count, (int)maxclients->value);
 	}
 
-	Netchan_OutOfBandPrint (NS_SERVER, net_from, "info\n%s", string);
+	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "info\n%s", string);
 }
 
 /*
@@ -211,7 +214,7 @@ Just responds with an acknowledgement
 */
 void SVC_Ping (void)
 {
-	Netchan_OutOfBandPrint (NS_SERVER, net_from, "ack");
+	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "ack");
 }
 
 
@@ -238,11 +241,11 @@ void SVC_GetChallenge (void)
 	// see if we already have a challenge for this ip
 	for (i = 0 ; i < MAX_CHALLENGES ; i++)
 	{
-		if (NET_CompareBaseAdr (net_from, svs.challenges[i].adr))
+		if (NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
 			break;
-		if (svs.challenges[i].time < oldestTime)
+		if (sv_init.svs.challenges[i].time < oldestTime)
 		{
-			oldestTime = svs.challenges[i].time;
+			oldestTime = sv_init.svs.challenges[i].time;
 			oldest = i;
 		}
 	}
@@ -250,14 +253,14 @@ void SVC_GetChallenge (void)
 	if (i == MAX_CHALLENGES)
 	{
 		// overwrite the oldest
-		svs.challenges[oldest].challenge = rand() & 0x7fff;
-		svs.challenges[oldest].adr = net_from;
-		svs.challenges[oldest].time = curtime;
+		sv_init.svs.challenges[oldest].challenge = rand() & 0x7fff;
+		sv_init.svs.challenges[oldest].adr = net_chan.net_from;
+		sv_init.svs.challenges[oldest].time = curtime;
 		i = oldest;
 	}
 
 	// send it back
-	Netchan_OutOfBandPrint (NS_SERVER, net_from, "challenge %i", svs.challenges[i].challenge);
+	Netchan_OutOfBandPrint (NS_SERVER, net_chan.net_from, "challenge %i", sv_init.svs.challenges[i].challenge);
 }
 
 /*
@@ -266,24 +269,26 @@ SVC_DirectConnect
 
 A connection request that did not come from the master
 ==================
-*/
-void SVC_DirectConnect (void)
-{
-	char		userinfo[MAX_INFO_STRING];
-	netadr_t	adr;
-	int			i;
-	client_t	*cl, *newcl;
-	client_t	temp;
-	edict_t		*ent;
-	int			edictnum;
-	int			version;
-	int			qport;
-	int			challenge;
+"""
+def SVC_DirectConnect ():
 
-	adr = net_from;
+	#char		userinfo[MAX_INFO_STRING];
+	#netadr_t	adr;
+	#int			i;
+	#client_t	*cl, *newcl;
+	#client_t	temp;
+	#edict_t		*ent;
+	#int			edictnum;
+	#int			version;
+	#int			qport;
+	#int			challenge;
 
-	Com_DPrintf ("SVC_DirectConnect ()\n");
+	adr = net_chan.net_from
 
+	common.Com_DPrintf ("SVC_DirectConnect ()\n")
+
+	print ("SVC_DirectConnect")
+	"""
 	version = atoi(Cmd_Argv(1));
 	if (version != PROTOCOL_VERSION)
 	{
@@ -300,10 +305,10 @@ void SVC_DirectConnect (void)
 	userinfo[sizeof(userinfo) - 1] = 0;
 
 	// force the IP key/value pair so the game can filter based on ip
-	Info_SetValueForKey (userinfo, "ip", NET_AdrToString(net_from));
+	Info_SetValueForKey (userinfo, "ip", NET_AdrToString(net_chan.net_from));
 
 	// attractloop servers are ONLY for local clients
-	if (sv.attractloop)
+	if (sv_init.sv.attractloop)
 	{
 		if (!NET_IsLocalAddress (adr))
 		{
@@ -318,9 +323,9 @@ void SVC_DirectConnect (void)
 	{
 		for (i=0 ; i<MAX_CHALLENGES ; i++)
 		{
-			if (NET_CompareBaseAdr (net_from, svs.challenges[i].adr))
+			if (NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
 			{
-				if (challenge == svs.challenges[i].challenge)
+				if (challenge == sv_init.svs.challenges[i].challenge)
 					break;		// good
 				Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nBad challenge.\n");
 				return;
@@ -337,7 +342,7 @@ void SVC_DirectConnect (void)
 	memset (newcl, 0, sizeof(client_t));
 
 	// if there is already a slot for this ip, reuse it
-	for (i=0,cl=svs.clients ; i<maxclients->value ; i++,cl++)
+	for (i=0,cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
 	{
 		if (cl->state == cs_free)
 			continue;
@@ -345,7 +350,7 @@ void SVC_DirectConnect (void)
 			&& ( cl->netchan.qport == qport 
 			|| adr.port == cl->netchan.remote_address.port ) )
 		{
-			if (!NET_IsLocalAddress (adr) && (svs.realtime - cl->lastconnect) < ((int)sv_reconnect_limit->value * 1000))
+			if (!NET_IsLocalAddress (adr) && (sv_init.svs.realtime - cl->lastconnect) < ((int)sv_reconnect_limit->value * 1000))
 			{
 				Com_DPrintf ("%s:reconnect rejected : too soon\n", NET_AdrToString (adr));
 				return;
@@ -358,7 +363,7 @@ void SVC_DirectConnect (void)
 
 	// find a client slot
 	newcl = NULL;
-	for (i=0,cl=svs.clients ; i<maxclients->value ; i++,cl++)
+	for (i=0,cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
 	{
 		if (cl->state == cs_free)
 		{
@@ -379,7 +384,7 @@ gotnewcl:
 	// this is the only place a client_t is ever initialized
 	*newcl = temp;
 	sv_client = newcl;
-	edictnum = (newcl-svs.clients)+1;
+	edictnum = (newcl-sv_init.svs.clients)+1;
 	ent = EDICT_NUM(edictnum);
 	newcl->edict = ent;
 	newcl->challenge = challenge; // save challenge for checksumming
@@ -409,8 +414,8 @@ gotnewcl:
 	
 	SZ_Init (&newcl->datagram, newcl->datagram_buf, sizeof(newcl->datagram_buf) );
 	newcl->datagram.allowoverflow = true;
-	newcl->lastmessage = svs.realtime;	// don't timeout
-	newcl->lastconnect = svs.realtime;
+	newcl->lastmessage = sv_init.svs.realtime;	// don't timeout
+	newcl->lastconnect = sv_init.svs.realtime;
 }
 
 int Rcon_Validate (void)
@@ -441,9 +446,9 @@ void SVC_RemoteCommand (void)
 	i = Rcon_Validate ();
 
 	if (i == 0)
-		Com_Printf ("Bad rcon from %s:\n%s\n", NET_AdrToString (net_from), net_message.data+4);
+		Com_Printf ("Bad rcon from %s:\n%s\n", NET_AdrToString (net_chan.net_from), net_message.data+4);
 	else
-		Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (net_from), net_message.data+4);
+		Com_Printf ("Rcon from %s:\n%s\n", NET_AdrToString (net_chan.net_from), net_message.data+4);
 
 	Com_BeginRedirect (RD_PACKET, sv_outputbuf, SV_OUTPUTBUF_LENGTH, SV_FlushRedirect);
 
@@ -476,42 +481,42 @@ characters to distinguish it from a game channel.
 Clients that are in the game can still send
 connectionless packets.
 =================
-*/
-void SV_ConnectionlessPacket (void)
-{
-	char	*s;
-	char	*c;
+"""
+def SV_ConnectionlessPacket ():
 
-	MSG_BeginReading (&net_message);
-	MSG_ReadLong (&net_message);		// skip the -1 marker
+	#char	*s;
+	#char	*c;
 
-	s = MSG_ReadStringLine (&net_message);
+	#MSG_BeginReading (&net_message);
+	#MSG_ReadLong (&net_message);		// skip the -1 marker
 
-	Cmd_TokenizeString (s, false);
+	s = net_chan.net_message[4:].decode("ascii")
 
-	c = Cmd_Argv(0);
-	Com_DPrintf ("Packet %s : %s\n", NET_AdrToString(net_from), c);
+	cmd.Cmd_TokenizeString (s, False)
 
-	if (!strcmp(c, "ping"))
-		SVC_Ping ();
-	else if (!strcmp(c, "ack"))
-		SVC_Ack ();
-	else if (!strcmp(c,"status"))
-		SVC_Status ();
-	else if (!strcmp(c,"info"))
-		SVC_Info ();
-	else if (!strcmp(c,"getchallenge"))
-		SVC_GetChallenge ();
-	else if (!strcmp(c,"connect"))
-		SVC_DirectConnect ();
-	else if (!strcmp(c, "rcon"))
-		SVC_RemoteCommand ();
-	else
-		Com_Printf ("bad connectionless packet from %s:\n%s\n"
-		, NET_AdrToString (net_from), s);
-}
+	c = cmd.Cmd_Argv(0)
+	common.Com_DPrintf ("Packet {} : {}\n".format(net_udp.NET_AdrToString(net_chan.net_from), c))
+
+	if c == "ping":
+		SVC_Ping ()
+	elif c == "ack":
+		SVC_Ack ()
+	elif c == "status":
+		SVC_Status ()
+	elif c == "info":
+		SVC_Info ()
+	elif c == "getchallenge":
+		SVC_GetChallenge ()
+	elif c == "connect":
+		SVC_DirectConnect ()
+	elif c == "rcon":
+		SVC_RemoteCommand ()
+	else:
+		common.Com_Printf ("bad connectionless packet from {}:\n{}\n".format(
+			net_udp.NET_AdrToString (net_chan.net_from), s))
 
 
+"""
 //============================================================================
 
 /*
@@ -529,15 +534,15 @@ void SV_CalcPings (void)
 
 	for (i=0 ; i<maxclients->value ; i++)
 	{
-		cl = &svs.clients[i];
+		cl = &sv_init.svs.clients[i];
 		if (cl->state != cs_spawned )
 			continue;
 
 #if 0
 		if (cl->lastframe > 0)
-			cl->frame_latency[sv.framenum&(LATENCY_COUNTS-1)] = sv.framenum - cl->lastframe + 1;
+			cl->frame_latency[sv_init.sv.framenum&(LATENCY_COUNTS-1)] = sv_init.sv.framenum - cl->lastframe + 1;
 		else
-			cl->frame_latency[sv.framenum&(LATENCY_COUNTS-1)] = 0;
+			cl->frame_latency[sv_init.sv.framenum&(LATENCY_COUNTS-1)] = 0;
 #endif
 
 		total = 0;
@@ -578,12 +583,12 @@ void SV_GiveMsec (void)
 	int			i;
 	client_t	*cl;
 
-	if (sv.framenum & 15)
+	if (sv_init.sv.framenum & 15)
 		return;
 
 	for (i=0 ; i<maxclients->value ; i++)
 	{
-		cl = &svs.clients[i];
+		cl = &sv_init.svs.clients[i];
 		if (cl->state == cs_free )
 			continue;
 		
@@ -596,61 +601,66 @@ void SV_GiveMsec (void)
 =================
 SV_ReadPackets
 =================
-*/
-void SV_ReadPackets (void)
-{
-	int			i;
-	client_t	*cl;
-	int			qport;
+"""
+def SV_ReadPackets ():
 
-	while (NET_GetPacket (NS_SERVER, &net_from, &net_message))
-	{
-		// check for connectionless packet (0xffffffff) first
-		if (*(int *)net_message.data == -1)
-		{
-			SV_ConnectionlessPacket ();
-			continue;
-		}
+	#int			i;
+	#client_t	*cl;
+	#int			qport;
 
-		// read the qport out of the message so we can fix up
-		// stupid address translating routers
-		MSG_BeginReading (&net_message);
-		MSG_ReadLong (&net_message);		// sequence number
-		MSG_ReadLong (&net_message);		// sequence number
-		qport = MSG_ReadShort (&net_message) & 0xffff;
+	rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
+	while rx:
+		try:
+			# check for connectionless packet (0xffffffff) first
+			header = struct.unpack(">l", net_chan.net_message[:4])
+			if header[0] == -1:
+			
+				SV_ConnectionlessPacket ()
+				continue
+			
+			"""
+			// read the qport out of the message so we can fix up
+			// stupid address translating routers
+			MSG_BeginReading (&net_message);
+			MSG_ReadLong (&net_message);		// sequence number
+			MSG_ReadLong (&net_message);		// sequence number
+			qport = MSG_ReadShort (&net_message) & 0xffff;
 
-		// check for packets from connected clients
-		for (i=0, cl=svs.clients ; i<maxclients->value ; i++,cl++)
-		{
-			if (cl->state == cs_free)
-				continue;
-			if (!NET_CompareBaseAdr (net_from, cl->netchan.remote_address))
-				continue;
-			if (cl->netchan.qport != qport)
-				continue;
-			if (cl->netchan.remote_address.port != net_from.port)
+			// check for packets from connected clients
+			for (i=0, cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
 			{
-				Com_Printf ("SV_ReadPackets: fixing up a translated port\n");
-				cl->netchan.remote_address.port = net_from.port;
-			}
-
-			if (Netchan_Process(&cl->netchan, &net_message))
-			{	// this is a valid, sequenced packet, so process it
-				if (cl->state != cs_zombie)
+				if (cl->state == cs_free)
+					continue;
+				if (!NET_CompareBaseAdr (net_chan.net_from, cl->netchan.remote_address))
+					continue;
+				if (cl->netchan.qport != qport)
+					continue;
+				if (cl->netchan.remote_address.port != net_chan.net_from.port)
 				{
-					cl->lastmessage = svs.realtime;	// don't timeout
-					SV_ExecuteClientMessage (cl);
+					Com_Printf ("SV_ReadPackets: fixing up a translated port\n");
+					cl->netchan.remote_address.port = net_chan.net_from.port;
 				}
-			}
-			break;
-		}
-		
-		if (i != maxclients->value)
-			continue;
-	}
-}
 
-/*
+				if (Netchan_Process(&cl->netchan, &net_message))
+				{	// this is a valid, sequenced packet, so process it
+					if (cl->state != cs_zombie)
+					{
+						cl->lastmessage = sv_init.svs.realtime;	// don't timeout
+						SV_ExecuteClientMessage (cl);
+					}
+				}
+				break;
+			}
+			
+			if (i != maxclients->value)
+				continue;
+			"""
+
+		finally:
+			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
+
+
+"""
 ==================
 SV_CheckTimeouts
 
@@ -662,22 +672,25 @@ When a client is normally dropped, the client_t goes into a zombie state
 for a few seconds to make sure any final reliable message gets resent
 if necessary
 ==================
-*/
-void SV_CheckTimeouts (void)
-{
+"""
+def SV_CheckTimeouts ():
+
+	pass
+	"""
+
 	int		i;
 	client_t	*cl;
 	int			droppoint;
 	int			zombiepoint;
 
-	droppoint = svs.realtime - 1000*timeout->value;
-	zombiepoint = svs.realtime - 1000*zombietime->value;
+	droppoint = sv_init.svs.realtime - 1000*timeout->value;
+	zombiepoint = sv_init.svs.realtime - 1000*zombietime->value;
 
-	for (i=0,cl=svs.clients ; i<maxclients->value ; i++,cl++)
+	for (i=0,cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
 	{
 		// message times may be wrong across a changelevel
-		if (cl->lastmessage > svs.realtime)
-			cl->lastmessage = svs.realtime;
+		if (cl->lastmessage > sv_init.svs.realtime)
+			cl->lastmessage = sv_init.svs.realtime;
 
 		if (cl->state == cs_zombie
 		&& cl->lastmessage < zombiepoint)
@@ -732,8 +745,8 @@ void SV_RunGameFrame (void)
 	// don't run the world, otherwise the delta
 	// compression can get confused when a client
 	// has the "current" frame
-	sv.framenum++;
-	sv.time = sv.framenum*100;
+	sv_init.sv.framenum++;
+	sv_init.sv.time = sv_init.sv.framenum*100;
 
 	// don't run if paused
 	if (!sv_paused->value || maxclients->value > 1)
@@ -741,11 +754,11 @@ void SV_RunGameFrame (void)
 		ge->RunFrame ();
 
 		// never get more than one tic behind
-		if (sv.time < svs.realtime)
+		if (sv_init.sv.time < sv_init.svs.realtime)
 		{
 			if (sv_showclamp->value)
 				Com_Printf ("sv highclamp\n");
-			svs.realtime = sv.time;
+			sv_init.svs.realtime = sv_init.sv.time;
 		}
 	}
 
@@ -764,33 +777,33 @@ def SV_Frame (msec): #int
  
 	common.time_before_game = 0
 	common.time_after_game = 0
+	
+	# if server is not active, do nothing
+	if not sv_init.svs.initialized:
+		return
+	
+	sv_init.svs.realtime += msec
+
+	# keep the random time dependent
+	random.randint(0, 1 << 32)
+
+	# check timeouts
+	SV_CheckTimeouts ()
+
+	# get packets from clients
+	SV_ReadPackets ()
 	"""
-	// if server is not active, do nothing
-	if (!svs.initialized)
-		return;
-
-    svs.realtime += msec;
-
-	// keep the random time dependent
-	rand ();
-
-	// check timeouts
-	SV_CheckTimeouts ();
-
-	// get packets from clients
-	SV_ReadPackets ();
-
 	// move autonomous things around if enough time has passed
-	if (!sv_timedemo->value && svs.realtime < sv.time)
+	if (!sv_timedemo->value && sv_init.svs.realtime < sv_init.sv.time)
 	{
 		// never let the time get too far off
-		if (sv.time - svs.realtime > 100)
+		if (sv_init.sv.time - sv_init.svs.realtime > 100)
 		{
 			if (sv_showclamp->value)
 				Com_Printf ("sv lowclamp\n");
-			svs.realtime = sv.time - 100;
+			sv_init.svs.realtime = sv_init.sv.time - 100;
 		}
-		NET_Sleep(sv.time - svs.realtime);
+		NET_Sleep(sv_init.sv.time - sv_init.svs.realtime);
 		return;
 	}
 
@@ -802,10 +815,10 @@ def SV_Frame (msec): #int
 
 	// let everything in the world think and move
 	SV_RunGameFrame ();
-
-	// send messages back to the clients that had packets read this frame
-	SV_SendClientMessages ();
-
+	"""
+	# send messages back to the clients that had packets read this frame
+	sv_send.SV_SendClientMessages ()
+	"""
 	// save the entire world state if recording a serverdemo
 	SV_RecordDemoMessage ();
 
@@ -842,13 +855,13 @@ void Master_Heartbeat (void)
 		return;		// a private dedicated game
 
 	// check for time wraparound
-	if (svs.last_heartbeat > svs.realtime)
-		svs.last_heartbeat = svs.realtime;
+	if (sv_init.svs.last_heartbeat > sv_init.svs.realtime)
+		sv_init.svs.last_heartbeat = sv_init.svs.realtime;
 
-	if (svs.realtime - svs.last_heartbeat < HEARTBEAT_SECONDS*1000)
+	if (sv_init.svs.realtime - sv_init.svs.last_heartbeat < HEARTBEAT_SECONDS*1000)
 		return;		// not time to send yet
 
-	svs.last_heartbeat = svs.realtime;
+	sv_init.svs.last_heartbeat = sv_init.svs.realtime;
 
 	// send the same string that we would give for a status OOB command
 	string = SV_StatusString();
@@ -1019,12 +1032,12 @@ void SV_FinalMessage (char *message, qboolean reconnect)
 	// send it twice
 	// stagger the packets to crutch operating system limited buffers
 
-	for (i=0, cl = svs.clients ; i<maxclients->value ; i++, cl++)
+	for (i=0, cl = sv_init.svs.clients ; i<maxclients->value ; i++, cl++)
 		if (cl->state >= cs_connected)
 			Netchan_Transmit (&cl->netchan, net_message.cursize
 			, net_message.data);
 
-	for (i=0, cl = svs.clients ; i<maxclients->value ; i++, cl++)
+	for (i=0, cl = sv_init.svs.clients ; i<maxclients->value ; i++, cl++)
 		if (cl->state >= cs_connected)
 			Netchan_Transmit (&cl->netchan, net_message.cursize
 			, net_message.data);
@@ -1044,25 +1057,25 @@ def SV_Shutdown (finalmsg, reconnect): #char *, qboolean
 
 	pass
 	"""
-	if (svs.clients)
+	if (sv_init.svs.clients)
 		SV_FinalMessage (finalmsg, reconnect);
 
 	Master_Shutdown ();
 	SV_ShutdownGameProgs ();
 
 	// free current level
-	if (sv.demofile)
-		fclose (sv.demofile);
+	if (sv_init.sv.demofile)
+		fclose (sv_init.sv.demofile);
 	memset (&sv, 0, sizeof(sv));
-	Com_SetServerState (sv.state);
+	Com_SetServerState (sv_init.sv.state);
 
 	// free server static data
-	if (svs.clients)
-		Z_Free (svs.clients);
-	if (svs.client_entities)
-		Z_Free (svs.client_entities);
-	if (svs.demofile)
-		fclose (svs.demofile);
+	if (sv_init.svs.clients)
+		Z_Free (sv_init.svs.clients);
+	if (sv_init.svs.client_entities)
+		Z_Free (sv_init.svs.client_entities);
+	if (sv_init.svs.demofile)
+		fclose (sv_init.svs.demofile);
 	memset (&svs, 0, sizeof(svs));
 }
 """

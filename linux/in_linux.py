@@ -42,11 +42,11 @@ void IN_Shutdown (void)
 void IN_Commands (void)
 {
 }
+"""
+def IN_Move (cmd):
+	pass
 
-void IN_Move (usercmd_t *cmd)
-{
-}
-
+"""
 void IN_Activate (qboolean active)
 {
 }

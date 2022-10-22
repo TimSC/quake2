@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from enum import Enum
 from game import q_shared
+from qcommon import qcommon
 """
 // client.h -- primary header for client
 
@@ -84,9 +85,9 @@ typedef struct
 
 extern char cl_weaponmodels[MAX_CLIENTWEAPONMODELS][MAX_QPATH];
 extern int num_cl_weaponmodels;
-
-#define	CMD_BACKUP		64	// allow a lot of command backups for very fast systems
 """
+CMD_BACKUP		= 64	# allow a lot of command backups for very fast systems
+
 
 """
 //
@@ -109,12 +110,18 @@ class client_state_t(object):
 		qboolean	force_refdef;		// vid has changed, so we can't use a paused refdef
 
 		int			parse_entities;		// index (not anded off) into cl_parse_entities[]
+		"""
+		self.cmd = q_shared.usercmd_t()
+		self.cmds = [] #usercmd_t[CMD_BACKUP], each mesage will send several old cmds
+		self.cmd_time = [] #int[CMD_BACKUP]	# time sent, for calculating pings
+		self.predicted_origins = [] #short[CMD_BACKUP][3], for debug comparing against server
 
-		usercmd_t	cmd;
-		usercmd_t	cmds[CMD_BACKUP];	// each mesage will send several old cmds
-		int			cmd_time[CMD_BACKUP];	// time sent, for calculating pings
-		short		predicted_origins[CMD_BACKUP][3];	// for debug comparing against server
+		for i in range(CMD_BACKUP):
+			self.cmds.append(q_shared.usercmd_t())
+			self.cmd_time.append(0)
+			self.predicted_origins.append(None)
 
+		"""
 		float		predicted_step;				// for stair up smoothing
 		unsigned	predicted_step_time;
 
@@ -133,10 +140,11 @@ class client_state_t(object):
 		// tracked view angles to account for standing on rotating objects,
 		// and teleport direction changes
 		vec3_t		viewangles;
-
-		int			time;			// this is the time value that the client
-									// is rendering at.  always <= cls.realtime
-		float		lerpfrac;		// between oldframe and frame
+		"""
+		self.time = 0 						#int, this is the time value that the client
+									# is rendering at.  always <= cls.realtime
+		"""
+		float		lerpfrac;		# between oldframe and frame
 		
 		refdef = refdef_t()
 		"""
@@ -227,9 +235,9 @@ class client_static_t(object):
 		
 		self.key_dest = keydest_t(keydest_t.key_game)
 
-		#int			framecount;     # int
+		self.framecount = 0 #int			     # int
 		self.realtime = 0			    # int, always increasing, no clamping, etc
-		#float		frametime;			# float, seconds since last frame
+		self.frametime = 0.0 #float					# float, seconds since last frame
 
 		# screen rendering information
 
@@ -246,11 +254,12 @@ class client_static_t(object):
 
 		int			quakePort;			// a 16 bit value that allows quake servers
 										// to work around address translating routers
-		netchan_t	netchan;
-		int			serverProtocol;		// in case we are doing some kind of version hack
+		"""
+		self.netchan = qcommon.netchan_t()
+		self.serverProtocol = 0 #int, in case we are doing some kind of version hack
 
-		int			challenge;			// from the server to use for connecting
-
+		self.challenge = 0 #int, from the server to use for connecting
+		"""
 		FILE		*download;			// file transfer from server
 		char		downloadtempname[MAX_OSPATH];
 		char		downloadname[MAX_OSPATH];

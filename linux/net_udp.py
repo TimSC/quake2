@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from qcommon import qcommon
+"""
 // net_wins.c
 
 #include "../qcommon/qcommon.h"
@@ -34,26 +36,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef NeXT
 #include <libc.h>
 #endif
-
-netadr_t	net_local_adr;
-
+"""
+net_local_adr = qcommon.netadr_t()
+"""
 #define	LOOPBACK	0x7f000001
-
-#define	MAX_LOOPBACK	4
-
+"""
+MAX_LOOPBACK	= 4
+"""
 typedef struct
 {
 	byte	data[MAX_MSGLEN];
 	int		datalen;
 } loopmsg_t;
+"""
+class loopback_t(object):
 
-typedef struct
-{
-	loopmsg_t	msgs[MAX_LOOPBACK];
-	int			get, send;
-} loopback_t;
+	def __init__(self):
 
-loopback_t	loopbacks[2];
+		self.msgs = [] # loopmsg_t[MAX_LOOPBACK];
+		self.get, self.send = 0, 0 #int
+
+loopbacks = [loopback_t(), loopback_t()]
+"""
 int			ip_sockets[2];
 int			ipx_sockets[2];
 
@@ -126,16 +130,15 @@ qboolean	NET_CompareBaseAdr (netadr_t a, netadr_t b)
 		return false;
 	}
 }
+"""
+def NET_AdrToString (a): #netadr_t (returns char	*)
 
-char	*NET_AdrToString (netadr_t a)
-{
-	static	char	s[64];
-	
-	Com_sprintf (s, sizeof(s), "%i.%i.%i.%i:%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3], ntohs(a.port));
+	return str(a)
+	#static	char	s[64];
+	#Com_sprintf (s, sizeof(s), "%i.%i.%i.%i:%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3], ntohs(a.port));
+	#return s;
 
-	return s;
-}
-
+"""
 char	*NET_BaseAdrToString (netadr_t a)
 {
 	static	char	s[64];
@@ -200,26 +203,27 @@ idnewt:28000
 192.246.40.70
 192.246.40.70:28000
 =============
-*/
-qboolean	NET_StringToAdr (char *s, netadr_t *a)
-{
-	struct sockaddr_in sadr;
+"""
+def NET_StringToAdr (s): #char * (returns netadr_t *)
+
+	#struct sockaddr_in sadr;
 	
-	if (!strcmp (s, "localhost"))
-	{
-		memset (a, 0, sizeof(*a));
-		a->type = NA_LOOPBACK;
-		return true;
-	}
-
-	if (!NET_StringToSockaddr (s, (struct sockaddr *)&sadr))
-		return false;
+	if s == "localhost":
 	
-	SockadrToNetadr (&sadr, a);
+		a = qcommon.netadr_t()
+		a.type = qcommon.netadrtype_t.NA_LOOPBACK
+		return a
+	
+	return None
 
-	return true;
-}
+	#if (!NET_StringToSockaddr (s, (struct sockaddr *)&sadr))
+	#	return False;
+	
+	#SockadrToNetadr (&sadr, a)
 
+	#return a
+
+"""
 
 qboolean	NET_IsLocalAddress (netadr_t adr)
 {
@@ -232,60 +236,41 @@ qboolean	NET_IsLocalAddress (netadr_t adr)
 LOOPBACK BUFFERS FOR LOCAL PLAYER
 
 =============================================================================
-*/
+"""
 
-qboolean	NET_GetLoopPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_message)
-{
-	int		i;
-	loopback_t	*loop;
+def NET_GetLoopPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t *)
 
-	loop = &loopbacks[sock];
+	loop = loopbacks[sock.value]
 
-	if (loop->send - loop->get > MAX_LOOPBACK)
-		loop->get = loop->send - MAX_LOOPBACK;
+	if len(loop.msgs) == 0:
+		return False, None, None
 
-	if (loop->get >= loop->send)
-		return false;
-
-	i = loop->get & (MAX_LOOPBACK-1);
-	loop->get++;
-
-	memcpy (net_message->data, loop->msgs[i].data, loop->msgs[i].datalen);
-	net_message->cursize = loop->msgs[i].datalen;
-	*net_from = net_local_adr;
-	return true;
-
-}
+	net_message = loop.msgs.pop(0)
+	return True, net_local_adr, net_message
 
 
-void NET_SendLoopPacket (netsrc_t sock, int length, void *data, netadr_t to)
-{
-	int		i;
-	loopback_t	*loop;
+def NET_SendLoopPacket (sock, data, to): #netsrc_t, void *, netadr_t
 
-	loop = &loopbacks[sock^1];
+	loop = loopbacks[sock.value^1]
 
-	i = loop->send & (MAX_LOOPBACK-1);
-	loop->send++;
+	loop.msgs.append(data)
 
-	memcpy (loop->msgs[i].data, data, length);
-	loop->msgs[i].datalen = length;
-}
-
+"""
 //=============================================================================
+"""
+def NET_GetPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t *)
 
-qboolean	NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_message)
-{
-	int 	ret;
-	struct sockaddr_in	from;
-	int		fromlen;
-	int		net_socket;
-	int		protocol;
-	int		err;
+	#int 	ret;
+	#struct sockaddr_in	from;
+	#int		fromlen;
+	#int		net_socket;
+	#int		protocol;
+	#int		err;
 
-	if (NET_GetLoopPacket (sock, net_from, net_message))
-		return true;
-
+	rx, net_from, net_message = NET_GetLoopPacket (sock)
+	if rx:
+		return True, net_from, net_message
+	"""
 	for (protocol = 0 ; protocol < 2 ; protocol++)
 	{
 		if (protocol == 0)
@@ -320,26 +305,26 @@ qboolean	NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_messag
 		}
 
 		net_message->cursize = ret;
-		return true;
+		return True, net_from, net_message
 	}
+"""
+	return False, None, None
 
-	return false;
-}
-
+"""
 //=============================================================================
+"""
+def NET_SendPacket (sock, data, to): #netsrc_t, void *, netadr_t
 
-void NET_SendPacket (netsrc_t sock, int length, void *data, netadr_t to)
-{
-	int		ret;
-	struct sockaddr_in	addr;
-	int		net_socket;
+	#int		ret;
+	#struct sockaddr_in	addr;
+	#int		net_socket;
 
-	if ( to.type == NA_LOOPBACK )
-	{
-		NET_SendLoopPacket (sock, length, data, to);
-		return;
-	}
-
+	if to.type == qcommon.netadrtype_t.NA_LOOPBACK:
+	
+		NET_SendLoopPacket (sock, data, to)
+		return
+	
+	"""
 	if (to.type == NA_BROADCAST)
 	{
 		net_socket = ip_sockets[sock];
@@ -417,13 +402,13 @@ NET_Config
 
 A single player game will only use the loopback code
 ====================
-*/
-void	NET_Config (qboolean multiplayer)
-{
-	int		i;
+"""
+def NET_Config (multiplayer): #qboolean
 
-	if (!multiplayer)
-	{	// shut down any existing sockets
+	if not multiplayer:
+		# shut down any existing sockets
+		pass
+		"""
 		for (i=0 ; i<2 ; i++)
 		{
 			if (ip_sockets[i])
@@ -437,15 +422,18 @@ void	NET_Config (qboolean multiplayer)
 				ipx_sockets[i] = 0;
 			}
 		}
-	}
-	else
-	{	// open sockets
+		"""
+	
+	else:
+		
+		# open sockets
+		pass
+		"""
 		NET_OpenIP ();
 		NET_OpenIPX ();
-	}
-}
+		"""
 
-
+"""
 //===================================================================
 
 
@@ -557,4 +545,4 @@ void NET_Sleep(int msec)
 	timeout.tv_usec = (msec%1000)*1000;
 	select(ip_sockets[NS_SERVER]+1, &fdset, NULL, NULL, &timeout);
 }
-
+"""

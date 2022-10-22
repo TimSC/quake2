@@ -22,6 +22,7 @@ import time
 import pygame
 from qcommon import common, cvar
 from client import cl_main
+from linux import q_shlinux
 """
 #include <unistd.h>
 #include <signal.h>
@@ -50,9 +51,9 @@ from client import cl_main
 #include "../linux/rw_linux.h"
 """
 nostdout = None # cvar_t *;
-"""
-unsigned	sys_frame_time;
 
+sys_frame_time = 0 #unsigned
+"""
 uid_t saved_euid;
 qboolean stdin_active = true;
 
@@ -284,18 +285,20 @@ void *Sys_GetGameAPI (void *parms)
 void Sys_AppActivate (void)
 {
 }
+"""
+def Sys_SendKeyEvents ():
 
-void Sys_SendKeyEvents (void)
-{
-#ifndef DEDICATED_ONLY
-	if (KBD_Update_fp)
-		KBD_Update_fp();
-#endif
+	global sys_frame_time
 
-	// grab frame time 
-	sys_frame_time = Sys_Milliseconds();
-}
+	#ifndef DEDICATED_ONLY
+	#if (KBD_Update_fp)
+	#	KBD_Update_fp();
+	#endif
 
+	# grab frame time 
+	sys_frame_time = q_shlinux.Sys_Milliseconds()
+
+"""
 /*****************************************************************************/
 
 char *Sys_GetClipboardData(void)

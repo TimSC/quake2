@@ -505,9 +505,10 @@ SCR_RunConsole
 
 Scroll it up or down
 ==================
-*/
-void SCR_RunConsole (void)
-{
+"""
+def SCR_RunConsole ():
+	pass
+	"""
 // decide on the height of the console
 	if (cl_main.cls.key_dest == key_console)
 		scr_conlines = 0.5;		// half screen

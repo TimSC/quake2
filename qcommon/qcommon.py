@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from enum import Enum
 """
 // qcommon.h -- definitions common between client and server, but not game.dll
 
@@ -180,57 +181,56 @@ PROTOCOL
 # protocol.h -- communications protocols
 
 PROTOCOL_VERSION	= 34
-"""
-//=========================================
 
-#define	PORT_MASTER	27900
-#define	PORT_CLIENT	27901
-#define	PORT_SERVER	27910
+#=========================================
 
-//=========================================
-"""
+PORT_MASTER	= 27900
+PORT_CLIENT	= 27901
+PORT_SERVER	= 27910
+
+#=========================================
+
 UPDATE_BACKUP	= 16	# copies of entity_state_t to keep buffered
 							# must be power of two
 UPDATE_MASK		= (UPDATE_BACKUP-1)
 
+
+#==================
+# the svc_strings[] array in cl_parse.c should mirror this
+#==================
+
+#
+# server to client
+#
+class svc_ops_e(Enum):
+
+	svc_bad = 0
+
+	# these ops are known to the game dll
+	svc_muzzleflash = 1
+	svc_muzzleflash2 = 2
+	svc_temp_entity = 3
+	svc_layout = 4
+	svc_inventory = 5
+
+	# the rest are private to the client and server
+	svc_nop = 6
+	svc_disconnect = 7
+	svc_reconnect = 8
+	svc_sound = 9					# <see code>
+	svc_print = 10					# [byte] id [string] null terminated string
+	svc_stufftext = 11				# [string] stuffed into client's console buffer, should be \n terminated
+	svc_serverdata = 12				# [long] protocol ...
+	svc_configstring = 13			# [short] [string]
+	svc_spawnbaseline = 14		
+	svc_centerprint = 15				# [string] to put in center of the screen
+	svc_download = 16				# [short] size [size bytes]
+	svc_playerinfo = 17				# variable
+	svc_packetentities = 18			# [...]
+	svc_deltapacketentities = 19		# [...]
+	svc_frame = 20
+
 """
-
-//==================
-// the svc_strings[] array in cl_parse.c should mirror this
-//==================
-
-//
-// server to client
-//
-enum svc_ops_e
-{
-	svc_bad,
-
-	// these ops are known to the game dll
-	svc_muzzleflash,
-	svc_muzzleflash2,
-	svc_temp_entity,
-	svc_layout,
-	svc_inventory,
-
-	// the rest are private to the client and server
-	svc_nop,
-	svc_disconnect,
-	svc_reconnect,
-	svc_sound,					// <see code>
-	svc_print,					// [byte] id [string] null terminated string
-	svc_stufftext,				// [string] stuffed into client's console buffer, should be \n terminated
-	svc_serverdata,				// [long] protocol ...
-	svc_configstring,			// [short] [string]
-	svc_spawnbaseline,		
-	svc_centerprint,			// [string] to put in center of the screen
-	svc_download,				// [short] size [size bytes]
-	svc_playerinfo,				// variable
-	svc_packetentities,			// [...]
-	svc_deltapacketentities,	// [...]
-	svc_frame
-};
-
 //==============================================
 
 //
@@ -528,21 +528,30 @@ NET
 
 #define	MAX_MSGLEN		1400		// max length of a message
 #define	PACKET_HEADER	10			// two ints and a short
+"""
+class netadrtype_t(Enum):
+	NA_LOOPBACK = 0
+	NA_BROADCAST = 1
+	NA_IP = 2
+	NA_IPX = 3
+	NA_BROADCAST_IPX = 4
 
-typedef enum {NA_LOOPBACK, NA_BROADCAST, NA_IP, NA_IPX, NA_BROADCAST_IPX} netadrtype_t;
+class netsrc_t(Enum):
+	NS_CLIENT = 0
+	NS_SERVER = 1
 
-typedef enum {NS_CLIENT, NS_SERVER} netsrc_t;
+class netadr_t(object):
 
-typedef struct
-{
-	netadrtype_t	type;
+	def __init__(self):
 
-	byte	ip[4];
-	byte	ipx[10];
+		self.type = netadrtype_t.NA_LOOPBACK
 
-	unsigned short	port;
-} netadr_t;
+		self.ip = None #byte	[4]
+		self.ipx = None #byte	[10]
 
+		self.port = None #unsigned short 
+
+"""
 void		NET_Init (void);
 void		NET_Shutdown (void);
 
@@ -563,41 +572,43 @@ void		NET_Sleep(int msec);
 #define	OLD_AVG		0.99		// total = oldtotal*OLD_AVG + new*(1-OLD_AVG)
 
 #define	MAX_LATENT	32
+"""
+class netchan_t(object):
 
-typedef struct
-{
-	qboolean	fatal_error;
+	def __init__(self):
 
-	netsrc_t	sock;
+		self.fatal_error = False # qboolean
 
-	int			dropped;			// between last packet and previous
+		self.sock = netsrc_t.NS_CLIENT # netsrc_t
 
-	int			last_received;		// for timeouts
-	int			last_sent;			// for retransmits
+		self.dropped = 0 #int, between last packet and previous
 
-	netadr_t	remote_address;
-	int			qport;				// qport value to write when transmitting
+		self.last_received = 0		# int, for timeouts
+		self.last_sent = 0			# int, for retransmits
 
-// sequencing variables
-	int			incoming_sequence;
-	int			incoming_acknowledged;
-	int			incoming_reliable_acknowledged;	// single bit
+		self.remote_address = netadr_t()
+		self.qport = 0 				# int, qport value to write when transmitting
 
-	int			incoming_reliable_sequence;		// single bit, maintained local
+		# sequencing variables
+		self.incoming_sequence = 0 # int
+		self.incoming_acknowledged = 0 # int
+		self.incoming_reliable_acknowledged = 0	# int, single bit
 
-	int			outgoing_sequence;
-	int			reliable_sequence;			// single bit
-	int			last_reliable_sequence;		// sequence number of last send
+		self.incoming_reliable_sequence = 0		# int, single bit, maintained local
 
-// reliable staging and holding areas
-	sizebuf_t	message;		// writing buffer to send to server
-	byte		message_buf[MAX_MSGLEN-16];		// leave space for header
+		self.outgoing_sequence = 0			# int
+		self.reliable_sequence = 0			# int, single bit
+		self.last_reliable_sequence = 0		# int, sequence number of last send
 
-// message is copied to this buffer when it is first transfered
-	int			reliable_length;
-	byte		reliable_buf[MAX_MSGLEN-16];	// unacked reliable message
-} netchan_t;
+		# reliable staging and holding areas
+		self.message = None		# sizebuf_t, writing buffer to send to server
+		self.message_buf = None #byte[MAX_MSGLEN-16]		# leave space for header
 
+		# message is copied to this buffer when it is first transfered
+		self.reliable_length = 0 # int
+		self.reliable_buf = None #byte[MAX_MSGLEN-16]	# unacked reliable message
+
+"""
 extern	netadr_t	net_from;
 extern	sizebuf_t	net_message;
 extern	byte		net_message_buffer[MAX_MSGLEN];

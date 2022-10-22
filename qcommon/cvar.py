@@ -440,39 +440,42 @@ def Cvar_List_f ():
 
 	common.Com_Printf ("{} cvars\n".format(len(cvar_vars)))
 
-"""
+userinfo_modified = False #qboolean
 
-qboolean userinfo_modified;
+def Cvar_BitInfo (bit): # int (returns char	*)
+
+	#static char	info[MAX_INFO_STRING];
+	#cvar_t	*var;
+
+	info = []
+
+	for var in cvar_vars:
+	
+		total = 0
+		if var.flags & bit:
+			enc = q_shared.Info_SetValueForKey (var.name, var.string)
+
+			if total + len(enc) > q_shared.MAX_INFO_STRING:	
+				common.Com_Printf ("Info string length exceeded\n")
+
+			else:
+				info.append(enc)
+				total += len(enc)
+
+	return "".join(info)
 
 
-char	*Cvar_BitInfo (int bit)
-{
-	static char	info[MAX_INFO_STRING];
-	cvar_t	*var;
+# returns an info string containing all the CVAR_USERINFO cvars
+def Cvar_Userinfo (): #returns char	*
 
-	info[0] = 0;
+	return Cvar_BitInfo (q_shared.CVAR_USERINFO)
 
-	for (var = cvar_vars ; var ; var = var.next)
-	{
-		if (var.flags & bit)
-			Info_SetValueForKey (info, var.name, var.string);
-	}
-	return info;
-}
 
-// returns an info string containing all the CVAR_USERINFO cvars
-char	*Cvar_Userinfo (void)
-{
-	return Cvar_BitInfo (CVAR_USERINFO);
-}
+# returns an info string containing all the CVAR_SERVERINFO cvars
+def Cvar_Serverinfo (): #returns char	*
 
-// returns an info string containing all the CVAR_SERVERINFO cvars
-char	*Cvar_Serverinfo (void)
-{
-	return Cvar_BitInfo (CVAR_SERVERINFO);
-}
+	return Cvar_BitInfo (q_shared.CVAR_SERVERINFO)
 
-"""
 """
 ============
 Cvar_Init

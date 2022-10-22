@@ -1072,7 +1072,7 @@ int Key_GetKey (void)
 """
 
 def PyGame_KeyEvent(event):
-	
+
 	global pygameKeyMap
 
 	down = event.type == pygame.KEYDOWN

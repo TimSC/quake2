@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from client import cl_main
+"""
 #include "client.h"
 
 typedef struct
@@ -149,10 +151,12 @@ void SCR_LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *h
 ==================
 SCR_StopCinematic
 ==================
-*/
-void SCR_StopCinematic (void)
-{
-	cl.cinematictime = 0;	// done
+"""
+def SCR_StopCinematic ():
+	
+	
+	cl_main.cl.cinematictime = 0	# done
+	"""
 	if (cin.pic)
 	{
 		Z_Free (cin.pic);
@@ -163,15 +167,15 @@ void SCR_StopCinematic (void)
 		Z_Free (cin.pic_pending);
 		cin.pic_pending = NULL;
 	}
-	if (cl.cinematicpalette_active)
+	if (cl_main.cl.cinematicpalette_active)
 	{
 		re.CinematicSetPalette(NULL);
-		cl.cinematicpalette_active = false;
+		cl_main.cl.cinematicpalette_active = false;
 	}
-	if (cl.cinematic_file)
+	if (cl_main.cl.cinematic_file)
 	{
-		fclose (cl.cinematic_file);
-		cl.cinematic_file = NULL;
+		fclose (cl_main.cl.cinematic_file);
+		cl_main.cl.cinematic_file = NULL;
 	}
 	if (cin.hnodes1)
 	{
@@ -194,14 +198,14 @@ SCR_FinishCinematic
 
 Called when either the cinematic completes, or it is aborted
 ====================
-*/
-void SCR_FinishCinematic (void)
-{
-	// tell the server to advance to the next map / cinematic
-	MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
-	SZ_Print (&cls.netchan.message, va("nextserver %i\n", cl.servercount));
-}
+"""
+def SCR_FinishCinematic ():
 
+	# tell the server to advance to the next map / cinematic
+	MSG_WriteByte (cl_main.cls.netchan.message, clc_stringcmd)
+	SZ_Print (cl_main.cls.netchan.message, "nextserver {}\n".format(cl_main.cl.servercount))
+
+"""
 //==========================================================================
 
 /*
@@ -261,7 +265,7 @@ void Huff1TableInit (void)
 		memset (cin.h_used,0,sizeof(cin.h_used));
 
 		// read a row of counts
-		FS_Read (counts, sizeof(counts), cl.cinematic_file);
+		FS_Read (counts, sizeof(counts), cl_main.cl.cinematic_file);
 		for (j=0 ; j<256 ; j++)
 			cin.h_count[j] = counts[j];
 
@@ -436,9 +440,9 @@ byte *SCR_ReadNextFrame (void)
 	int		start, end, count;
 
 	// read the next frame
-	r = fread (&command, 4, 1, cl.cinematic_file);
+	r = fread (&command, 4, 1, cl_main.cl.cinematic_file);
 	if (r == 0)		// we'll give it one more chance
-		r = fread (&command, 4, 1, cl.cinematic_file);
+		r = fread (&command, 4, 1, cl_main.cl.cinematic_file);
 
 	if (r != 1)
 		return NULL;
@@ -448,23 +452,23 @@ byte *SCR_ReadNextFrame (void)
 
 	if (command == 1)
 	{	// read palette
-		FS_Read (cl.cinematicpalette, sizeof(cl.cinematicpalette), cl.cinematic_file);
-		cl.cinematicpalette_active=0;	// dubious....  exposes an edge case
+		FS_Read (cl_main.cl.cinematicpalette, sizeof(cl_main.cl.cinematicpalette), cl_main.cl.cinematic_file);
+		cl_main.cl.cinematicpalette_active=0;	// dubious....  exposes an edge case
 	}
 
 	// decompress the next frame
-	FS_Read (&size, 4, cl.cinematic_file);
+	FS_Read (&size, 4, cl_main.cl.cinematic_file);
 	size = LittleLong(size);
 	if (size > sizeof(compressed) || size < 1)
 		Com_Error (ERR_DROP, "Bad compressed frame size");
-	FS_Read (compressed, size, cl.cinematic_file);
+	FS_Read (compressed, size, cl_main.cl.cinematic_file);
 
 	// read sound
-	start = cl.cinematicframe*cin.s_rate/14;
-	end = (cl.cinematicframe+1)*cin.s_rate/14;
+	start = cl_main.cl.cinematicframe*cin.s_rate/14;
+	end = (cl_main.cl.cinematicframe+1)*cin.s_rate/14;
 	count = end - start;
 
-	FS_Read (samples, count*cin.s_width*cin.s_channels, cl.cinematic_file);
+	FS_Read (samples, count*cin.s_width*cin.s_channels, cl_main.cl.cinematic_file);
 
 	S_RawSamples (count, cin.s_rate, cin.s_width, cin.s_channels, samples);
 
@@ -475,7 +479,7 @@ byte *SCR_ReadNextFrame (void)
 
 	pic = huf1.data;
 
-	cl.cinematicframe++;
+	cl_main.cl.cinematicframe++;
 
 	return pic;
 }
@@ -486,51 +490,55 @@ byte *SCR_ReadNextFrame (void)
 SCR_RunCinematic
 
 ==================
-*/
-void SCR_RunCinematic (void)
-{
-	int		frame;
+"""
+def SCR_RunCinematic ():
 
-	if (cl.cinematictime <= 0)
-	{
-		SCR_StopCinematic ();
-		return;
-	}
 
-	if (cl.cinematicframe == -1)
+	#int		frame;
+
+	if cl_main.cl.cinematictime <= 0:
+	
+		SCR_StopCinematic ()
+		return
+	
+	"""
+
+	if (cl_main.cl.cinematicframe == -1)
 		return;		// static image
 
-	if (cls.key_dest != key_game)
+	if (cl_main.cls.key_dest != key_game)
 	{	// pause if menu or console is up
-		cl.cinematictime = cls.realtime - cl.cinematicframe*1000/14;
+		cl_main.cl.cinematictime = cl_main.cls.realtime - cl_main.cl.cinematicframe*1000/14;
 		return;
 	}
 
-	frame = (cls.realtime - cl.cinematictime)*14.0/1000;
-	if (frame <= cl.cinematicframe)
+	frame = (cl_main.cls.realtime - cl_main.cl.cinematictime)*14.0/1000;
+	if (frame <= cl_main.cl.cinematicframe)
 		return;
-	if (frame > cl.cinematicframe+1)
+	if (frame > cl_main.cl.cinematicframe+1)
 	{
-		Com_Printf ("Dropped frame: %i > %i\n", frame, cl.cinematicframe+1);
-		cl.cinematictime = cls.realtime - cl.cinematicframe*1000/14;
+		Com_Printf ("Dropped frame: %i > %i\n", frame, cl_main.cl.cinematicframe+1);
+		cl_main.cl.cinematictime = cl_main.cls.realtime - cl_main.cl.cinematicframe*1000/14;
 	}
 	if (cin.pic)
 		Z_Free (cin.pic);
 	cin.pic = cin.pic_pending;
 	cin.pic_pending = NULL;
 	cin.pic_pending = SCR_ReadNextFrame ();
-	if (!cin.pic_pending)
-	{
-		SCR_StopCinematic ();
-		SCR_FinishCinematic ();
-		cl.cinematictime = 1;	// hack to get the black screen behind loading
-		SCR_BeginLoadingPlaque ();
-		cl.cinematictime = 0;
-		return;
-	}
-}
+	"""
+	cin.pic_pending = False
+	if not cin.pic_pending:
+	
+		SCR_StopCinematic ()
+		SCR_FinishCinematic ()
+		cl_main.cl.cinematictime = 1	# hack to get the black screen behind loading
+		SCR_BeginLoadingPlaque ()
+		cl_main.cl.cinematictime = 0
+		return
+	
 
-/*
+
+"""
 ==================
 SCR_DrawCinematic
 
@@ -540,22 +548,22 @@ should be skipped
 */
 qboolean SCR_DrawCinematic (void)
 {
-	if (cl.cinematictime <= 0)
+	if (cl_main.cl.cinematictime <= 0)
 	{
 		return false;
 	}
 
-	if (cls.key_dest == key_menu)
+	if (cl_main.cls.key_dest == key_menu)
 	{	// blank screen and pause if menu is up
 		re.CinematicSetPalette(NULL);
-		cl.cinematicpalette_active = false;
+		cl_main.cl.cinematicpalette_active = false;
 		return true;
 	}
 
-	if (!cl.cinematicpalette_active)
+	if (!cl_main.cl.cinematicpalette_active)
 	{
-		re.CinematicSetPalette(cl.cinematicpalette);
-		cl.cinematicpalette_active = true;
+		re.CinematicSetPalette(cl_main.cl.cinematicpalette);
+		cl_main.cl.cinematicpalette_active = true;
 	}
 
 	if (!cin.pic)
@@ -572,9 +580,11 @@ qboolean SCR_DrawCinematic (void)
 SCR_PlayCinematic
 
 ==================
-*/
-void SCR_PlayCinematic (char *arg)
-{
+"""
+def SCR_PlayCinematic (arg): # char *
+
+	pass
+	"""
 	int		width, height;
 	byte	*palette;
 	char	name[MAX_OSPATH], *dot;
@@ -583,53 +593,53 @@ void SCR_PlayCinematic (char *arg)
 	// make sure CD isn't playing music
 	CDAudio_Stop();
 
-	cl.cinematicframe = 0;
+	cl_main.cl.cinematicframe = 0;
 	dot = strstr (arg, ".");
 	if (dot && !strcmp (dot, ".pcx"))
 	{	// static pcx image
 		Com_sprintf (name, sizeof(name), "pics/%s", arg);
 		SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height);
-		cl.cinematicframe = -1;
-		cl.cinematictime = 1;
+		cl_main.cl.cinematicframe = -1;
+		cl_main.cl.cinematictime = 1;
 		SCR_EndLoadingPlaque ();
-		cls.state = ca_active;
+		cl_main.cls.state = ca_active;
 		if (!cin.pic)
 		{
 			Com_Printf ("%s not found.\n", name);
-			cl.cinematictime = 0;
+			cl_main.cl.cinematictime = 0;
 		}
 		else
 		{
-			memcpy (cl.cinematicpalette, palette, sizeof(cl.cinematicpalette));
+			memcpy (cl_main.cl.cinematicpalette, palette, sizeof(cl_main.cl.cinematicpalette));
 			Z_Free (palette);
 		}
 		return;
 	}
 
 	Com_sprintf (name, sizeof(name), "video/%s", arg);
-	FS_FOpenFile (name, &cl.cinematic_file);
-	if (!cl.cinematic_file)
+	FS_FOpenFile (name, &cl_main.cl.cinematic_file);
+	if (!cl_main.cl.cinematic_file)
 	{
 //		Com_Error (ERR_DROP, "Cinematic %s not found.\n", name);
 		SCR_FinishCinematic ();
-		cl.cinematictime = 0;	// done
+		cl_main.cl.cinematictime = 0;	// done
 		return;
 	}
 
 	SCR_EndLoadingPlaque ();
 
-	cls.state = ca_active;
+	cl_main.cls.state = ca_active;
 
-	FS_Read (&width, 4, cl.cinematic_file);
-	FS_Read (&height, 4, cl.cinematic_file);
+	FS_Read (&width, 4, cl_main.cl.cinematic_file);
+	FS_Read (&height, 4, cl_main.cl.cinematic_file);
 	cin.width = LittleLong(width);
 	cin.height = LittleLong(height);
 
-	FS_Read (&cin.s_rate, 4, cl.cinematic_file);
+	FS_Read (&cin.s_rate, 4, cl_main.cl.cinematic_file);
 	cin.s_rate = LittleLong(cin.s_rate);
-	FS_Read (&cin.s_width, 4, cl.cinematic_file);
+	FS_Read (&cin.s_width, 4, cl_main.cl.cinematic_file);
 	cin.s_width = LittleLong(cin.s_width);
-	FS_Read (&cin.s_channels, 4, cl.cinematic_file);
+	FS_Read (&cin.s_channels, 4, cl_main.cl.cinematic_file);
 	cin.s_channels = LittleLong(cin.s_channels);
 
 	Huff1TableInit ();
@@ -644,7 +654,8 @@ void SCR_PlayCinematic (char *arg)
 		Cvar_SetValue ("s_khz", old_khz);
 	}
 
-	cl.cinematicframe = 0;
+	cl_main.cl.cinematicframe = 0;
 	cin.pic = SCR_ReadNextFrame ();
-	cl.cinematictime = Sys_Milliseconds ();
+	cl_main.cl.cinematictime = Sys_Milliseconds ();
 }
+"""

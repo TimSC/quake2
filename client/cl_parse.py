@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // cl_parse.c  -- parse a message received from the server
 
 #include "client.h"
@@ -294,18 +295,19 @@ void CL_ParseDownload (void)
 ==================
 CL_ParseServerData
 ==================
-*/
-void CL_ParseServerData (void)
-{
-	extern cvar_t	*fs_gamedirvar;
-	char	*str;
-	int		i;
+"""
+def CL_ParseServerData ():
+
+	#extern cvar_t	*fs_gamedirvar;
+	#char	*str;
+	#int		i;
 	
-	Com_DPrintf ("Serverdata packet received.\n");
-//
-// wipe the client_state_t struct
-//
-	CL_ClearState ();
+	common.Com_DPrintf ("Serverdata packet received.\n")
+	#
+	# wipe the client_state_t struct
+	#
+	"""
+	CL_ClearState ()
 	cls.state = ca_connected;
 
 // parse protocol version number
@@ -349,7 +351,7 @@ void CL_ParseServerData (void)
 		// need to prep refresh at next oportunity
 		cl.refresh_prepped = false;
 	}
-}
+
 
 /*
 ==================
@@ -653,159 +655,153 @@ void SHOWNET(char *s)
 =====================
 CL_ParseServerMessage
 =====================
-*/
-void CL_ParseServerMessage (void)
-{
-	int			cmd;
-	char		*s;
-	int			i;
+"""
+def CL_ParseServerMessage ():
 
-//
-// if recording demos, copy the message out
-//
-	if (cl_shownet->value == 1)
-		Com_Printf ("%i ",net_message.cursize);
-	else if (cl_shownet->value >= 2)
-		Com_Printf ("------------------\n");
+	#int			cmd;
+	#char		*s;
+	#int			i;
 
+	#
+	# if recording demos, copy the message out
+	#
+	if cl_shownet.value == 1:
+		common.Com_Printf ("{:d} ".format(net_message.cursize))
+	elif cl_shownet.value >= 2:
+		common.Com_Printf ("------------------\n")
 
-//
-// parse the message
-//
-	while (1)
-	{
-		if (net_message.readcount > net_message.cursize)
-		{
-			Com_Error (ERR_DROP,"CL_ParseServerMessage: Bad server message");
-			break;
-		}
-
-		cmd = MSG_ReadByte (&net_message);
-
-		if (cmd == -1)
-		{
-			SHOWNET("END OF MESSAGE");
-			break;
-		}
-
-		if (cl_shownet->value>=2)
-		{
-			if (!svc_strings[cmd])
-				Com_Printf ("%3i:BAD CMD %i\n", net_message.readcount-1,cmd);
-			else
-				SHOWNET(svc_strings[cmd]);
-		}
+	#
+	# parse the message
+	#
+	while 1:
 	
-	// other commands
-		switch (cmd)
-		{
-		default:
-			Com_Error (ERR_DROP,"CL_ParseServerMessage: Illegible server message\n");
-			break;
+		if net_message.readcount > net_message.cursize:
+		
+			common.Com_Error (ERR_DROP,"CL_ParseServerMessage: Bad server message")
+			break
+		
+
+		cmd = MSG_ReadByte (net_message)
+
+		if cmd == -1:
+		
+			SHOWNET("END OF MESSAGE")
+			break
+		
+		if cl_shownet.value>=2:
+		
+			if not svc_strings[cmd]:
+				common.Com_Printf ("{:3d}:BAD CMD {:d}\n".format(net_message.readcount-1,cmd))
+			else:
+				SHOWNET(svc_strings[cmd])
+		
+		# other commands
+		if cmd == qcommon.svc_ops_e.svc_nop:
+			##Com_Printf ("svc_nop\n");
+			pass
 			
-		case svc_nop:
-//			Com_Printf ("svc_nop\n");
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_disconnect:
+			common.Com_Error (ERR_DISCONNECT,"Server disconnected\n");
+
+
+		elif cmd == qcommon.svc_ops_e.svc_reconnect:
+			common.Com_Printf ("Server disconnected, reconnecting\n");
+			if cls.download:
+				#ZOID, close download
+				cls.download.close()
+				cls.download = None
 			
-		case svc_disconnect:
-			Com_Error (ERR_DISCONNECT,"Server disconnected\n");
-			break;
+			cls.state = ca_connecting
+			cls.connect_time = -99999	# CL_CheckForResend() will fire immediately
 
-		case svc_reconnect:
-			Com_Printf ("Server disconnected, reconnecting\n");
-			if (cls.download) {
-				//ZOID, close download
-				fclose (cls.download);
-				cls.download = NULL;
-			}
-			cls.state = ca_connecting;
-			cls.connect_time = -99999;	// CL_CheckForResend() will fire immediately
-			break;
 
-		case svc_print:
-			i = MSG_ReadByte (&net_message);
-			if (i == PRINT_CHAT)
-			{
-				S_StartLocalSound ("misc/talk.wav");
-				con.ormask = 128;
-			}
-			Com_Printf ("%s", MSG_ReadString (&net_message));
-			con.ormask = 0;
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_print:
+			i = MSG_ReadByte (net_message)
+			if i == PRINT_CHAT:
 			
-		case svc_centerprint:
-			SCR_CenterPrint (MSG_ReadString (&net_message));
-			break;
+				S_StartLocalSound ("misc/talk.wav")
+				con.ormask = 128
 			
-		case svc_stufftext:
-			s = MSG_ReadString (&net_message);
-			Com_DPrintf ("stufftext: %s\n", s);
-			Cbuf_AddText (s);
-			break;
+			common.Com_Printf (MSG_ReadString (&net_message))
+			con.ormask = 0
+
 			
-		case svc_serverdata:
-			Cbuf_Execute ();		// make sure any stuffed commands are done
-			CL_ParseServerData ();
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_centerprint:
+			SCR_CenterPrint (MSG_ReadString (&net_message))
+
 			
-		case svc_configstring:
-			CL_ParseConfigString ();
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_stufftext:
+			s = MSG_ReadString (net_message)
+			common.Com_DPrintf ("stufftext: {}\n".format(s))
+			cmd.Cbuf_AddText (s)
+
 			
-		case svc_sound:
-			CL_ParseStartSoundPacket();
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_serverdata:
+			Cbuf_Execute ()		# make sure any stuffed commands are done
+			CL_ParseServerData ()
+
 			
-		case svc_spawnbaseline:
-			CL_ParseBaseline ();
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_configstring:
+			CL_ParseConfigString ()
 
-		case svc_temp_entity:
-			CL_ParseTEnt ();
-			break;
+			
+		elif cmd == qcommon.svc_ops_e.svc_sound:
+			CL_ParseStartSoundPacket()
 
-		case svc_muzzleflash:
-			CL_ParseMuzzleFlash ();
-			break;
+			
+		elif cmd == qcommon.svc_ops_e.svc_spawnbaseline:
+			CL_ParseBaseline ()
 
-		case svc_muzzleflash2:
-			CL_ParseMuzzleFlash2 ();
-			break;
 
-		case svc_download:
-			CL_ParseDownload ();
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_temp_entity:
+			CL_ParseTEnt ()
 
-		case svc_frame:
-			CL_ParseFrame ();
-			break;
 
-		case svc_inventory:
-			CL_ParseInventory ();
-			break;
+		elif cmd == qcommon.svc_ops_e.svc_muzzleflash:
+			CL_ParseMuzzleFlash ()
 
-		case svc_layout:
-			s = MSG_ReadString (&net_message);
-			strncpy (cl.layout, s, sizeof(cl.layout)-1);
-			break;
 
-		case svc_playerinfo:
-		case svc_packetentities:
-		case svc_deltapacketentities:
-			Com_Error (ERR_DROP, "Out of place frame data");
-			break;
-		}
-	}
+		elif cmd == qcommon.svc_ops_e.svc_muzzleflash2:
+			CL_ParseMuzzleFlash2 ()
 
-	CL_AddNetgraph ();
 
-	//
-	// we don't know if it is ok to save a demo message until
-	// after we have parsed the frame
-	//
-	if (cls.demorecording && !cls.demowaiting)
-		CL_WriteDemoMessage ();
+		elif cmd == qcommon.svc_ops_e.svc_download:
+			CL_ParseDownload ()
 
-}
+
+		elif cmd == qcommon.svc_ops_e.svc_frame:
+			CL_ParseFrame ()
+
+
+		elif cmd == qcommon.svc_ops_e.svc_inventory:
+			CL_ParseInventory ()
+
+
+		elif cmd == qcommon.svc_ops_e.svc_layout:
+			s = MSG_ReadString (net_message)
+			cl.layout = s
+
+
+		elif cmd in [qcommon.svc_ops_e.svc_playerinfo, qcommon.svc_ops_e.svc_packetentities, qcommon.svc_ops_e.svc_deltapacketentities]:
+			common.Com_Error (ERR_DROP, "Out of place frame data");
+
+
+		else:
+			common.Com_Error (ERR_DROP,"CL_ParseServerMessage: Illegible server message\n");
+
+
+		
+	
+	
+	CL_AddNetgraph ()
+
+	#
+	# we don't know if it is ok to save a demo message until
+	# after we have parsed the frame
+	#
+	if cls.demorecording and not cls.demowaiting:
+		CL_WriteDemoMessage ()
+
+
 
 
