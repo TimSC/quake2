@@ -18,7 +18,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from linux import net_udp
+from qcommon import cvar
+from game import q_shared
+from linux import net_udp, q_shlinux
 """
 #include "qcommon.h"
 
@@ -75,11 +77,11 @@ such as during the connection stage while waiting for the client to load,
 then a packet only needs to be delivered if there is something in the
 unacknowledged reliable
 */
-
-cvar_t		*showpackets;
-cvar_t		*showdrop;
-cvar_t		*qport;
 """
+showpackets = None #cvar_t		*
+showdrop = None #cvar_t		*
+qport = None #cvar_t		*
+
 net_from = None #netadr_t
 net_message = None #sizebuf_t
 """
@@ -90,20 +92,22 @@ byte		net_message_buffer[MAX_MSGLEN];
 Netchan_Init
 
 ===============
-*/
-void Netchan_Init (void)
-{
-	int		port;
+"""
+def Netchan_Init ():
 
-	// pick a port value that should be nice and random
-	port = Sys_Milliseconds() & 0xffff;
+	global showpackets, showdrop, qport
 
-	showpackets = Cvar_Get ("showpackets", "0", 0);
-	showdrop = Cvar_Get ("showdrop", "0", 0);
-	qport = Cvar_Get ("qport", va("%i", port), CVAR_NOSET);
-}
+	#int		port;
 
-/*
+	# pick a port value that should be nice and random
+	port = q_shlinux.Sys_Milliseconds() & 0xffff
+
+	showpackets = cvar.Cvar_Get ("showpackets", "0", 0)
+	showdrop = cvar.Cvar_Get ("showdrop", "0", 0)
+	qport = cvar.Cvar_Get ("qport", str(port), q_shared.CVAR_NOSET)
+
+
+"""
 ===============
 Netchan_OutOfBand
 
@@ -213,6 +217,7 @@ A 0 length will still generate a packet and deal with the reliable messages.
 """
 def Netchan_Transmit (chan, data): #netchan_t *
 
+	assert isinstance(data, bytes)
 	pass
 	"""
 	sizebuf_t	send;
@@ -297,94 +302,92 @@ Netchan_Process
 called when the current net_message is from remote_address
 modifies net_message so that it points to the packet payload
 =================
-*/
-qboolean Netchan_Process (netchan_t *chan, sizebuf_t *msg)
-{
-	unsigned	sequence, sequence_ack;
-	unsigned	reliable_ack, reliable_message;
-	int			qport;
-
-// get sequence numbers		
-	MSG_BeginReading (msg);
-	sequence = MSG_ReadLong (msg);
-	sequence_ack = MSG_ReadLong (msg);
-
-	// read the qport if we are a server
-	if (chan->sock == NS_SERVER)
-		qport = MSG_ReadShort (msg);
-
-	reliable_message = sequence >> 31;
-	reliable_ack = sequence_ack >> 31;
-
-	sequence &= ~(1<<31);
-	sequence_ack &= ~(1<<31);	
-
-	if (showpackets->value)
-	{
-		if (reliable_message)
-			Com_Printf ("recv %4i : s=%i reliable=%i ack=%i rack=%i\n"
-				, msg->cursize
-				, sequence
-				, chan->incoming_reliable_sequence ^ 1
-				, sequence_ack
-				, reliable_ack);
-		else
-			Com_Printf ("recv %4i : s=%i ack=%i rack=%i\n"
-				, msg->cursize
-				, sequence
-				, sequence_ack
-				, reliable_ack);
-	}
-
-//
-// discard stale or duplicated packets
-//
-	if (sequence <= chan->incoming_sequence)
-	{
-		if (showdrop->value)
-			Com_Printf ("%s:Out of order packet %i at %i\n"
-				, NET_AdrToString (chan->remote_address)
-				,  sequence
-				, chan->incoming_sequence);
-		return false;
-	}
-
-//
-// dropped packets don't keep the message from being used
-//
-	chan->dropped = sequence - (chan->incoming_sequence+1);
-	if (chan->dropped > 0)
-	{
-		if (showdrop->value)
-			Com_Printf ("%s:Dropped %i packets at %i\n"
-			, NET_AdrToString (chan->remote_address)
-			, chan->dropped
-			, sequence);
-	}
-
-//
-// if the current outgoing reliable message has been acknowledged
-// clear the buffer to make way for the next
-//
-	if (reliable_ack == chan->reliable_sequence)
-		chan->reliable_length = 0;	// it has been received
-	
-//
-// if this message contains a reliable message, bump incoming_reliable_sequence 
-//
-	chan->incoming_sequence = sequence;
-	chan->incoming_acknowledged = sequence_ack;
-	chan->incoming_reliable_acknowledged = reliable_ack;
-	if (reliable_message)
-	{
-		chan->incoming_reliable_sequence ^= 1;
-	}
-
-//
-// the message can now be read from the current message pointer
-//
-	chan->last_received = curtime;
-
-	return true;
-}
 """
+def Netchan_Process (chan, msg): #netchan_t *, sizebuf_t * (returns qboolean)
+
+	#unsigned	sequence, sequence_ack;
+	#unsigned	reliable_ack, reliable_message;
+	#int			qport;
+
+	# get sequence numbers
+	#MSG_BeginReading (msg)
+	sequence, sequence_ack = struct.unpack(">ll", msg[:8])
+
+	# read the qport if we are a server
+	if chan.sock == qcommon.netsrc_t.NS_SERVER:
+		qport = struct.unpack(">H", msg[8:10])[0]
+
+	reliable_message = sequence >> 31
+	reliable_ack = sequence_ack >> 31
+
+	sequence &= ~(1<<31)
+	sequence_ack &= ~(1<<31)
+
+	if showpackets.value:
+	
+		if reliable_message:
+			common.Com_Printf ("recv {:4d} : s={:d} reliable={:d} ack={:d} rack={:d}\n".format(
+				len(msg)
+				, sequence
+				, chan.incoming_reliable_sequence ^ 1
+				, sequence_ack
+				, reliable_ack))
+		else:
+			common.Com_Printf ("recv {:4d} : s={:d} ack={:d} rack={:d}\n".format(
+				len(msg)
+				, sequence
+				, sequence_ack
+				, reliable_ack))
+	
+
+	#
+	# discard stale or duplicated packets
+	#
+	if sequence <= chan.incoming_sequence:
+	
+		if showdrop.value:
+			common.Com_Printf ("{}:Out of order packet {:d} at {:d}\n".format(
+				net_udp.NET_AdrToString (chan.remote_address)
+				,  sequence
+				, chan.incoming_sequence))
+		return False
+	
+
+	#
+	# dropped packets don't keep the message from being used
+	#
+	chan.dropped = sequence - (chan.incoming_sequence+1)
+	if chan.dropped > 0:
+	
+		if showdrop.value:
+			common.Com_Printf ("{}:Dropped {:d} packets at {:d}\n".format(
+			net_udp.NET_AdrToString (chan.remote_address)
+			, chan.dropped
+			, sequence))
+	
+
+	#
+	# if the current outgoing reliable message has been acknowledged
+	# clear the buffer to make way for the next
+	#
+	if reliable_ack == chan.reliable_sequence:
+		chan.reliable_length = 0	# it has been received
+	
+	#
+	# if this message contains a reliable message, bump incoming_reliable_sequence 
+	#
+	chan.incoming_sequence = sequence
+	chan.incoming_acknowledged = sequence_ack
+	chan.incoming_reliable_acknowledged = reliable_ack
+	if reliable_message:
+	
+		chan.incoming_reliable_sequence ^= 1
+	
+
+	#
+	# the message can now be read from the current message pointer
+	#
+	chan.last_received = curtime
+
+	return True
+

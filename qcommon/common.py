@@ -18,8 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import sys
-from qcommon import cvar, cmd, files, qcommon
-from linux import sys_linux, q_shlinux
+from qcommon import cvar, cmd, files, qcommon, net_chan
+from linux import sys_linux, q_shlinux, net_udp
 from game import q_shared
 from server import sv_main
 from client import cl_main, cl_scrn, keys, console
@@ -1486,11 +1486,11 @@ def Qcommon_Init (): #int argc, char **argv
 
 	sys_linux.Sys_Init ()
 
-	#NET_Init ();
-	#Netchan_Init ();
+	net_udp.NET_Init ()
+	net_chan.Netchan_Init ()
 
-	sv_main.SV_Init ();
-	cl_main.CL_Init ();
+	sv_main.SV_Init ()
+	cl_main.CL_Init ()
 
 	# add + commands from command line
 	if not cmd.Cbuf_AddLateCommands ():

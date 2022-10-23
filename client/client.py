@@ -251,10 +251,10 @@ class client_static_t(object):
 		# connection information
 		char		servername[MAX_OSPATH];	// name of server from original connect
 		float		connect_time;		// for connection retransmits
-
-		int			quakePort;			// a 16 bit value that allows quake servers
-										// to work around address translating routers
 		"""
+		self.quakePort = 0 # int, a 16 bit value that allows quake servers
+										# to work around address translating routers
+
 		self.netchan = qcommon.netchan_t()
 		self.serverProtocol = 0 #int, in case we are doing some kind of version hack
 

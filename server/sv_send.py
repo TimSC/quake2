@@ -237,9 +237,9 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 			"""
 
 		if reliable:
-			client.netchan.message = sv_init.sv.multicast.data
+			client.netchan.message.data = sv_init.sv.multicast.data
 		else:
-			client.datagram = sv_init.sv.multicast.data
+			client.datagram.data = sv_init.sv.multicast.data
 	
 	sv_init.sv.multicast = None
 
@@ -539,7 +539,7 @@ def SV_SendClientMessages ():
 		# drop the client
 		if c.netchan.message.overflowed:
 		
-			c.netchan.message = None
+			c.netchan.message.data = None
 			c.datagram = None
 			SV_BroadcastPrintf (PRINT_HIGH, "{} overflowed\n".format(c.name))
 			SV_DropClient (c)
@@ -561,7 +561,7 @@ def SV_SendClientMessages ():
 		else:
 		
 			# just update reliableif needed
-			if c.netchan.message is not None or curtime - c.netchan.last_sent > 1000:
+			if c.netchan.message.data is not None or curtime - c.netchan.last_sent > 1000:
 				net_chan.Netchan_Transmit (c.netchan, 0, None)
 		
 	

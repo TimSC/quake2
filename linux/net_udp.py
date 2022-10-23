@@ -133,10 +133,11 @@ qboolean	NET_CompareBaseAdr (netadr_t a, netadr_t b)
 """
 def NET_AdrToString (a): #netadr_t (returns char	*)
 
-	return str(a)
-	#static	char	s[64];
-	#Com_sprintf (s, sizeof(s), "%i.%i.%i.%i:%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3], ntohs(a.port));
-	#return s;
+	if a.ip is None or len(a.ip) < 4:
+		return "0.0.0.0:{}".format(a.port)
+
+	return "{:d}.{:d}.{:d}.{:d}:{}".format(a.ip[0], a.ip[1], a.ip[2], a.ip[3], a.port)
+
 
 """
 char	*NET_BaseAdrToString (netadr_t a)
@@ -441,13 +442,13 @@ def NET_Config (multiplayer): #qboolean
 ====================
 NET_Init
 ====================
-*/
-void NET_Init (void)
-{
-}
+"""
+def NET_Init ():
+
+	pass
 
 
-/*
+"""
 ====================
 NET_Socket
 ====================

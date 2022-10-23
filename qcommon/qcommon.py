@@ -232,21 +232,21 @@ class svc_ops_e(Enum):
 	svc_deltapacketentities = 19		# [...]
 	svc_frame = 20
 
+
+#==============================================
+
+#
+# client to server
+#
+class clc_ops_e(Enum):
+
+	clc_bad = 0
+	clc_nop = 1 		
+	clc_move = 2				# [[usercmd_t]
+	clc_userinfo = 3			# [[userinfo string]
+	clc_stringcmd = 4			# [string] message
+
 """
-//==============================================
-
-//
-// client to server
-//
-enum clc_ops_e
-{
-	clc_bad,
-	clc_nop, 		
-	clc_move,				// [[usercmd_t]
-	clc_userinfo,			// [[userinfo string]
-	clc_stringcmd			// [string] message
-};
-
 //==============================================
 
 // plyer_state_t communication

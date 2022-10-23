@@ -235,7 +235,7 @@ void CL_Record_f (void)
 ===================
 Cmd_ForwardToServer
 
-adds the current command line as a clc_stringcmd to the client message.
+adds the current command line as a qcommon.clc_ops_e.clc_stringcmd to the client message.
 things like godmode, noclip, etc, are commands directed to the server,
 so when they are typed in at the console, they will need to be forwarded.
 ===================
@@ -245,13 +245,13 @@ void Cmd_ForwardToServer (void)
 	char	*cmd;
 
 	cmd = Cmd_Argv(0);
-	if (cls.state <= ca_connected || *cmd == '-' || *cmd == '+')
+	if (cls.state <= client.connstate_t.ca_connected || *cmd == '-' || *cmd == '+')
 	{
 		Com_Printf ("Unknown command \"%s\"\n", cmd);
 		return;
 	}
 
-	MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
+	MSG_WriteByte (&cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd);
 	SZ_Print (&cls.netchan.message, cmd);
 	if (Cmd_Argc() > 1)
 	{
@@ -306,7 +306,7 @@ def CL_ForwardToServer_f ():
 	print ("CL_ForwardToServer_f")
 
 	"""
-	if (cls.state != ca_connected && cls.state != ca_active)
+	if (cls.state != client.connstate_t.ca_connected && cls.state != ca_active)
 	{
 		Com_Printf ("Can't \"%s\", not connected\n", Cmd_Argv(0));
 		return;
@@ -315,7 +315,7 @@ def CL_ForwardToServer_f ():
 	// don't forward the first argument
 	if (Cmd_Argc() > 1)
 	{
-		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
+		MSG_WriteByte (&cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd);
 		SZ_Print (&cls.netchan.message, Cmd_Args());
 	}
 }
@@ -527,7 +527,7 @@ void CL_Rcon_f (void)
 		strcat (message, " ");
 	}
 
-	if (cls.state >= ca_connected)
+	if (cls.state >= client.connstate_t.ca_connected)
 		to = cls.netchan.remote_address;
 	else
 	{
@@ -610,7 +610,7 @@ def CL_Disconnect ():
 		CL_Stop_f ();
 
 	// send a disconnect message to the server
-	final[0] = clc_stringcmd;
+	final[0] = qcommon.clc_ops_e.clc_stringcmd;
 	strcpy ((char *)final+1, "disconnect");
 	Netchan_Transmit (&cls.netchan, strlen(final), final);
 	Netchan_Transmit (&cls.netchan, strlen(final), final);
@@ -704,7 +704,7 @@ def CL_Changing_f ():
 		return;
 
 	SCR_BeginLoadingPlaque ();
-	cls.state = ca_connected;	// not active anymore, but not disconnected
+	cls.state = client.connstate_t.ca_connected;	// not active anymore, but not disconnected
 	Com_Printf ("\nChanging map...\n");
 }
 
@@ -726,16 +726,16 @@ def CL_Reconnect_f ():
 		return;
 
 	S_StopAllSounds ();
-	if (cls.state == ca_connected) {
+	if (cls.state == client.connstate_t.ca_connected) {
 		Com_Printf ("reconnecting...\n");
-		cls.state = ca_connected;
-		MSG_WriteChar (&cls.netchan.message, clc_stringcmd);
+		cls.state = client.connstate_t.ca_connected;
+		MSG_WriteChar (&cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd);
 		MSG_WriteString (&cls.netchan.message, "new");		
 		return;
 	}
 
 	if (*cls.servername) {
-		if (cls.state >= ca_connected) {
+		if (cls.state >= client.connstate_t.ca_connected) {
 			CL_Disconnect();
 			cls.connect_time = cls.realtime - 1500;
 		} else
@@ -849,46 +849,47 @@ CL_ConnectionlessPacket
 
 Responses to broadcasts, etc
 =================
-*/
-void CL_ConnectionlessPacket (void)
-{
-	char	*s;
-	char	*c;
+"""
+def CL_ConnectionlessPacket ():
+
+	#char	*s;
+	#char	*c;
 	
-	MSG_BeginReading (&net_message);
-	MSG_ReadLong (&net_message);	// skip the -1
+	#MSG_BeginReading (&net_message);
+	#MSG_ReadLong (&net_message);	// skip the -1
 
-	s = MSG_ReadStringLine (&net_message);
+	s = net_chan.net_message[4:].decode("ascii")
 
-	Cmd_TokenizeString (s, false);
+	cmd.Cmd_TokenizeString (s, False)
 
-	c = Cmd_Argv(0);
+	c = cmd.Cmd_Argv(0)
 
-	Com_Printf ("%s: %s\n", NET_AdrToString (net_chan.net_from), c);
+	common.Com_Printf ("{}: {}\n".format(net_udp.NET_AdrToString (net_chan.net_from), c))
 
-	// server connection
-	if (!strcmp(c, "client_connect"))
-	{
-		if (cls.state == ca_connected)
-		{
-			Com_Printf ("Dup connect received.  Ignored.\n");
-			return;
-		}
-		Netchan_Setup (qcommon.netsrc_t.NS_CLIENT, &cls.netchan, net_chan.net_from, cls.quakePort);
-		MSG_WriteChar (&cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cls.netchan.message, "new");	
-		cls.state = ca_connected;
-		return;
-	}
+	# server connection
+	if c == "client_connect":
+	
+		if cls.state == client.connstate_t.ca_connected:
+		
+			common.Com_Printf ("Dup connect received.  Ignored.\n")
+			return
+		
+		net_chan.Netchan_Setup (qcommon.netsrc_t.NS_CLIENT, cls.netchan, net_chan.net_from, cls.quakePort)
+		cls.netchan.message.data = struct.pack("B", qcommon.clc_ops_e.clc_stringcmd.value)
+		cls.netchan.message.data += b"new"
+		cls.state = client.connstate_t.ca_connected
+		return
+	
 
-	// server responding to a status broadcast
+	"""
+	# server responding to a status broadcast
 	if (!strcmp(c, "info"))
 	{
 		CL_ParseStatusMessage ();
 		return;
 	}
 
-	// remote command from gui front end
+	# remote command from gui front end
 	if (!strcmp(c, "cmd"))
 	{
 		if (!NET_IsLocalAddress(net_chan.net_from))
@@ -902,7 +903,7 @@ void CL_ConnectionlessPacket (void)
 		Cbuf_AddText ("\n");
 		return;
 	}
-	// print command from somewhere
+	# print command from somewhere
 	if (!strcmp(c, "print"))
 	{
 		s = MSG_ReadString (&net_message);
@@ -910,14 +911,14 @@ void CL_ConnectionlessPacket (void)
 		return;
 	}
 
-	// ping from somewhere
+	# ping from somewhere
 	if (!strcmp(c, "ping"))
 	{
 		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "ack");
 		return;
 	}
 
-	// challenge from the server we are connecting to
+	# challenge from the server we are connecting to
 	if (!strcmp(c, "challenge"))
 	{
 		cls.challenge = atoi(Cmd_Argv(1));
@@ -925,18 +926,18 @@ void CL_ConnectionlessPacket (void)
 		return;
 	}
 
-	// echo request from server
+	# echo request from server
 	if (!strcmp(c, "echo"))
 	{
 		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "%s", Cmd_Argv(1) );
 		return;
 	}
 
-	Com_Printf ("Unknown command.\n");
-}
+	common.Com_Printf ("Unknown command.\n")
 
+	"""
 
-/*
+"""
 =================
 CL_DumpPackets
 
@@ -959,50 +960,50 @@ CL_ReadPackets
 """
 def CL_ReadPackets ():
 	
-	rx, net_chan.net_from, net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+	rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
 	while rx:
-	
-		print ("CL_ReadPackets", net_message)
-		##Com_Printf ("packet\n");
-		#
-		# remote command packet
-		#
-		"""
-		if (*(int *)net_message.data == -1)
-		{
-			CL_ConnectionlessPacket ();
-			continue;
-		}
+		try:
+			##Com_Printf ("packet\n");
+			#
+			# remote command packet
+			#
 
-		if (cls.state == client.connstate_t.ca_disconnected || cls.state == client.connstate_t.ca_connecting)
-			continue;		// dump it if not connected
+			header = struct.unpack(">l", net_chan.net_message[:4])[0]
+			if header == -1:
+				CL_ConnectionlessPacket ()
+				continue
+			
 
-		if (net_message.cursize < 8)
-		{
-			Com_Printf ("%s: Runt packet\n",NET_AdrToString(net_chan.net_from));
-			continue;
-		}
+			if cls.state == client.connstate_t.ca_disconnected or cls.state == client.connstate_t.ca_connecting:
+				continue		# dump it if not connected
 
-		#
-		# packet from server
-		#
-		if (!NET_CompareAdr (net_chan.net_from, cls.netchan.remote_address))
-		{
-			Com_DPrintf ("%s:sequenced packet without connection\n"
-				,NET_AdrToString(net_chan.net_from));
-			continue;
-		}
-		if (!Netchan_Process(&cls.netchan, &net_message))
-			continue;		// wasn't accepted for some reason
-		CL_ParseServerMessage ();
-		"""
-		rx, net_chan.net_from, net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+			if len(net_chan.net_message) < 8:
+			
+				common.Com_Printf ("{}: Runt packet\n".format(net_udp.net_udp.NET_AdrToString(net_chan.net_from)))
+				continue
+			
+
+			#
+			# packet from server
+			#
+			if not net_udp.NET_CompareAdr (net_chan.net_from, cls.netchan.remote_address):
+			
+				common.Com_DPrintf ("{}:sequenced packet without connection\n".format(
+					net_udp.NET_AdrToString(net_chan.net_from)))
+				continue
+			
+			if not net_chan.Netchan_Process(cls.netchan, net_chan.net_message):
+				continue		# wasn't accepted for some reason
+			cl_parse.CL_ParseServerMessage ()
+
+		finally:
+			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
 	
 	"""
 	//
 	// check timeout
 	//
-	if (cls.state >= ca_connected
+	if (cls.state >= client.connstate_t.ca_connected
 	 && cls.realtime - cls.netchan.last_received > cl_timeout->value*1000)
 	{
 		if (++cl.timeoutcount > 5)	// timeoutcount saves debugger
@@ -1015,7 +1016,7 @@ def CL_ReadPackets ():
 	else
 		cl.timeoutcount = 0;
 	
-}
+
 
 
 //=============================================================================
@@ -1098,7 +1099,7 @@ void CL_RequestNextDownload (void)
 	char fn[MAX_OSPATH];
 	dmdl_t *pheader;
 
-	if (cls.state != ca_connected)
+	if (cls.state != client.connstate_t.ca_connected)
 		return;
 
 	if (!allow_download->value && precache_check < ENV_CNT)
@@ -1342,7 +1343,7 @@ void CL_RequestNextDownload (void)
 	CL_RegisterSounds ();
 	CL_PrepRefresh ();
 
-	MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
+	MSG_WriteByte (&cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd);
 	MSG_WriteString (&cls.netchan.message, va("begin %i\n", precache_spawncount) );
 }
 
@@ -1681,7 +1682,7 @@ def CL_Frame (msec): #int
 	"""
 	if (!cl_timedemo->value)
 	{
-		if (cls.state == ca_connected && extratime < 100)
+		if (cls.state == client.connstate_t.ca_connected && extratime < 100)
 			return;			// don't flood packets out while connecting
 		if (extratime < 1000/cl_maxfps->value)
 			return;			// framerate is too high
