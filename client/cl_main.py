@@ -962,7 +962,7 @@ def CL_ReadPackets ():
 	rx, net_chan.net_from, net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
 	while rx:
 	
-		print (net_message)
+		print ("CL_ReadPackets", net_message)
 		##Com_Printf ("packet\n");
 		#
 		# remote command packet

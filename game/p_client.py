@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 #include "g_local.h"
 #include "m_player.h"
 
@@ -1301,9 +1302,11 @@ ClientBegin
 called when a client has finished connecting, and is ready
 to be placed into the game.  This will happen every level load.
 ============
-*/
-void ClientBegin (edict_t *ent)
-{
+"""
+def ClientBegin (ent): # edict_t *
+	
+	pass
+	"""
 	int		i;
 
 	ent->client = game.clients + (ent - g_edicts - 1);
@@ -1367,9 +1370,11 @@ called whenever the player updates a userinfo variable.
 The game can override any of the settings in place
 (forcing skins or names, etc) before copying it off.
 ============
-*/
-void ClientUserinfoChanged (edict_t *ent, char *userinfo)
-{
+"""
+def ClientUserinfoChanged (ent, userinfo): # edict_t *, char *
+
+	pass
+	"""
 	char	*s;
 	int		playernum;
 
@@ -1436,9 +1441,11 @@ and eventually get to ClientBegin()
 Changing levels will NOT cause this to be called again, but
 loadgames will.
 ============
-*/
-qboolean ClientConnect (edict_t *ent, char *userinfo)
-{
+"""
+def ClientConnect (ent, userinfo): #edict_t *, char * (returns qboolean)
+
+	return True
+	"""
 	char	*value;
 
 	// check to see if they are on the banned IP list
@@ -1510,9 +1517,11 @@ ClientDisconnect
 Called when a player drops from the server.
 Will not be called between levels.
 ============
-*/
-void ClientDisconnect (edict_t *ent)
-{
+"""
+def ClientDisconnect (ent): # edict_t *
+
+	pass
+	"""
 	int		playernum;
 
 	if (!ent->client)
@@ -1576,9 +1585,11 @@ ClientThink
 This will be called once for each client frame, which will
 usually be a couple times for each server frame.
 ==============
-*/
-void ClientThink (edict_t *ent, usercmd_t *ucmd)
-{
+"""
+def ClientThink (ent, ucmd): #edict_t *, usercmd_t *
+	pass
+
+	"""
 	gclient_t	*client;
 	edict_t	*other;
 	int		i, j;
@@ -1813,3 +1824,4 @@ void ClientBeginServerFrame (edict_t *ent)
 
 	client->latched_buttons = 0;
 }
+"""

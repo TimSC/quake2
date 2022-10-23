@@ -119,7 +119,7 @@ void SV_BroadcastPrintf (int level, char *fmt, ...)
 	{
 		if (level < cl->messagelevel)
 			continue;
-		if (cl->state != cs_spawned)
+		if (cl->state != sv_init.client_state_t.cs_spawned)
 			continue;
 		MSG_WriteByte (&cl->netchan.message, svc_print);
 		MSG_WriteByte (&cl->netchan.message, level);
@@ -218,9 +218,9 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 	# send the data to all relevent clients
 	for client in sv_init.svs.clients:
 	
-		if client.state == cs_free or client.state == cs_zombie:
+		if client.state == sv_init.client_state_t.cs_free or client.state == sv_init.client_state_t.cs_zombie:
 			continue
-		if client.state != cs_spawned and not reliable:
+		if client.state != sv_init.client_state_t.cs_spawned and not reliable:
 			continue
 
 		if mask is not None:
@@ -550,7 +550,7 @@ def SV_SendClientMessages ():
 
 			net_chan.Netchan_Transmit (c.netchan, msgbuf)
 
-		elif c.state == cs_spawned:
+		elif c.state == sv_init.client_state_t.cs_spawned:
 		
 			# don't overrun bandwidth
 			if SV_RateDrop (c):

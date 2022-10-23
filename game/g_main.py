@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,14 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+from game import game, g_save, p_client
+"""
 
 #include "g_local.h"
 
 game_locals_t	game;
 level_locals_t	level;
-game_import_t	gi;
-game_export_t	globals;
+"""
+gi = game.game_import_t()
+glob = game.game_export_t()
+"""
 spawn_temp_t	st;
 
 int	sm_meat_index;
@@ -107,37 +111,42 @@ GetGameAPI
 Returns a pointer to the structure with all entry points
 and global variables
 =================
-*/
-game_export_t *GetGameAPI (game_import_t *import)
-{
-	gi = *import;
+"""
+def GetGameAPI (gimport): #game_import_t * (returns game_export_t *)
 
-	globals.apiversion = GAME_API_VERSION;
-	globals.Init = InitGame;
-	globals.Shutdown = ShutdownGame;
-	globals.SpawnEntities = SpawnEntities;
+	global gi, glob
 
-	globals.WriteGame = WriteGame;
-	globals.ReadGame = ReadGame;
-	globals.WriteLevel = WriteLevel;
-	globals.ReadLevel = ReadLevel;
+	gi = gimport
 
-	globals.ClientThink = ClientThink;
-	globals.ClientConnect = ClientConnect;
-	globals.ClientUserinfoChanged = ClientUserinfoChanged;
-	globals.ClientDisconnect = ClientDisconnect;
-	globals.ClientBegin = ClientBegin;
-	globals.ClientCommand = ClientCommand;
+	glob.apiversion = game.GAME_API_VERSION
+	
+	glob.Init = g_save.InitGame
+	"""
+	glob.Shutdown = ShutdownGame
+	glob.SpawnEntities = SpawnEntities
 
-	globals.RunFrame = G_RunFrame;
+	glob.WriteGame = WriteGame
+	glob.ReadGame = ReadGame
+	glob.WriteLevel = WriteLevel
+	glob.ReadLevel = ReadLevel
+	"""
+	glob.ClientThink = p_client.ClientThink
+	glob.ClientConnect = p_client.ClientConnect
+	glob.ClientUserinfoChanged = p_client.ClientUserinfoChanged
+	glob.ClientDisconnect = p_client.ClientDisconnect
+	glob.ClientBegin = p_client.ClientBegin
+	"""
+	glob.ClientCommand = ClientCommand
 
-	globals.ServerCommand = ServerCommand;
+	glob.RunFrame = G_RunFrame
 
-	globals.edict_size = sizeof(edict_t);
+	glob.ServerCommand = ServerCommand
+	"""
+	#glob.edict_size = sizeof(edict_t)
 
-	return &globals;
-}
+	return glob
 
+"""
 #ifndef GAME_HARD_LINKED
 // this is only here so the functions in q_shared.c and q_shwin.c can link
 void Sys_Error (char *error, ...)
@@ -439,4 +448,4 @@ void G_RunFrame (void)
 	// build the playerstate_t structures for all players
 	ClientEndServerFrames ();
 }
-
+"""

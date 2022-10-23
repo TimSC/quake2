@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+"""
 #include "g_local.h"
 
 #define Function(f) {#f, f}
@@ -148,9 +148,11 @@ This will be called when the dll is first loaded, which
 only happens when a new game is started or a save game
 is loaded.
 ============
-*/
-void InitGame (void)
-{
+"""
+def InitGame ():
+
+	pass
+	"""
 	gi.dprintf ("==== InitGame ====\n");
 
 	gun_x = gi.cvar ("gun_x", "0", 0);
@@ -768,3 +770,4 @@ void ReadLevel (char *filename)
 				ent->nextthink = level.time + ent->delay;
 	}
 }
+"""

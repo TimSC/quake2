@@ -128,7 +128,9 @@ class client_t(object):
 
 		// The datagram is written to by sound calls, prints, temp ents, etc.
 		// It can be harmlessly overflowed.
-		sizebuf_t		datagram;
+		"""
+		self.datagram = qcommon.sizebuf_t()
+		"""
 		byte			datagram_buf[MAX_MSGLEN];
 
 		client_frame_t	frames[UPDATE_BACKUP];	// updates can be delta'd from here

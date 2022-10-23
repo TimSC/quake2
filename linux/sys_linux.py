@@ -23,6 +23,7 @@ import pygame
 from qcommon import common, cvar
 from client import cl_main
 from linux import q_shlinux
+from game import g_main
 """
 #include <unistd.h>
 #include <signal.h>
@@ -228,9 +229,10 @@ Sys_GetGameAPI
 
 Loads the game dll
 =================
-*/
-void *Sys_GetGameAPI (void *parms)
-{
+"""
+def Sys_GetGameAPI (parms): # void * (returns void *)
+
+	"""
 	void	*(*GetGameAPI) (void *);
 
 	char	name[MAX_OSPATH];
@@ -276,10 +278,10 @@ void *Sys_GetGameAPI (void *parms)
 		Sys_UnloadGame ();		
 		return NULL;
 	}
+	"""
+	return g_main.GetGameAPI (parms)
 
-	return GetGameAPI (parms);
-}
-
+"""
 /*****************************************************************************/
 
 void Sys_AppActivate (void)

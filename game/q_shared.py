@@ -2423,9 +2423,16 @@ Info_ValueForKey
 Searches the string for the given
 key and returns the associated value, or an empty string.
 ===============
-*/
-char *Info_ValueForKey (char *s, char *key)
-{
+"""
+def Info_ValueForKey (s, key): #char *, char * (returns char *)
+
+	ssplit = (s.split("\\"))
+	data = dict(zip(ssplit[1::2], ssplit[2::2]))
+	if key in data:
+		return data[key]
+
+	return None
+	"""
 	char	pkey[512];
 	static	char value[2][512];	// use two buffers so compares
 								// work without stomping on each other

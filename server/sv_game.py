@@ -17,13 +17,15 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from game import game
+from linux import sys_linux
 """
 // sv_game.c -- interface to the game dll
 
 #include "server.h"
-
-game_export_t	*ge;
-
+"""
+ge = None #game_export_t	*
+"""
 
 /*
 ===============
@@ -303,16 +305,18 @@ SV_ShutdownGameProgs
 Called when either the entire server is being killed, or
 it is changing to a different game directory.
 ===============
-*/
-void SV_ShutdownGameProgs (void)
-{
-	if (!ge)
-		return;
-	ge->Shutdown ();
-	Sys_UnloadGame ();
-	ge = NULL;
-}
+"""
+def SV_ShutdownGameProgs ():
 
+	global ge
+
+	if ge is None:
+		return
+	ge.Shutdown ()
+	Sys_UnloadGame ()
+	ge = None
+
+"""
 /*
 ===============
 SV_InitGameProgs
@@ -323,78 +327,77 @@ Init the game subsystem for a new map
 void SCR_DebugGraph (float value, int color);
 """
 def SV_InitGameProgs ():
-	pass
+
+	global ge
+
+	gimport = game.game_import_t()
+
+	# unload anything we have now
+	if ge is not None:
+		SV_ShutdownGameProgs ()
+	"""
+	// load a new game dll
+	gimport.multicast = SV_Multicast;
+	gimport.unicast = PF_Unicast;
+	gimport.bprintf = SV_BroadcastPrintf;
+	gimport.dprintf = PF_dprintf;
+	gimport.cprintf = PF_cprintf;
+	gimport.centerprintf = PF_centerprintf;
+	gimport.error = PF_error;
+
+	gimport.linkentity = SV_LinkEdict;
+	gimport.unlinkentity = SV_UnlinkEdict;
+	gimport.BoxEdicts = SV_AreaEdicts;
+	gimport.trace = SV_Trace;
+	gimport.pointcontents = SV_PointContents;
+	gimport.setmodel = PF_setmodel;
+	gimport.inPVS = PF_inPVS;
+	gimport.inPHS = PF_inPHS;
+	gimport.Pmove = Pmove;
+
+	gimport.modelindex = SV_ModelIndex;
+	gimport.soundindex = SV_SoundIndex;
+	gimport.imageindex = SV_ImageIndex;
+
+	gimport.configstring = PF_Configstring;
+	gimport.sound = PF_StartSound;
+	gimport.positioned_sound = SV_StartSound;
+
+	gimport.WriteChar = PF_WriteChar;
+	gimport.WriteByte = PF_WriteByte;
+	gimport.WriteShort = PF_WriteShort;
+	gimport.WriteLong = PF_WriteLong;
+	gimport.WriteFloat = PF_WriteFloat;
+	gimport.WriteString = PF_WriteString;
+	gimport.WritePosition = PF_WritePos;
+	gimport.WriteDir = PF_WriteDir;
+	gimport.WriteAngle = PF_WriteAngle;
+
+	gimport.TagMalloc = Z_TagMalloc;
+	gimport.TagFree = Z_Free;
+	gimport.FreeTags = Z_FreeTags;
+
+	gimport.cvar = Cvar_Get;
+	gimport.cvar_set = Cvar_Set;
+	gimport.cvar_forceset = Cvar_ForceSet;
+
+	gimport.argc = Cmd_Argc;
+	gimport.argv = Cmd_Argv;
+	gimport.args = Cmd_Args;
+	gimport.AddCommandString = Cbuf_AddText;
+
+	gimport.DebugGraph = SCR_DebugGraph;
+	gimport.SetAreaPortalState = CM_SetAreaPortalState;
+	gimport.AreasConnected = CM_AreasConnected;
+	"""
+	ge = sys_linux.Sys_GetGameAPI (gimport)
 
 	"""
-	game_import_t	import;
-
-	// unload anything we have now
-	if (ge)
-		SV_ShutdownGameProgs ();
-
-
-	// load a new game dll
-	import.multicast = SV_Multicast;
-	import.unicast = PF_Unicast;
-	import.bprintf = SV_BroadcastPrintf;
-	import.dprintf = PF_dprintf;
-	import.cprintf = PF_cprintf;
-	import.centerprintf = PF_centerprintf;
-	import.error = PF_error;
-
-	import.linkentity = SV_LinkEdict;
-	import.unlinkentity = SV_UnlinkEdict;
-	import.BoxEdicts = SV_AreaEdicts;
-	import.trace = SV_Trace;
-	import.pointcontents = SV_PointContents;
-	import.setmodel = PF_setmodel;
-	import.inPVS = PF_inPVS;
-	import.inPHS = PF_inPHS;
-	import.Pmove = Pmove;
-
-	import.modelindex = SV_ModelIndex;
-	import.soundindex = SV_SoundIndex;
-	import.imageindex = SV_ImageIndex;
-
-	import.configstring = PF_Configstring;
-	import.sound = PF_StartSound;
-	import.positioned_sound = SV_StartSound;
-
-	import.WriteChar = PF_WriteChar;
-	import.WriteByte = PF_WriteByte;
-	import.WriteShort = PF_WriteShort;
-	import.WriteLong = PF_WriteLong;
-	import.WriteFloat = PF_WriteFloat;
-	import.WriteString = PF_WriteString;
-	import.WritePosition = PF_WritePos;
-	import.WriteDir = PF_WriteDir;
-	import.WriteAngle = PF_WriteAngle;
-
-	import.TagMalloc = Z_TagMalloc;
-	import.TagFree = Z_Free;
-	import.FreeTags = Z_FreeTags;
-
-	import.cvar = Cvar_Get;
-	import.cvar_set = Cvar_Set;
-	import.cvar_forceset = Cvar_ForceSet;
-
-	import.argc = Cmd_Argc;
-	import.argv = Cmd_Argv;
-	import.args = Cmd_Args;
-	import.AddCommandString = Cbuf_AddText;
-
-	import.DebugGraph = SCR_DebugGraph;
-	import.SetAreaPortalState = CM_SetAreaPortalState;
-	import.AreasConnected = CM_AreasConnected;
-
-	ge = (game_export_t *)Sys_GetGameAPI (&import);
-
 	if (!ge)
 		Com_Error (ERR_DROP, "failed to load game DLL");
-	if (ge->apiversion != GAME_API_VERSION)
-		Com_Error (ERR_DROP, "game is version %i, not %i", ge->apiversion,
-		GAME_API_VERSION);
+	"""
+	if ge.apiversion != game.GAME_API_VERSION:
+		common.Com_Error (ERR_DROP, "game is version {:d}, not {:d}".format(ge.apiversion, game.GAME_API_VERSION))
 
-	ge->Init ();
-}
-"""
+	ge.Init ()
+

@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import random
 import struct
-from server import sv_ccmds, sv_send, sv_init
+from server import sv_ccmds, sv_send, sv_init, sv_game
 from qcommon import cvar, qcommon, common, net_chan, cmd
 from game import q_shared
 from linux import net_udp
@@ -27,9 +27,9 @@ from linux import net_udp
 #include "server.h"
 
 netadr_t	master_adr[MAX_MASTERS];	// address of group servers
-
-client_t	*sv_client;			// current client
 """
+sv_client = None #client_t	*, current client
+
 sv_paused = None # cvar_t	*
 sv_timedemo = None # cvar_t	*
 
@@ -78,7 +78,7 @@ void SV_DropClient (client_t *drop)
 	// add the disconnect
 	MSG_WriteByte (&drop->netchan.message, svc_disconnect);
 
-	if (drop->state == cs_spawned)
+	if (drop->state == sv_init.server_state_t.cs_spawned)
 	{
 		// call the prog function for removing a client
 		// this will remove the body, among other things
@@ -128,7 +128,7 @@ char	*SV_StatusString (void)
 	for (i=0 ; i<maxclients->value ; i++)
 	{
 		cl = &sv_init.svs.clients[i];
-		if (cl->state == cs_connected || cl->state == cs_spawned )
+		if (cl->state == sv_init.client_state_t.cs_connected || cl->state == sv_init.server_state_t.cs_spawned )
 		{
 			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
 				cl->edict->client->ps.stats[STAT_FRAGS], cl->ping, cl->name);
@@ -196,7 +196,7 @@ void SVC_Info (void)
 	{
 		count = 0;
 		for (i=0 ; i<maxclients->value ; i++)
-			if (sv_init.svs.clients[i].state >= cs_connected)
+			if (sv_init.svs.clients[i].state >= sv_init.client_state_t.cs_connected)
 				count++;
 
 		Com_sprintf (string, sizeof(string), "%16s %8s %2i/%2i\n", hostname->string, sv_init.sv.name, count, (int)maxclients->value);
@@ -359,7 +359,7 @@ def SVC_DirectConnect ():
 			
 			common.Com_Printf ("{}:reconnect\n".format(net_udp.NET_AdrToString (adr)))
 			newcl = cl
-			SVC_DirectConnect_NewClient(newcl)
+			SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge)
 			return
 		
 	if len(sv_init.svs.clients) >= int(maxclients.value):
@@ -371,52 +371,50 @@ def SVC_DirectConnect ():
 	# find a client slot
 	sv_init.svs.clients.append(newcl)
 
-	SVC_DirectConnect_NewClient(newcl)
+	SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge)
 
 
-def SVC_DirectConnect_NewClient(newcl):
+def SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge):
 	
-	pass
-	"""
-	// build a new connection
-	// accept the new client
-	// this is the only place a client_t is ever initialized
-	*newcl = temp;
-	sv_client = newcl;
-	edictnum = (newcl-sv_init.svs.clients)+1;
-	ent = EDICT_NUM(edictnum);
-	newcl->edict = ent;
-	newcl->challenge = challenge; // save challenge for checksumming
+	# build a new connection
+	# accept the new client
+	# this is the only place a client_t is ever initialized
+	#*newcl = temp
+	sv_client = newcl
+	ent = 0 #HACK for porting
+	#edictnum = (newcl-sv_init.svs.clients)+1
+	#ent = EDICT_NUM(edictnum)
+	#newcl->edict = ent
+	newcl.challenge = challenge # save challenge for checksumming
 
-	// get the game a chance to reject this connection or modify the userinfo
-	if (!(ge->ClientConnect (ent, userinfo)))
-	{
-		if (*Info_ValueForKey (userinfo, "rejmsg")) 
-			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\n%s\nConnection refused.\n",  
-				Info_ValueForKey (userinfo, "rejmsg"));
-		else
-			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nConnection refused.\n" );
-		Com_DPrintf ("Game rejected a connection.\n");
-		return;
-	}
-
-	// parse some info from the info strings
-	strncpy (newcl->userinfo, userinfo, sizeof(newcl->userinfo)-1);
-	SV_UserinfoChanged (newcl);
-
-	// send the connect packet to the client
-	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "client_connect");
-
-	Netchan_Setup (qcommon.netsrc_t.NS_SERVER, &newcl->netchan , adr, qport);
-
-	newcl->state = cs_connected;
+	# get the game a chance to reject this connection or modify the userinfo
+	if not sv_game.ge.ClientConnect (ent, userinfo):
 	
-	SZ_Init (&newcl->datagram, newcl->datagram_buf, sizeof(newcl->datagram_buf) );
-	newcl->datagram.allowoverflow = true;
-	newcl->lastmessage = sv_init.svs.realtime;	# don't timeout
-	newcl->lastconnect = sv_init.svs.realtime;
+		if q_shared.Info_ValueForKey (userinfo, "rejmsg"):
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\n{}\nConnection refused.\n".format(  
+				q_shared.Info_ValueForKey (userinfo, "rejmsg")))
+		else:
+			net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nConnection refused.\n" )
+		common.Com_DPrintf ("Game rejected a connection.\n")
+		return
+	
+	# parse some info from the info strings
+	newcl.userinfo = userinfo
+	SV_UserinfoChanged (newcl)
 
+	# send the connect packet to the client
+	net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, b"client_connect")
 
+	net_chan.Netchan_Setup (qcommon.netsrc_t.NS_SERVER, newcl.netchan, adr, qport)
+
+	newcl.state = sv_init.client_state_t.cs_connected
+	
+	#SZ_Init (&newcl->datagram, newcl->datagram_buf, sizeof(newcl->datagram_buf) )
+	newcl.datagram.allowoverflow = True
+	newcl.lastmessage = sv_init.svs.realtime	# don't timeout
+	newcl.lastconnect = sv_init.svs.realtime
+
+"""
 int Rcon_Validate (void)
 {
 	if (!strlen (rcon_password->string))
@@ -534,7 +532,7 @@ void SV_CalcPings (void)
 	for (i=0 ; i<maxclients->value ; i++)
 	{
 		cl = &sv_init.svs.clients[i];
-		if (cl->state != cs_spawned )
+		if (cl->state != sv_init.server_state_t.cs_spawned )
 			continue;
 
 #if 0
@@ -697,7 +695,7 @@ def SV_CheckTimeouts ():
 			cl->state = cs_free;	// can now be reused
 			continue;
 		}
-		if ( (cl->state == cs_connected || cl->state == cs_spawned) 
+		if ( (cl->state == sv_init.client_state_t.cs_connected || cl->state == sv_init.server_state_t.cs_spawned) 
 			&& cl->lastmessage < droppoint)
 		{
 			SV_BroadcastPrintf (PRINT_HIGH, "%s timed out\n", cl->name);
@@ -906,16 +904,18 @@ void Master_Shutdown (void)
 //============================================================================
 
 
-/*
+
 =================
 SV_UserinfoChanged
 
 Pull specific info from a newly changed userinfo string
 into a more C freindly form.
 =================
-*/
-void SV_UserinfoChanged (client_t *cl)
-{
+"""
+def SV_UserinfoChanged (cl): #client_t *
+
+	pass
+	"""
 	char	*val;
 	int		i;
 
@@ -923,13 +923,13 @@ void SV_UserinfoChanged (client_t *cl)
 	ge->ClientUserinfoChanged (cl->edict, cl->userinfo);
 	
 	// name for C code
-	strncpy (cl->name, Info_ValueForKey (cl->userinfo, "name"), sizeof(cl->name)-1);
+	strncpy (cl->name, q_shared.Info_ValueForKey (cl->userinfo, "name"), sizeof(cl->name)-1);
 	// mask off high bit
 	for (i=0 ; i<sizeof(cl->name) ; i++)
 		cl->name[i] &= 127;
 
 	// rate command
-	val = Info_ValueForKey (cl->userinfo, "rate");
+	val = q_shared.Info_ValueForKey (cl->userinfo, "rate");
 	if (strlen(val))
 	{
 		i = atoi(val);
@@ -943,7 +943,7 @@ void SV_UserinfoChanged (client_t *cl)
 		cl->rate = 5000;
 
 	// msg command
-	val = Info_ValueForKey (cl->userinfo, "msg");
+	val = q_shared.Info_ValueForKey (cl->userinfo, "msg");
 	if (strlen(val))
 	{
 		cl->messagelevel = atoi(val);
@@ -1032,12 +1032,12 @@ void SV_FinalMessage (char *message, qboolean reconnect)
 	// stagger the packets to crutch operating system limited buffers
 
 	for (i=0, cl = sv_init.svs.clients ; i<maxclients->value ; i++, cl++)
-		if (cl->state >= cs_connected)
+		if (cl->state >= sv_init.client_state_t.cs_connected)
 			Netchan_Transmit (&cl->netchan, net_message.cursize
 			, net_message.data);
 
 	for (i=0, cl = sv_init.svs.clients ; i<maxclients->value ; i++, cl++)
-		if (cl->state >= cs_connected)
+		if (cl->state >= sv_init.client_state_t.cs_connected)
 			Netchan_Transmit (&cl->netchan, net_message.cursize
 			, net_message.data);
 }
