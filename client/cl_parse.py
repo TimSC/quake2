@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import struct
+from client import cl_main
+from qcommon import net_chan, qcommon, common
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -205,8 +208,8 @@ void CL_ParseDownload (void)
 	int		r;
 
 	// read the data
-	size = MSG_ReadShort (&net_message);
-	percent = MSG_ReadByte (&net_message);
+	size = MSG_ReadShort (&net_chan.net_message);
+	percent = MSG_ReadByte (&net_chan.net_message);
 	if (size == -1)
 	{
 		Com_Printf ("Server does not have this file.\n");
@@ -230,15 +233,15 @@ void CL_ParseDownload (void)
 		cls.download = fopen (name, "wb");
 		if (!cls.download)
 		{
-			net_message.readcount += size;
+			net_chan.net_message.readcount += size;
 			Com_Printf ("Failed to open %s\n", cls.downloadtempname);
 			CL_RequestNextDownload ();
 			return;
 		}
 	}
 
-	fwrite (net_message.data + net_message.readcount, 1, size, cls.download);
-	net_message.readcount += size;
+	fwrite (net_chan.net_message.data + net_chan.net_message.readcount, 1, size, cls.download);
+	net_chan.net_message.readcount += size;
 
 	if (percent != 100)
 	{
@@ -311,7 +314,7 @@ def CL_ParseServerData ():
 	cls.state = ca_connected;
 
 // parse protocol version number
-	i = MSG_ReadLong (&net_message);
+	i = MSG_ReadLong (&net_chan.net_message);
 	cls.serverProtocol = i;
 
 	// BIG HACK to let demos from release work with the 3.0x patch!!!
@@ -319,13 +322,13 @@ def CL_ParseServerData ():
 	{
 	}
 	else if (i != PROTOCOL_VERSION)
-		Com_Error (ERR_DROP,"Server returned version %i, not %i", i, PROTOCOL_VERSION);
+		Com_Error (qcommon.ERR_DROP,"Server returned version %i, not %i", i, PROTOCOL_VERSION);
 
-	cl.servercount = MSG_ReadLong (&net_message);
-	cl.attractloop = MSG_ReadByte (&net_message);
+	cl.servercount = MSG_ReadLong (&net_chan.net_message);
+	cl.attractloop = MSG_ReadByte (&net_chan.net_message);
 
 	// game directory
-	str = MSG_ReadString (&net_message);
+	str = MSG_ReadString (&net_chan.net_message);
 	strncpy (cl.gamedir, str, sizeof(cl.gamedir)-1);
 
 	// set gamedir
@@ -333,10 +336,10 @@ def CL_ParseServerData ():
 		Cvar_Set("game", str);
 
 	// parse player entity number
-	cl.playernum = MSG_ReadShort (&net_message);
+	cl.playernum = MSG_ReadShort (&net_chan.net_message);
 
 	// get the full level name
-	str = MSG_ReadString (&net_message);
+	str = MSG_ReadString (&net_chan.net_message);
 
 	if (cl.playernum == -1)
 	{	// playing a cinematic or showing a pic, not a level
@@ -524,10 +527,10 @@ void CL_ParseConfigString (void)
 	char	*s;
 	char	olds[MAX_QPATH];
 
-	i = MSG_ReadShort (&net_message);
+	i = MSG_ReadShort (&net_chan.net_message);
 	if (i < 0 || i >= MAX_CONFIGSTRINGS)
-		Com_Error (ERR_DROP, "configstring > MAX_CONFIGSTRINGS");
-	s = MSG_ReadString(&net_message);
+		Com_Error (qcommon.ERR_DROP, "configstring > MAX_CONFIGSTRINGS");
+	s = MSG_ReadString(&net_chan.net_message);
 
 	strncpy (olds, cl.configstrings[i], sizeof(olds));
 	olds[sizeof(olds) - 1] = 0;
@@ -596,30 +599,30 @@ void CL_ParseStartSoundPacket(void)
 	int		flags;
 	float	ofs;
 
-	flags = MSG_ReadByte (&net_message);
-	sound_num = MSG_ReadByte (&net_message);
+	flags = MSG_ReadByte (&net_chan.net_message);
+	sound_num = MSG_ReadByte (&net_chan.net_message);
 
     if (flags & SND_VOLUME)
-		volume = MSG_ReadByte (&net_message) / 255.0;
+		volume = MSG_ReadByte (&net_chan.net_message) / 255.0;
 	else
 		volume = DEFAULT_SOUND_PACKET_VOLUME;
 	
     if (flags & SND_ATTENUATION)
-		attenuation = MSG_ReadByte (&net_message) / 64.0;
+		attenuation = MSG_ReadByte (&net_chan.net_message) / 64.0;
 	else
 		attenuation = DEFAULT_SOUND_PACKET_ATTENUATION;	
 
     if (flags & SND_OFFSET)
-		ofs = MSG_ReadByte (&net_message) / 1000.0;
+		ofs = MSG_ReadByte (&net_chan.net_message) / 1000.0;
 	else
 		ofs = 0;
 
 	if (flags & SND_ENT)
 	{	// entity reletive
-		channel = MSG_ReadShort(&net_message); 
+		channel = MSG_ReadShort(&net_chan.net_message); 
 		ent = channel>>3;
 		if (ent > MAX_EDICTS)
-			Com_Error (ERR_DROP,"CL_ParseStartSoundPacket: ent = %i", ent);
+			Com_Error (qcommon.ERR_DROP,"CL_ParseStartSoundPacket: ent = %i", ent);
 
 		channel &= 7;
 	}
@@ -631,7 +634,7 @@ void CL_ParseStartSoundPacket(void)
 
 	if (flags & SND_POS)
 	{	// positioned in space
-		MSG_ReadPos (&net_message, pos_v);
+		MSG_ReadPos (&net_chan.net_message, pos_v);
  
 		pos = pos_v;
 	}
@@ -647,8 +650,8 @@ void CL_ParseStartSoundPacket(void)
 
 void SHOWNET(char *s)
 {
-	if (cl_shownet->value>=2)
-		Com_Printf ("%3i:%s\n", net_message.readcount-1, s);
+	if (cl_main.cl_shownet->value>=2)
+		Com_Printf ("%3i:%s\n", net_chan.net_message.readcount-1, s);
 }
 
 /*
@@ -665,9 +668,9 @@ def CL_ParseServerMessage ():
 	#
 	# if recording demos, copy the message out
 	#
-	if cl_shownet.value == 1:
-		common.Com_Printf ("{:d} ".format(net_message.cursize))
-	elif cl_shownet.value >= 2:
+	if cl_main.cl_shownet.value == 1:
+		common.Com_Printf ("{:d} ".format(net_chan.net_message.cursize))
+	elif cl_main.cl_shownet.value >= 2:
 		common.Com_Printf ("------------------\n")
 
 	#
@@ -675,23 +678,24 @@ def CL_ParseServerMessage ():
 	#
 	while 1:
 	
-		if net_message.readcount > net_message.cursize:
+		if net_chan.net_message.readcount > net_chan.net_message.cursize:
 		
-			common.Com_Error (ERR_DROP,"CL_ParseServerMessage: Bad server message")
+			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Bad server message")
 			break
-		
 
-		cmd = MSG_ReadByte (net_message)
+		print (net_chan.net_message.data)
+		cmd = struct.unpack("B", net_chan.net_message.data[0:1])[0]
+		print ("cmd", cmd)
 
 		if cmd == -1:
 		
 			SHOWNET("END OF MESSAGE")
 			break
 		
-		if cl_shownet.value>=2:
+		if cl_main.cl_shownet.value>=2:
 		
 			if not svc_strings[cmd]:
-				common.Com_Printf ("{:3d}:BAD CMD {:d}\n".format(net_message.readcount-1,cmd))
+				common.Com_Printf ("{:3d}:BAD CMD {:d}\n".format(net_chan.net_message.readcount-1,cmd))
 			else:
 				SHOWNET(svc_strings[cmd])
 		
@@ -716,28 +720,28 @@ def CL_ParseServerMessage ():
 
 
 		elif cmd == qcommon.svc_ops_e.svc_print:
-			i = MSG_ReadByte (net_message)
+			i = struct.unpack("B", net_chan.net_message.data[1:2])
 			if i == PRINT_CHAT:
 			
 				S_StartLocalSound ("misc/talk.wav")
 				con.ormask = 128
 			
-			common.Com_Printf (MSG_ReadString (&net_message))
+			common.Com_Printf (net_chan.net_message.data[2:])
 			con.ormask = 0
 
 			
 		elif cmd == qcommon.svc_ops_e.svc_centerprint:
-			SCR_CenterPrint (MSG_ReadString (&net_message))
+			SCR_CenterPrint (net_chan.net_message.decode('ascii'))
 
 			
 		elif cmd == qcommon.svc_ops_e.svc_stufftext:
-			s = MSG_ReadString (net_message)
+			s = net_chan.net_message.data[1:]
 			common.Com_DPrintf ("stufftext: {}\n".format(s))
 			cmd.Cbuf_AddText (s)
 
 			
 		elif cmd == qcommon.svc_ops_e.svc_serverdata:
-			Cbuf_Execute ()		# make sure any stuffed commands are done
+			cmd.Cbuf_Execute ()		# make sure any stuffed commands are done
 			CL_ParseServerData ()
 
 			
@@ -778,16 +782,16 @@ def CL_ParseServerMessage ():
 
 
 		elif cmd == qcommon.svc_ops_e.svc_layout:
-			s = MSG_ReadString (net_message)
+			s = net_chan.net_message[1:].decode("ascii")
 			cl.layout = s
 
 
 		elif cmd in [qcommon.svc_ops_e.svc_playerinfo, qcommon.svc_ops_e.svc_packetentities, qcommon.svc_ops_e.svc_deltapacketentities]:
-			common.Com_Error (ERR_DROP, "Out of place frame data");
+			common.Com_Error (qcommon.ERR_DROP, "Out of place frame data");
 
 
 		else:
-			common.Com_Error (ERR_DROP,"CL_ParseServerMessage: Illegible server message\n");
+			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Illegible server message\n");
 
 
 		

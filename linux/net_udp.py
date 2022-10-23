@@ -254,6 +254,9 @@ def NET_SendLoopPacket (sock, data, to): #netsrc_t, void *, netadr_t
 
 	loop = loopbacks[sock.value^1]
 
+	if len(loop.msgs) >= MAX_LOOPBACK:
+		loop.msgs.pop(0)
+
 	loop.msgs.append(data)
 
 """
@@ -270,7 +273,7 @@ def NET_GetPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t *)
 
 	rx, net_from, net_message = NET_GetLoopPacket (sock)
 	if rx:
-		return True, net_from, net_message
+		return True, net_from, net_message, len(net_message)
 	"""
 	for (protocol = 0 ; protocol < 2 ; protocol++)
 	{
@@ -309,7 +312,7 @@ def NET_GetPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t *)
 		return True, net_from, net_message
 	}
 """
-	return False, None, None
+	return False, None, None, 0
 
 """
 //=============================================================================

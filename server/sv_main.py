@@ -487,7 +487,7 @@ def SV_ConnectionlessPacket ():
 	#MSG_BeginReading (&net_message);
 	#MSG_ReadLong (&net_message);		// skip the -1 marker
 
-	s = net_chan.net_message[4:].decode("ascii")
+	s = net_chan.net_message.data[4:].decode("ascii")
 
 	cmd.Cmd_TokenizeString (s, False)
 
@@ -605,11 +605,12 @@ def SV_ReadPackets ():
 	#client_t	*cl;
 	#int			qport;
 
-	rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
+	rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
+
 	while rx:
 		try:
 			# check for connectionless packet (0xffffffff) first
-			header = struct.unpack(">l", net_chan.net_message[:4])
+			header = struct.unpack(">l", net_chan.net_message.data[:4])
 			if header[0] == -1:
 			
 				SV_ConnectionlessPacket ()
@@ -654,8 +655,7 @@ def SV_ReadPackets ():
 			"""
 
 		finally:
-			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
-
+			rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
 
 """
 ==================

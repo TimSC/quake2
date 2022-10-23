@@ -85,6 +85,8 @@ class sizebuf_t(object):
 		self.cursize = 0 # int
 		self.readcount = 0 # int
 
+	
+
 """
 void SZ_Init (sizebuf_t *buf, byte *data, int length);
 void SZ_Clear (sizebuf_t *buf);
@@ -527,10 +529,10 @@ NET
 // net.h -- quake's interface to the networking layer
 
 #define	PORT_ANY	-1
-
-#define	MAX_MSGLEN		1400		// max length of a message
-#define	PACKET_HEADER	10			// two ints and a short
 """
+MAX_MSGLEN		= 1400		# max length of a message
+PACKET_HEADER	= 10			# two ints and a short
+
 class netadrtype_t(Enum):
 	NA_LOOPBACK = 0
 	NA_BROADCAST = 1
@@ -578,7 +580,9 @@ void		NET_Sleep(int msec);
 class netchan_t(object):
 
 	def __init__(self):
+		self.clear()
 
+	def clear(self):
 		self.fatal_error = False # qboolean
 
 		self.sock = netsrc_t.NS_CLIENT # netsrc_t
@@ -737,15 +741,15 @@ MISC
 ==============================================================
 */
 
-
-#define	ERR_FATAL	0		// exit the entire game with a popup window
-#define	ERR_DROP	1		// print to console and disconnect from game
-#define	ERR_QUIT	2		// not an error, just a normal exit
-
-#define	EXEC_NOW	0		// don't return until completed
-#define	EXEC_INSERT	1		// insert at current position, but don't run yet
-#define	EXEC_APPEND	2		// add to end of the command buffer
 """
+ERR_FATAL	= 0		# exit the entire game with a popup window
+ERR_DROP	= 1		# print to console and disconnect from game
+ERR_QUIT	= 2		# not an error, just a normal exit
+
+EXEC_NOW	= 0		# don't return until completed
+EXEC_INSERT	= 1		# insert at current position, but don't run yet
+EXEC_APPEND	= 2		# add to end of the command buffer
+
 PRINT_ALL		= 0
 PRINT_DEVELOPER	= 1	# only print when "developer 1"
 """

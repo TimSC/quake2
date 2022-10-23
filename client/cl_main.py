@@ -21,7 +21,7 @@ import os
 import struct
 from qcommon import cvar, common, cmd, files, net_chan, qcommon
 from game import q_shared
-from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin
+from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse
 from linux import q_shlinux, vid_so, in_linux, net_udp
 
 """
@@ -858,7 +858,7 @@ def CL_ConnectionlessPacket ():
 	#MSG_BeginReading (&net_message);
 	#MSG_ReadLong (&net_message);	// skip the -1
 
-	s = net_chan.net_message[4:].decode("ascii")
+	s = net_chan.net_message.data[4:].decode("ascii")
 
 	cmd.Cmd_TokenizeString (s, False)
 
@@ -959,8 +959,9 @@ CL_ReadPackets
 =================
 """
 def CL_ReadPackets ():
-	
-	rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+
+	rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+
 	while rx:
 		try:
 			##Com_Printf ("packet\n");
@@ -968,7 +969,7 @@ def CL_ReadPackets ():
 			# remote command packet
 			#
 
-			header = struct.unpack(">l", net_chan.net_message[:4])[0]
+			header = struct.unpack(">l", net_chan.net_message.data[:4])[0]
 			if header == -1:
 				CL_ConnectionlessPacket ()
 				continue
@@ -977,7 +978,7 @@ def CL_ReadPackets ():
 			if cls.state == client.connstate_t.ca_disconnected or cls.state == client.connstate_t.ca_connecting:
 				continue		# dump it if not connected
 
-			if len(net_chan.net_message) < 8:
+			if len(net_chan.net_message.data) < 8:
 			
 				common.Com_Printf ("{}: Runt packet\n".format(net_udp.net_udp.NET_AdrToString(net_chan.net_from)))
 				continue
@@ -992,13 +993,12 @@ def CL_ReadPackets ():
 					net_udp.NET_AdrToString(net_chan.net_from)))
 				continue
 			
-			if not net_chan.Netchan_Process(cls.netchan, net_chan.net_message):
+			if not net_chan.Netchan_Process(cls.netchan, net_chan.net_message.data):
 				continue		# wasn't accepted for some reason
 			cl_parse.CL_ParseServerMessage ()
 
 		finally:
-			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
-	
+			rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
 	"""
 	//
 	// check timeout
@@ -1825,6 +1825,7 @@ isdown = False
 
 def CL_Shutdown():
 
+	global isdown
 	#static qboolean isdown = false;
 	if isdown:
 	
