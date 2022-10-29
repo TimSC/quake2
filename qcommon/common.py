@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import sys
+import struct
 from qcommon import cvar, cmd, files, qcommon, net_chan
 from linux import sys_linux, q_shlinux, net_udp
 from game import q_shared
@@ -755,52 +756,55 @@ def MSG_ReadLong (msg_read): #sizebuf_t *
 	
 	return c
 
+
+def MSG_ReadFloat (msg_read): #sizebuf_t *
+
+	#union
+	#{
+	#	byte	b[4];
+	#	float	f;
+	#	int	l;
+	#} dat;
+	c = 0
+	if msg_read.readcount+4 > msg_read.cursize:
+		c = -1
+	else:
+	
+		#dat.b[0] =	msg_read.data[msg_read.readcount]
+		#dat.b[1] =	msg_read.data[msg_read.readcount+1]
+		#dat.b[2] =	msg_read.data[msg_read.readcount+2]
+		#dat.b[3] =	msg_read.data[msg_read.readcount+3]
+		c = struct.unpack("<f", msg_read.data[msg_read.readcount:msg_read.readcount+4])
+	
+	msg_read.readcount += 4
+	
+	#dat.l = LittleLong (dat.l)
+
+	return c
+
+
+
+def MSG_ReadString (msg_read): #sizebuf_t *
+
+	#static char	string[2048];
+	#int		l,c;
+	l = 0
+	readStringSize = 2048
+	st = []
+
+	while l < readStringSize-1:
+	
+		c = MSG_ReadChar (msg_read)
+		if c == -1 or c == 0:
+			break
+		st.append(c)
+		l+=1
+	
+	#string[l] = 0;
+	
+	return "".join(st)
+
 """
-float MSG_ReadFloat (sizebuf_t *msg_read)
-{
-	union
-	{
-		byte	b[4];
-		float	f;
-		int	l;
-	} dat;
-	
-	if (msg_read->readcount+4 > msg_read->cursize)
-		dat.f = -1;
-	else
-	{
-		dat.b[0] =	msg_read->data[msg_read->readcount];
-		dat.b[1] =	msg_read->data[msg_read->readcount+1];
-		dat.b[2] =	msg_read->data[msg_read->readcount+2];
-		dat.b[3] =	msg_read->data[msg_read->readcount+3];
-	}
-	msg_read->readcount += 4;
-	
-	dat.l = LittleLong (dat.l);
-
-	return dat.f;	
-}
-
-char *MSG_ReadString (sizebuf_t *msg_read)
-{
-	static char	string[2048];
-	int		l,c;
-	
-	l = 0;
-	do
-	{
-		c = MSG_ReadChar (msg_read);
-		if (c == -1 || c == 0)
-			break;
-		string[l] = c;
-		l++;
-	} while (l < sizeof(string)-1);
-	
-	string[l] = 0;
-	
-	return string;
-}
-
 char *MSG_ReadStringLine (sizebuf_t *msg_read)
 {
 	static char	string[2048];

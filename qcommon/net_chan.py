@@ -118,7 +118,6 @@ Sends an out-of-band datagram
 def Netchan_OutOfBand (net_socket, adr, data): #int, netadr_t, byte *
 
 	assert isinstance(data, bytes)
-	print ("Netchan_OutOfBand", data)
 
 	#sizebuf_t	send;
 	#byte		send_buf[qcommon.MAX_MSGLEN];

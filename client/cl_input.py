@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from qcommon import cvar, net_chan, qcommon
 from game import q_shared
-from client import cl_main, client
+from client import cl_main, client, keys, client
 from linux import in_linux, sys_linux
 """
 // cl_main.cl.input.c  -- builds an intended movement command to send to the server
@@ -343,15 +343,12 @@ CL_FinishMove
 """
 def CL_FinishMove (cmd): #usercmd_t *
 
-
-	pass
+	#int		ms;
+	#int		i;
 	"""
-	int		ms;
-	int		i;
-
-//
-// figure button bits
-//	
+	#
+	# figure button bits
+	#	
 	if ( in_attack.state & 3 )
 		cmd->buttons |= BUTTON_ATTACK;
 	in_attack.state &= ~2;
@@ -359,10 +356,10 @@ def CL_FinishMove (cmd): #usercmd_t *
 	if (in_use.state & 3)
 		cmd->buttons |= BUTTON_USE;
 	in_use.state &= ~2;
-
-	if (anykeydown && cl_main.cls.key_dest == key_game)
-		cmd->buttons |= BUTTON_ANY;
-
+	"""
+	if keys.anykeydown and cl_main.cls.key_dest == client.keydest_t.key_game:
+		cmd.buttons |= q_shared.BUTTON_ANY
+	"""
 	// send milliseconds of time to apply the move
 	ms = cl_main.cls.frametime * 1000;
 	if (ms > 250)
@@ -512,13 +509,13 @@ def CL_SendCmd ():
 	}
 
 	SZ_Init (&buf, data, sizeof(data));
-
-	if (cmd->buttons && cl_main.cl.cinematictime > 0 && !cl_main.cl.attractloop 
-		&& cl_main.cls.realtime - cl_main.cl.cinematictime > 1000)
-	{	# skip the rest of the cinematic
-		SCR_FinishCinematic ();
-	}
-
+	"""
+	if cmd.buttons and cl_main.cl.cinematictime > 0 and not cl_main.cl.attractloop \
+		and cl_main.cls.realtime - cl_main.cl.cinematictime > 1000:
+		# skip the rest of the cinematic
+		cl_cin.SCR_FinishCinematic ()
+	
+	"""
 	# begin a client move command
 	MSG_WriteByte (&buf, clc_move);
 
