@@ -266,12 +266,12 @@ class client_static_t(object):
 		int			downloadnumber;
 		dltype_t	downloadtype;
 		int			downloadpercent;
-
+		"""
 		# demo recording info must be here, so it isn't cleared on level change
-		qboolean	demorecording;
-		qboolean	demowaiting;	// don't record until a non-delta message is received
-		FILE		*demofile;
-	"""
+		self.demorecording = False # qboolean	
+		self.demowaiting = False # qboolean, don't record until a non-delta message is received
+		self.demofile = None
+
 
 
 """

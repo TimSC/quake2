@@ -993,7 +993,7 @@ def CL_ReadPackets ():
 					net_udp.NET_AdrToString(net_chan.net_from)))
 				continue
 			
-			if not net_chan.Netchan_Process(cls.netchan, net_chan.net_message.data):
+			if not net_chan.Netchan_Process(cls.netchan, net_chan.net_message):
 				continue		# wasn't accepted for some reason
 			cl_parse.CL_ParseServerMessage ()
 

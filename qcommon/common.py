@@ -688,75 +688,74 @@ void MSG_WriteDeltaEntity (entity_state_t *from, entity_state_t *to, sizebuf_t *
 
 
 //============================================================
+"""
+#
+# reading functions
+#
 
-//
-// reading functions
-//
+def MSG_BeginReading (msg): #sizebuf_t *
 
-void MSG_BeginReading (sizebuf_t *msg)
-{
-	msg->readcount = 0;
-}
+	msg.readcount = 0
 
-// returns -1 if no more characters are available
-int MSG_ReadChar (sizebuf_t *msg_read)
-{
-	int	c;
-	
-	if (msg_read->readcount+1 > msg_read->cursize)
-		c = -1;
-	else
-		c = (signed char)msg_read->data[msg_read->readcount];
-	msg_read->readcount++;
-	
-	return c;
-}
 
-int MSG_ReadByte (sizebuf_t *msg_read)
-{
-	int	c;
-	
-	if (msg_read->readcount+1 > msg_read->cursize)
-		c = -1;
-	else
-		c = (unsigned char)msg_read->data[msg_read->readcount];
-	msg_read->readcount++;
-	
-	return c;
-}
+# returns -1 if no more characters are available
+def MSG_ReadChar (msg_read): #sizebuf_t *
 
-int MSG_ReadShort (sizebuf_t *msg_read)
-{
-	int	c;
+	#int	c;
 	
-	if (msg_read->readcount+2 > msg_read->cursize)
-		c = -1;
-	else		
-		c = (short)(msg_read->data[msg_read->readcount]
-		+ (msg_read->data[msg_read->readcount+1]<<8));
+	if msg_read.readcount+1 > msg_read.cursize:
+		c = -1
+	else:
+		c = msg_read.data[msg_read.readcount]
+	msg_read.readcount+=1
 	
-	msg_read->readcount += 2;
-	
-	return c;
-}
+	return c
 
-int MSG_ReadLong (sizebuf_t *msg_read)
-{
-	int	c;
-	
-	if (msg_read->readcount+4 > msg_read->cursize)
-		c = -1;
-	else
-		c = msg_read->data[msg_read->readcount]
-		+ (msg_read->data[msg_read->readcount+1]<<8)
-		+ (msg_read->data[msg_read->readcount+2]<<16)
-		+ (msg_read->data[msg_read->readcount+3]<<24);
-	
-	msg_read->readcount += 4;
-	
-	return c;
-}
+def MSG_ReadByte (msg_read): #sizebuf_t *
 
+	#int	c;
+	
+	if msg_read.readcount+1 > msg_read.cursize:
+		c = -1
+	else:
+		c = msg_read.data[msg_read.readcount]
+	msg_read.readcount+=1
+	
+	return c
+
+
+def MSG_ReadShort (msg_read): #sizebuf_t *
+
+	#int	c;
+	
+	if msg_read.readcount+2 > msg_read.cursize:
+		c = -1
+	else:		
+		c = (msg_read.data[msg_read.readcount] \
+		+ (msg_read.data[msg_read.readcount+1]<<8));
+	
+	msg_read.readcount += 2
+	
+	return c
+
+
+def MSG_ReadLong (msg_read): #sizebuf_t *
+
+	#int	c;
+	
+	if msg_read.readcount+4 > msg_read.cursize:
+		c = -1
+	else:
+		c = msg_read.data[msg_read.readcount] \
+		+ (msg_read.data[msg_read.readcount+1]<<8) \
+		+ (msg_read.data[msg_read.readcount+2]<<16) \
+		+ (msg_read.data[msg_read.readcount+3]<<24)
+	
+	msg_read.readcount += 4
+	
+	return c
+
+"""
 float MSG_ReadFloat (sizebuf_t *msg_read)
 {
 	union

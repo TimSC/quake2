@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main
+from client import cl_main, cl_scrn
 from qcommon import net_chan, qcommon, common
 """
 // cl_parse.c  -- parse a message received from the server
@@ -86,18 +86,18 @@ qboolean	CL_CheckOrDownloadFile (char *filename)
 		return true;
 	}
 
-	strcpy (cls.downloadname, filename);
+	strcpy (cl_main.cls.downloadname, filename);
 
 	// download to a temp name, and only rename
 	// to the real name when done, so if interrupted
 	// a runt file wont be left
-	COM_StripExtension (cls.downloadname, cls.downloadtempname);
-	strcat (cls.downloadtempname, ".tmp");
+	COM_StripExtension (cl_main.cls.downloadname, cl_main.cls.downloadtempname);
+	strcat (cl_main.cls.downloadtempname, ".tmp");
 
 //ZOID
 	// check to see if we already have a tmp for this file, if so, try to resume
 	// open the file if not opened yet
-	CL_DownloadFileName(name, sizeof(name), cls.downloadtempname);
+	CL_DownloadFileName(name, sizeof(name), cl_main.cls.downloadtempname);
 
 //	FS_CreatePath (name);
 
@@ -107,21 +107,21 @@ qboolean	CL_CheckOrDownloadFile (char *filename)
 		fseek(fp, 0, SEEK_END);
 		len = ftell(fp);
 
-		cls.download = fp;
+		cl_main.cls.download = fp;
 
 		// give the server an offset to start the download
-		Com_Printf ("Resuming %s\n", cls.downloadname);
-		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cls.netchan.message,
-			va("download %s %i", cls.downloadname, len));
+		Com_Printf ("Resuming %s\n", cl_main.cls.downloadname);
+		MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
+		MSG_WriteString (&cl_main.cls.netchan.message,
+			va("download %s %i", cl_main.cls.downloadname, len));
 	} else {
-		Com_Printf ("Downloading %s\n", cls.downloadname);
-		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cls.netchan.message,
-			va("download %s", cls.downloadname));
+		Com_Printf ("Downloading %s\n", cl_main.cls.downloadname);
+		MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
+		MSG_WriteString (&cl_main.cls.netchan.message,
+			va("download %s", cl_main.cls.downloadname));
 	}
 
-	cls.downloadnumber++;
+	cl_main.cls.downloadnumber++;
 
 	return false;
 }
@@ -156,20 +156,20 @@ void	CL_Download_f (void)
 		return;
 	}
 
-	strcpy (cls.downloadname, filename);
-	Com_Printf ("Downloading %s\n", cls.downloadname);
+	strcpy (cl_main.cls.downloadname, filename);
+	Com_Printf ("Downloading %s\n", cl_main.cls.downloadname);
 
 	// download to a temp name, and only rename
 	// to the real name when done, so if interrupted
 	// a runt file wont be left
-	COM_StripExtension (cls.downloadname, cls.downloadtempname);
-	strcat (cls.downloadtempname, ".tmp");
+	COM_StripExtension (cl_main.cls.downloadname, cl_main.cls.downloadtempname);
+	strcat (cl_main.cls.downloadtempname, ".tmp");
 
-	MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
-	MSG_WriteString (&cls.netchan.message,
-		va("download %s", cls.downloadname));
+	MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
+	MSG_WriteString (&cl_main.cls.netchan.message,
+		va("download %s", cl_main.cls.downloadname));
 
-	cls.downloadnumber++;
+	cl_main.cls.downloadnumber++;
 }
 
 /*
@@ -185,9 +185,9 @@ void CL_RegisterSounds (void)
 	CL_RegisterTEntSounds ();
 	for (i=1 ; i<MAX_SOUNDS ; i++)
 	{
-		if (!cl.configstrings[CS_SOUNDS+i][0])
+		if (!cl_main.cl.configstrings[CS_SOUNDS+i][0])
 			break;
-		cl.sound_precache[i] = S_RegisterSound (cl.configstrings[CS_SOUNDS+i]);
+		cl_main.cl.sound_precache[i] = S_RegisterSound (cl_main.cl.configstrings[CS_SOUNDS+i]);
 		Sys_SendKeyEvents ();	// pump message loop
 	}
 	S_EndRegistration ();
@@ -213,34 +213,34 @@ void CL_ParseDownload (void)
 	if (size == -1)
 	{
 		Com_Printf ("Server does not have this file.\n");
-		if (cls.download)
+		if (cl_main.cls.download)
 		{
 			// if here, we tried to resume a file but the server said no
-			fclose (cls.download);
-			cls.download = NULL;
+			fclose (cl_main.cls.download);
+			cl_main.cls.download = NULL;
 		}
 		CL_RequestNextDownload ();
 		return;
 	}
 
 	// open the file if not opened yet
-	if (!cls.download)
+	if (!cl_main.cls.download)
 	{
-		CL_DownloadFileName(name, sizeof(name), cls.downloadtempname);
+		CL_DownloadFileName(name, sizeof(name), cl_main.cls.downloadtempname);
 
 		FS_CreatePath (name);
 
-		cls.download = fopen (name, "wb");
-		if (!cls.download)
+		cl_main.cls.download = fopen (name, "wb");
+		if (!cl_main.cls.download)
 		{
 			net_chan.net_message.readcount += size;
-			Com_Printf ("Failed to open %s\n", cls.downloadtempname);
+			Com_Printf ("Failed to open %s\n", cl_main.cls.downloadtempname);
 			CL_RequestNextDownload ();
 			return;
 		}
 	}
 
-	fwrite (net_chan.net_message.data + net_chan.net_message.readcount, 1, size, cls.download);
+	fwrite (net_chan.net_message.data + net_chan.net_message.readcount, 1, size, cl_main.cls.download);
 	net_chan.net_message.readcount += size;
 
 	if (percent != 100)
@@ -249,16 +249,16 @@ void CL_ParseDownload (void)
 // change display routines by zoid
 #if 0
 		Com_Printf (".");
-		if (10*(percent/10) != cls.downloadpercent)
+		if (10*(percent/10) != cl_main.cls.downloadpercent)
 		{
-			cls.downloadpercent = 10*(percent/10);
-			Com_Printf ("%i%%", cls.downloadpercent);
+			cl_main.cls.downloadpercent = 10*(percent/10);
+			Com_Printf ("%i%%", cl_main.cls.downloadpercent);
 		}
 #endif
-		cls.downloadpercent = percent;
+		cl_main.cls.downloadpercent = percent;
 
-		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
-		SZ_Print (&cls.netchan.message, "nextdl");
+		MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
+		SZ_Print (&cl_main.cls.netchan.message, "nextdl");
 	}
 	else
 	{
@@ -267,17 +267,17 @@ void CL_ParseDownload (void)
 
 //		Com_Printf ("100%%\n");
 
-		fclose (cls.download);
+		fclose (cl_main.cls.download);
 
 		// rename the temp file to it's final name
-		CL_DownloadFileName(oldn, sizeof(oldn), cls.downloadtempname);
-		CL_DownloadFileName(newn, sizeof(newn), cls.downloadname);
+		CL_DownloadFileName(oldn, sizeof(oldn), cl_main.cls.downloadtempname);
+		CL_DownloadFileName(newn, sizeof(newn), cl_main.cls.downloadname);
 		r = rename (oldn, newn);
 		if (r)
 			Com_Printf ("failed to rename.\n");
 
-		cls.download = NULL;
-		cls.downloadpercent = 0;
+		cl_main.cls.download = NULL;
+		cl_main.cls.downloadpercent = 0;
 
 		// get another file if needed
 
@@ -311,11 +311,11 @@ def CL_ParseServerData ():
 	#
 	"""
 	CL_ClearState ()
-	cls.state = ca_connected;
+	cl_main.cls.state = ca_connected;
 
 // parse protocol version number
 	i = MSG_ReadLong (&net_chan.net_message);
-	cls.serverProtocol = i;
+	cl_main.cls.serverProtocol = i;
 
 	// BIG HACK to let demos from release work with the 3.0x patch!!!
 	if (Com_ServerState() && PROTOCOL_VERSION == 34)
@@ -324,24 +324,24 @@ def CL_ParseServerData ():
 	else if (i != PROTOCOL_VERSION)
 		Com_Error (qcommon.ERR_DROP,"Server returned version %i, not %i", i, PROTOCOL_VERSION);
 
-	cl.servercount = MSG_ReadLong (&net_chan.net_message);
-	cl.attractloop = MSG_ReadByte (&net_chan.net_message);
+	cl_main.cl.servercount = MSG_ReadLong (&net_chan.net_message);
+	cl_main.cl.attractloop = MSG_ReadByte (&net_chan.net_message);
 
 	// game directory
 	str = MSG_ReadString (&net_chan.net_message);
-	strncpy (cl.gamedir, str, sizeof(cl.gamedir)-1);
+	strncpy (cl_main.cl.gamedir, str, sizeof(cl_main.cl.gamedir)-1);
 
 	// set gamedir
 	if ((*str && (!fs_gamedirvar->string || !*fs_gamedirvar->string || strcmp(fs_gamedirvar->string, str))) || (!*str && (fs_gamedirvar->string || *fs_gamedirvar->string)))
 		Cvar_Set("game", str);
 
 	// parse player entity number
-	cl.playernum = MSG_ReadShort (&net_chan.net_message);
+	cl_main.cl.playernum = MSG_ReadShort (&net_chan.net_message);
 
 	// get the full level name
 	str = MSG_ReadString (&net_chan.net_message);
 
-	if (cl.playernum == -1)
+	if (cl_main.cl.playernum == -1)
 	{	// playing a cinematic or showing a pic, not a level
 		SCR_PlayCinematic (str);
 	}
@@ -352,7 +352,7 @@ def CL_ParseServerData ():
 		Com_Printf ("%c%s\n", 2, str);
 
 		// need to prep refresh at next oportunity
-		cl.refresh_prepped = false;
+		cl_main.cl.refresh_prepped = false;
 	}
 
 
@@ -508,9 +508,9 @@ void CL_ParseClientinfo (int player)
 	char			*s;
 	clientinfo_t	*ci;
 
-	s = cl.configstrings[player+CS_PLAYERSKINS];
+	s = cl_main.cl.configstrings[player+CS_PLAYERSKINS];
 
-	ci = &cl.clientinfo[player];
+	ci = &cl_main.cl.clientinfo[player];
 
 	CL_LoadClientinfo (ci, s);
 }
@@ -532,10 +532,10 @@ void CL_ParseConfigString (void)
 		Com_Error (qcommon.ERR_DROP, "configstring > MAX_CONFIGSTRINGS");
 	s = MSG_ReadString(&net_chan.net_message);
 
-	strncpy (olds, cl.configstrings[i], sizeof(olds));
+	strncpy (olds, cl_main.cl.configstrings[i], sizeof(olds));
 	olds[sizeof(olds) - 1] = 0;
 
-	strcpy (cl.configstrings[i], s);
+	strcpy (cl_main.cl.configstrings[i], s);
 
 	// do something apropriate 
 
@@ -543,33 +543,33 @@ void CL_ParseConfigString (void)
 		CL_SetLightstyle (i - CS_LIGHTS);
 	else if (i == CS_CDTRACK)
 	{
-		if (cl.refresh_prepped)
-			CDAudio_Play (atoi(cl.configstrings[CS_CDTRACK]), true);
+		if (cl_main.cl.refresh_prepped)
+			CDAudio_Play (atoi(cl_main.cl.configstrings[CS_CDTRACK]), true);
 	}
 	else if (i >= CS_MODELS && i < CS_MODELS+MAX_MODELS)
 	{
-		if (cl.refresh_prepped)
+		if (cl_main.cl.refresh_prepped)
 		{
-			cl.model_draw[i-CS_MODELS] = re.RegisterModel (cl.configstrings[i]);
-			if (cl.configstrings[i][0] == '*')
-				cl.model_clip[i-CS_MODELS] = CM_InlineModel (cl.configstrings[i]);
+			cl_main.cl.model_draw[i-CS_MODELS] = re.RegisterModel (cl_main.cl.configstrings[i]);
+			if (cl_main.cl.configstrings[i][0] == '*')
+				cl_main.cl.model_clip[i-CS_MODELS] = CM_InlineModel (cl_main.cl.configstrings[i]);
 			else
-				cl.model_clip[i-CS_MODELS] = NULL;
+				cl_main.cl.model_clip[i-CS_MODELS] = NULL;
 		}
 	}
 	else if (i >= CS_SOUNDS && i < CS_SOUNDS+MAX_MODELS)
 	{
-		if (cl.refresh_prepped)
-			cl.sound_precache[i-CS_SOUNDS] = S_RegisterSound (cl.configstrings[i]);
+		if (cl_main.cl.refresh_prepped)
+			cl_main.cl.sound_precache[i-CS_SOUNDS] = S_RegisterSound (cl_main.cl.configstrings[i]);
 	}
 	else if (i >= CS_IMAGES && i < CS_IMAGES+MAX_MODELS)
 	{
-		if (cl.refresh_prepped)
-			cl.image_precache[i-CS_IMAGES] = re.RegisterPic (cl.configstrings[i]);
+		if (cl_main.cl.refresh_prepped)
+			cl_main.cl.image_precache[i-CS_IMAGES] = re.RegisterPic (cl_main.cl.configstrings[i]);
 	}
 	else if (i >= CS_PLAYERSKINS && i < CS_PLAYERSKINS+MAX_CLIENTS)
 	{
-		if (cl.refresh_prepped && strcmp(olds, s))
+		if (cl_main.cl.refresh_prepped && strcmp(olds, s))
 			CL_ParseClientinfo (i-CS_PLAYERSKINS);
 	}
 }
@@ -641,20 +641,19 @@ void CL_ParseStartSoundPacket(void)
 	else	// use entity number
 		pos = NULL;
 
-	if (!cl.sound_precache[sound_num])
+	if (!cl_main.cl.sound_precache[sound_num])
 		return;
 
-	S_StartSound (pos, ent, channel, cl.sound_precache[sound_num], volume, attenuation, ofs);
+	S_StartSound (pos, ent, channel, cl_main.cl.sound_precache[sound_num], volume, attenuation, ofs);
 }       
+"""
 
+def SHOWNET(s): #char *
 
-void SHOWNET(char *s)
-{
-	if (cl_main.cl_shownet->value>=2)
-		Com_Printf ("%3i:%s\n", net_chan.net_message.readcount-1, s);
-}
+	if cl_main.cl_shownet.value>=2:
+		common.Com_Printf ("{:3d}:{}\n".format(net_chan.net_message.readcount-1, s))
 
-/*
+"""
 =====================
 CL_ParseServerMessage
 =====================
@@ -683,9 +682,7 @@ def CL_ParseServerMessage ():
 			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Bad server message")
 			break
 
-		print (net_chan.net_message.data)
-		cmd = struct.unpack("B", net_chan.net_message.data[0:1])[0]
-		print ("cmd", cmd)
+		cmd = common.MSG_ReadByte (net_chan.net_message)
 
 		if cmd == -1:
 		
@@ -710,32 +707,32 @@ def CL_ParseServerMessage ():
 
 		elif cmd == qcommon.svc_ops_e.svc_reconnect:
 			common.Com_Printf ("Server disconnected, reconnecting\n");
-			if cls.download:
+			if cl_main.cls.download:
 				#ZOID, close download
-				cls.download.close()
-				cls.download = None
+				cl_main.cls.download.close()
+				cl_main.cls.download = None
 			
-			cls.state = ca_connecting
-			cls.connect_time = -99999	# CL_CheckForResend() will fire immediately
+			cl_main.cls.state = ca_connecting
+			cl_main.cls.connect_time = -99999	# CL_CheckForResend() will fire immediately
 
 
 		elif cmd == qcommon.svc_ops_e.svc_print:
-			i = struct.unpack("B", net_chan.net_message.data[1:2])
+			i = common.MSG_ReadByte (net_chan.net_message)
 			if i == PRINT_CHAT:
 			
 				S_StartLocalSound ("misc/talk.wav")
 				con.ormask = 128
 			
-			common.Com_Printf (net_chan.net_message.data[2:])
+			common.Com_Printf (common.MSG_ReadString(net_chan.net_message.data))
 			con.ormask = 0
 
 			
 		elif cmd == qcommon.svc_ops_e.svc_centerprint:
-			SCR_CenterPrint (net_chan.net_message.decode('ascii'))
+			SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message.data))
 
 			
 		elif cmd == qcommon.svc_ops_e.svc_stufftext:
-			s = net_chan.net_message.data[1:]
+			s = common.MSG_ReadString(net_chan.net_message.data)
 			common.Com_DPrintf ("stufftext: {}\n".format(s))
 			cmd.Cbuf_AddText (s)
 
@@ -782,8 +779,8 @@ def CL_ParseServerMessage ():
 
 
 		elif cmd == qcommon.svc_ops_e.svc_layout:
-			s = net_chan.net_message[1:].decode("ascii")
-			cl.layout = s
+			s = MSG_ReadString(net_chan.net_message.data)
+			cl_main.cl.layout = s
 
 
 		elif cmd in [qcommon.svc_ops_e.svc_playerinfo, qcommon.svc_ops_e.svc_packetentities, qcommon.svc_ops_e.svc_deltapacketentities]:
@@ -791,19 +788,20 @@ def CL_ParseServerMessage ():
 
 
 		else:
-			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Illegible server message\n");
+			assert 0
+			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Illegible server message\n")
 
 
 		
 	
 	
-	CL_AddNetgraph ()
+	cl_scrn.CL_AddNetgraph ()
 
 	#
 	# we don't know if it is ok to save a demo message until
 	# after we have parsed the frame
 	#
-	if cls.demorecording and not cls.demowaiting:
+	if cl_main.cls.demorecording and not cl_main.cls.demowaiting:
 		CL_WriteDemoMessage ()
 
 

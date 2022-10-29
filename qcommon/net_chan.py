@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from qcommon import cvar, qcommon
+from qcommon import cvar, qcommon, common
 from game import q_shared
 from linux import net_udp, q_shlinux
 """
@@ -118,6 +118,8 @@ Sends an out-of-band datagram
 def Netchan_OutOfBand (net_socket, adr, data): #int, netadr_t, byte *
 
 	assert isinstance(data, bytes)
+	print ("Netchan_OutOfBand", data)
+
 	#sizebuf_t	send;
 	#byte		send_buf[qcommon.MAX_MSGLEN];
 
@@ -276,14 +278,14 @@ def Netchan_Transmit (chan, data): #netchan_t *
 	
 		if send_reliable:
 			common.Com_Printf ("send {:4d} : s={:d} reliable={:d} ack={:d} rack={:d}\n".format(
-				send.cursize
+				len(send)
 				, chan.outgoing_sequence - 1
 				, chan.reliable_sequence
 				, chan.incoming_sequence
 				, chan.incoming_reliable_sequence))
 		else:
 			common.Com_Printf ("send {:4d} : s={:d} ack={:d} rack={:d}\n".format(
-				send.cursize
+				len(send)
 				, chan.outgoing_sequence - 1
 				, chan.incoming_sequence
 				, chan.incoming_reliable_sequence))
@@ -305,12 +307,13 @@ def Netchan_Process (chan, msg): #netchan_t *, sizebuf_t * (returns qboolean)
 	#int			qport;
 
 	# get sequence numbers
-	#MSG_BeginReading (msg)
-	sequence, sequence_ack = struct.unpack(">ll", msg[:8])
-
+	common.MSG_BeginReading (msg)
+	sequence = common.MSG_ReadLong (msg)
+	sequence_ack = common.MSG_ReadLong (msg)
+	
 	# read the qport if we are a server
 	if chan.sock == qcommon.netsrc_t.NS_SERVER:
-		qport = struct.unpack(">H", msg[8:10])[0]
+		qport = MSG_ReadShort(msg)
 
 	reliable_message = sequence >> 31
 	reliable_ack = sequence_ack >> 31
@@ -322,14 +325,14 @@ def Netchan_Process (chan, msg): #netchan_t *, sizebuf_t * (returns qboolean)
 	
 		if reliable_message:
 			common.Com_Printf ("recv {:4d} : s={:d} reliable={:d} ack={:d} rack={:d}\n".format(
-				len(msg)
+				msg.cursize
 				, sequence
 				, chan.incoming_reliable_sequence ^ 1
 				, sequence_ack
 				, reliable_ack))
 		else:
 			common.Com_Printf ("recv {:4d} : s={:d} ack={:d} rack={:d}\n".format(
-				len(msg)
+				msg.cursize
 				, sequence
 				, sequence_ack
 				, reliable_ack))

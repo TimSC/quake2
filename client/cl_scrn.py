@@ -93,9 +93,12 @@ CL_AddNetgraph
 
 A new packet was just parsed
 ==============
-*/
-void CL_AddNetgraph (void)
-{
+"""
+def CL_AddNetgraph ():
+
+	pass
+	"""
+
 	int		i;
 	int		in;
 	int		ping;
@@ -118,7 +121,7 @@ void CL_AddNetgraph (void)
 	if (ping > 30)
 		ping = 30;
 	SCR_DebugGraph (ping, 0xd0);
-}
+
 
 
 typedef struct
