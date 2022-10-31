@@ -64,6 +64,8 @@ class server_t(object):
 		for i in range(q_shared.MAX_CONFIGSTRINGS):
 			self.configstrings.append("")
 		self.baselines = [] # entity_state_t	[MAX_EDICTS];
+		for i in range(q_shared.MAX_EDICTS):
+			self.configstrings.append(None)
 
 		# the multicast buffer is used to send a message to a set of clients
 		# it is only used to marshall data until SV_Multicast is called
@@ -388,16 +390,14 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 
 	sv.name = server
 
-	"""
 	# leave slots at start for clients only
-	for (i=0 ; i<maxclients->value ; i++)
-	{
-		// needs to reconnect
-		if (svs.clients[i].state > cs_connected)
-			svs.clients[i].state = cs_connected;
-		svs.clients[i].lastframe = -1;
-	}
-	"""
+	for client in svs.clients: 
+	
+		# needs to reconnect
+		if client.state.value > client_state_t.cs_connected.value:
+			client.state = client_state_t.cs_connected
+		client.lastframe = -1
+
 	sv.time = 1000;
 	
 	sv.name = server
@@ -529,9 +529,13 @@ def SV_InitGame ():
 		#endif
 	
 	svs.spawncount = random.randint(0, 1 << 32)
-	#svs.clients = Z_Malloc (sizeof(client_t)*maxclients->value)
+	svs.clients = []
+	for i in range(int(sv_main.maxclients.value)):
+		svs.clients.append(client_t())
 	svs.num_client_entities = int(sv_main.maxclients.value*qcommon.UPDATE_BACKUP*64)
-	#svs.client_entities = Z_Malloc (sizeof(entity_state_t)*svs.num_client_entities)
+	svs.client_entities = []
+	for i in range(svs.num_client_entities):
+		svs.client_entities.append(q_shared.entity_state_t())
 
 	# init network stuff
 	net_udp.NET_Config (sv_main.maxclients.value > 1)

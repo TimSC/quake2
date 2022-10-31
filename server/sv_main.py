@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import random
 import struct
-from server import sv_ccmds, sv_send, sv_init, sv_game
+from server import sv_ccmds, sv_send, sv_init, sv_game, sv_user
 from qcommon import cvar, qcommon, common, net_chan, cmd
 from game import q_shared
 from linux import net_udp
@@ -346,8 +346,8 @@ def SVC_DirectConnect ():
 	# if there is already a slot for this ip, reuse it
 	for cl in sv_init.svs.clients:
 	
-		#if (cl.state == sv_init.client_state_t.cs_free)
-		#	continue;
+		if cl.state == sv_init.client_state_t.cs_free:
+			continue
 		if net_udp.NET_CompareBaseAdr (adr, cl.netchan.remote_address) \
 			and ( cl.netchan.qport == qport \
 			or adr.port == cl.netchan.remote_address.port ):
@@ -361,16 +361,22 @@ def SVC_DirectConnect ():
 			newcl = cl
 			SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge)
 			return
-		
-	if len(sv_init.svs.clients) >= int(maxclients.value):
 	
-		net_chan.Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_SERVER, adr, "print\nServer is full.\n");
-		Com_DPrintf ("Rejected a connection.\n");
-		return;	
-
 	# find a client slot
-	sv_init.svs.clients.append(newcl)
-
+	newcl = None
+	for client in sv_init.svs.clients:
+	
+		if cl.state == sv_init.client_state_t.cs_free:
+		
+			newcl = cl
+			break
+		
+	if newcl is None:
+	
+		Netchan_OutOfBandPrint (NS_SERVER, adr, "print\nServer is full.\n");
+		Com_DPrintf ("Rejected a connection.\n");
+		return;
+	
 	SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge)
 
 
@@ -642,15 +648,14 @@ def SV_ReadPackets ():
 						cl.netchan.remote_address.port = net_chan.net_from.port
 					
 
-					if Netchan_Process(cl.netchan, net_message):
+					if net_chan.Netchan_Process(cl.netchan, net_message):
 						# this is a valid, sequenced packet, so process it
 						if cl.state != sv_init.client_state_t.cs_zombie:
 						
 							cl.lastmessage = sv_init.svs.realtime	# don't timeout
-							SV_ExecuteClientMessage (cl)
+							sv_user.SV_ExecuteClientMessage (cl)
 						
-					
-					break;
+					break
 
 				finally:
 					i+=1
