@@ -91,7 +91,7 @@ void SV_DropClient (client_t *drop)
 		drop->download = NULL;
 	}
 
-	drop->state = cs_zombie;		// become free in a few seconds
+	drop->state = sv_init.client_state_t.cs_zombie;		// become free in a few seconds
 	drop->name[0] = 0;
 }
 
@@ -128,10 +128,10 @@ char	*SV_StatusString (void)
 	for (i=0 ; i<maxclients->value ; i++)
 	{
 		cl = &sv_init.svs.clients[i];
-		if (cl->state == sv_init.client_state_t.cs_connected || cl->state == sv_init.server_state_t.cs_spawned )
+		if (cl.state == sv_init.client_state_t.cs_connected || cl.state == sv_init.server_state_t.cs_spawned )
 		{
 			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
-				cl->edict->client->ps.stats[STAT_FRAGS], cl->ping, cl->name);
+				cl.edict->client->ps.stats[STAT_FRAGS], cl.ping, cl.name);
 			playerLength = strlen(player);
 			if (statusLength + playerLength >= sizeof(status) )
 				break;		// can't hold any more
@@ -241,7 +241,7 @@ void SVC_GetChallenge (void)
 	// see if we already have a challenge for this ip
 	for (i = 0 ; i < MAX_CHALLENGES ; i++)
 	{
-		if (NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
+		if (net_udp.NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
 			break;
 		if (sv_init.svs.challenges[i].time < oldestTime)
 		{
@@ -326,7 +326,7 @@ def SVC_DirectConnect ():
 		"""
 		for (i=0 ; i<MAX_CHALLENGES ; i++)
 		{
-			if (NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
+			if (net_udp.NET_CompareBaseAdr (net_chan.net_from, sv_init.svs.challenges[i].adr))
 			{
 				if (challenge == sv_init.svs.challenges[i].challenge)
 					break;		// good
@@ -346,10 +346,10 @@ def SVC_DirectConnect ():
 	# if there is already a slot for this ip, reuse it
 	for cl in sv_init.svs.clients:
 	
-		#if (cl->state == cs_free)
+		#if (cl.state == sv_init.client_state_t.cs_free)
 		#	continue;
-		if NET_CompareBaseAdr (adr, cl.netchan.remote_address) \
-			and ( cl.netchan.qport == qport 
+		if net_udp.NET_CompareBaseAdr (adr, cl.netchan.remote_address) \
+			and ( cl.netchan.qport == qport \
 			or adr.port == cl.netchan.remote_address.port ):
 		
 			if not net_udp.NET_IsLocalAddress (adr) and (sv_init.svs.realtime - cl.lastconnect) < int(sv_reconnect_limit.value * 1000):
@@ -384,7 +384,7 @@ def SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge):
 	ent = 0 #HACK for porting
 	#edictnum = (newcl-sv_init.svs.clients)+1
 	#ent = EDICT_NUM(edictnum)
-	#newcl->edict = ent
+	#newcl.edict = ent
 	newcl.challenge = challenge # save challenge for checksumming
 
 	# get the game a chance to reject this connection or modify the userinfo
@@ -409,7 +409,7 @@ def SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge):
 
 	newcl.state = sv_init.client_state_t.cs_connected
 	
-	#SZ_Init (&newcl->datagram, newcl->datagram_buf, sizeof(newcl->datagram_buf) )
+	#SZ_Init (&newcl.datagram, newcl.datagram_buf, sizeof(newcl.datagram_buf) )
 	newcl.datagram.allowoverflow = True
 	newcl.lastmessage = sv_init.svs.realtime	# don't timeout
 	newcl.lastconnect = sv_init.svs.realtime
@@ -484,10 +484,10 @@ def SV_ConnectionlessPacket ():
 	#char	*s;
 	#char	*c;
 
-	#MSG_BeginReading (&net_message);
-	#MSG_ReadLong (&net_message);		// skip the -1 marker
+	common.MSG_BeginReading (net_chan.net_message)
+	common.MSG_ReadLong (net_chan.net_message)		# skip the -1 marker
 
-	s = net_chan.net_message.data[4:].decode("ascii")
+	s = common.MSG_ReadStringLine (net_chan.net_message)
 
 	cmd.Cmd_TokenizeString (s, False)
 
@@ -520,7 +520,7 @@ def SV_ConnectionlessPacket ():
 ===================
 SV_CalcPings
 
-Updates the cl->ping variables
+Updates the cl.ping variables
 ===================
 */
 void SV_CalcPings (void)
@@ -532,37 +532,37 @@ void SV_CalcPings (void)
 	for (i=0 ; i<maxclients->value ; i++)
 	{
 		cl = &sv_init.svs.clients[i];
-		if (cl->state != sv_init.server_state_t.cs_spawned )
+		if (cl.state != sv_init.server_state_t.cs_spawned )
 			continue;
 
 #if 0
-		if (cl->lastframe > 0)
-			cl->frame_latency[sv_init.sv.framenum&(LATENCY_COUNTS-1)] = sv_init.sv.framenum - cl->lastframe + 1;
+		if (cl.lastframe > 0)
+			cl.frame_latency[sv_init.sv.framenum&(LATENCY_COUNTS-1)] = sv_init.sv.framenum - cl.lastframe + 1;
 		else
-			cl->frame_latency[sv_init.sv.framenum&(LATENCY_COUNTS-1)] = 0;
+			cl.frame_latency[sv_init.sv.framenum&(LATENCY_COUNTS-1)] = 0;
 #endif
 
 		total = 0;
 		count = 0;
 		for (j=0 ; j<LATENCY_COUNTS ; j++)
 		{
-			if (cl->frame_latency[j] > 0)
+			if (cl.frame_latency[j] > 0)
 			{
 				count++;
-				total += cl->frame_latency[j];
+				total += cl.frame_latency[j];
 			}
 		}
 		if (!count)
-			cl->ping = 0;
+			cl.ping = 0;
 		else
 #if 0
-			cl->ping = total*100/count - 100;
+			cl.ping = total*100/count - 100;
 #else
-			cl->ping = total / count;
+			cl.ping = total / count;
 #endif
 
 		// let the game dll know about the ping
-		cl->edict->client->ping = cl->ping;
+		cl.edict->client->ping = cl.ping;
 	}
 }
 
@@ -586,10 +586,10 @@ void SV_GiveMsec (void)
 	for (i=0 ; i<maxclients->value ; i++)
 	{
 		cl = &sv_init.svs.clients[i];
-		if (cl->state == cs_free )
+		if (cl.state == sv_init.client_state_t.cs_free )
 			continue;
 		
-		cl->commandMsec = 1800;		// 1600 + some slop
+		cl.commandMsec = 1800;		// 1600 + some slop
 	}
 }
 
@@ -616,43 +616,47 @@ def SV_ReadPackets ():
 				SV_ConnectionlessPacket ()
 				continue
 			
-			"""
-			// read the qport out of the message so we can fix up
-			// stupid address translating routers
-			MSG_BeginReading (&net_message);
-			MSG_ReadLong (&net_message);		// sequence number
-			MSG_ReadLong (&net_message);		// sequence number
-			qport = MSG_ReadShort (&net_message) & 0xffff;
-
-			// check for packets from connected clients
-			for (i=0, cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
-			{
-				if (cl->state == cs_free)
-					continue;
-				if (!NET_CompareBaseAdr (net_chan.net_from, cl->netchan.remote_address))
-					continue;
-				if (cl->netchan.qport != qport)
-					continue;
-				if (cl->netchan.remote_address.port != net_chan.net_from.port)
-				{
-					Com_Printf ("SV_ReadPackets: fixing up a translated port\n");
-					cl->netchan.remote_address.port = net_chan.net_from.port;
-				}
-
-				if (Netchan_Process(&cl->netchan, &net_message))
-				{	// this is a valid, sequenced packet, so process it
-					if (cl->state != cs_zombie)
-					{
-						cl->lastmessage = sv_init.svs.realtime;	// don't timeout
-						SV_ExecuteClientMessage (cl);
-					}
-				}
-				break;
-			}
 			
-			if (i != maxclients->value)
-				continue;
-			"""
+			# read the qport out of the message so we can fix up
+			# stupid address translating routers
+			common.MSG_BeginReading (net_chan.net_message)
+			common.MSG_ReadLong (net_chan.net_message)		# sequence number
+			common.MSG_ReadLong (net_chan.net_message)		# sequence number
+			qport = common.MSG_ReadShort (net_chan.net_message) & 0xffff
+
+			# check for packets from connected clients
+			i = 0
+			while i<maxclients.value:
+
+				try:
+					cl=sv_init.svs.clients[i]
+					if cl.state == sv_init.client_state_t.cs_free:
+						continue
+					if not net_udp.NET_CompareBaseAdr (net_chan.net_from, cl.netchan.remote_address):
+						continue
+					if cl.netchan.qport != qport:
+						continue
+					if cl.netchan.remote_address.port != net_chan.net_from.port:
+					
+						common.Com_Printf ("SV_ReadPackets: fixing up a translated port\n")
+						cl.netchan.remote_address.port = net_chan.net_from.port
+					
+
+					if Netchan_Process(cl.netchan, net_message):
+						# this is a valid, sequenced packet, so process it
+						if cl.state != sv_init.client_state_t.cs_zombie:
+						
+							cl.lastmessage = sv_init.svs.realtime	# don't timeout
+							SV_ExecuteClientMessage (cl)
+						
+					
+					break;
+
+				finally:
+					i+=1
+			
+			if i != maxclients.value:
+				continue
 
 		finally:
 			rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
@@ -686,21 +690,21 @@ def SV_CheckTimeouts ():
 	for (i=0,cl=sv_init.svs.clients ; i<maxclients->value ; i++,cl++)
 	{
 		// message times may be wrong across a changelevel
-		if (cl->lastmessage > sv_init.svs.realtime)
-			cl->lastmessage = sv_init.svs.realtime;
+		if (cl.lastmessage > sv_init.svs.realtime)
+			cl.lastmessage = sv_init.svs.realtime;
 
-		if (cl->state == cs_zombie
-		&& cl->lastmessage < zombiepoint)
+		if (cl.state == sv_init.client_state_t.cs_zombie
+		&& cl.lastmessage < zombiepoint)
 		{
-			cl->state = cs_free;	// can now be reused
+			cl.state = sv_init.client_state_t.cs_free;	// can now be reused
 			continue;
 		}
-		if ( (cl->state == sv_init.client_state_t.cs_connected || cl->state == sv_init.server_state_t.cs_spawned) 
-			&& cl->lastmessage < droppoint)
+		if ( (cl.state == sv_init.client_state_t.cs_connected || cl.state == sv_init.server_state_t.cs_spawned) 
+			&& cl.lastmessage < droppoint)
 		{
-			SV_BroadcastPrintf (PRINT_HIGH, "%s timed out\n", cl->name);
+			SV_BroadcastPrintf (PRINT_HIGH, "%s timed out\n", cl.name);
 			SV_DropClient (cl); 
-			cl->state = cs_free;	// don't bother with zombie state
+			cl.state = sv_init.client_state_t.cs_free;	// don't bother with zombie state
 		}
 	}
 }
@@ -920,33 +924,33 @@ def SV_UserinfoChanged (cl): #client_t *
 	int		i;
 
 	// call prog code to allow overrides
-	ge->ClientUserinfoChanged (cl->edict, cl->userinfo);
+	ge->ClientUserinfoChanged (cl.edict, cl.userinfo);
 	
 	// name for C code
-	strncpy (cl->name, q_shared.Info_ValueForKey (cl->userinfo, "name"), sizeof(cl->name)-1);
+	strncpy (cl.name, q_shared.Info_ValueForKey (cl.userinfo, "name"), sizeof(cl.name)-1);
 	// mask off high bit
-	for (i=0 ; i<sizeof(cl->name) ; i++)
-		cl->name[i] &= 127;
+	for (i=0 ; i<sizeof(cl.name) ; i++)
+		cl.name[i] &= 127;
 
 	// rate command
-	val = q_shared.Info_ValueForKey (cl->userinfo, "rate");
+	val = q_shared.Info_ValueForKey (cl.userinfo, "rate");
 	if (strlen(val))
 	{
 		i = atoi(val);
-		cl->rate = i;
-		if (cl->rate < 100)
-			cl->rate = 100;
-		if (cl->rate > 15000)
-			cl->rate = 15000;
+		cl.rate = i;
+		if (cl.rate < 100)
+			cl.rate = 100;
+		if (cl.rate > 15000)
+			cl.rate = 15000;
 	}
 	else
-		cl->rate = 5000;
+		cl.rate = 5000;
 
 	// msg command
-	val = q_shared.Info_ValueForKey (cl->userinfo, "msg");
+	val = q_shared.Info_ValueForKey (cl.userinfo, "msg");
 	if (strlen(val))
 	{
-		cl->messagelevel = atoi(val);
+		cl.messagelevel = atoi(val);
 	}
 
 }
@@ -1032,13 +1036,13 @@ void SV_FinalMessage (char *message, qboolean reconnect)
 	// stagger the packets to crutch operating system limited buffers
 
 	for (i=0, cl = sv_init.svs.clients ; i<maxclients->value ; i++, cl++)
-		if (cl->state >= sv_init.client_state_t.cs_connected)
-			Netchan_Transmit (&cl->netchan, net_message.cursize
+		if (cl.state >= sv_init.client_state_t.cs_connected)
+			Netchan_Transmit (&cl.netchan, net_message.cursize
 			, net_message.data);
 
 	for (i=0, cl = sv_init.svs.clients ; i<maxclients->value ; i++, cl++)
-		if (cl->state >= sv_init.client_state_t.cs_connected)
-			Netchan_Transmit (&cl->netchan, net_message.cursize
+		if (cl.state >= sv_init.client_state_t.cs_connected)
+			Netchan_Transmit (&cl.netchan, net_message.cursize
 			, net_message.data);
 }
 

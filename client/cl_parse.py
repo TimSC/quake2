@@ -309,54 +309,53 @@ def CL_ParseServerData ():
 	#
 	# wipe the client_state_t struct
 	#
-	"""
+
 	CL_ClearState ()
-	cl_main.cls.state = ca_connected;
+	cl_main.cls.state = ca_connected
 
-// parse protocol version number
-	i = MSG_ReadLong (&net_chan.net_message);
-	cl_main.cls.serverProtocol = i;
+	# parse protocol version number
+	i = MSG_ReadLong (net_chan.net_message)
+	cl_main.cls.serverProtocol = i
 
-	// BIG HACK to let demos from release work with the 3.0x patch!!!
-	if (Com_ServerState() && PROTOCOL_VERSION == 34)
-	{
-	}
-	else if (i != PROTOCOL_VERSION)
-		Com_Error (qcommon.ERR_DROP,"Server returned version %i, not %i", i, PROTOCOL_VERSION);
+	# BIG HACK to let demos from release work with the 3.0x patch!!!
+	if Com_ServerState() and PROTOCOL_VERSION == 34:
+		pass
+	elif i != PROTOCOL_VERSION:
+		Com_Error (qcommon.ERR_DROP,"Server returned version {:d}, not {:d}", i, PROTOCOL_VERSION)
 
-	cl_main.cl.servercount = MSG_ReadLong (&net_chan.net_message);
-	cl_main.cl.attractloop = MSG_ReadByte (&net_chan.net_message);
+	cl_main.cl.servercount = MSG_ReadLong (net_chan.net_message)
+	cl_main.cl.attractloop = MSG_ReadByte (net_chan.net_message)
 
-	// game directory
-	str = MSG_ReadString (&net_chan.net_message);
-	strncpy (cl_main.cl.gamedir, str, sizeof(cl_main.cl.gamedir)-1);
+	# game directory
+	strn = MSG_ReadString (net_chan.net_message)
+	strncpy (cl_main.cl.gamedir, str, sizeof(cl_main.cl.gamedir)-1)
 
-	// set gamedir
-	if ((*str && (!fs_gamedirvar->string || !*fs_gamedirvar->string || strcmp(fs_gamedirvar->string, str))) || (!*str && (fs_gamedirvar->string || *fs_gamedirvar->string)))
-		Cvar_Set("game", str);
+	# set gamedir
+	if ((len(strn)>0 and (len(files.fs_gamedirvar.string)==0 or (files.fs_gamedirvar.string!=strn))) or (len(strn)==0 and len(files.fs_gamedirvar.string)>0)):
+		cvar.Cvar_Set("game", strn)
 
-	// parse player entity number
-	cl_main.cl.playernum = MSG_ReadShort (&net_chan.net_message);
+	# parse player entity number
+	cl_main.cl.playernum = MSG_ReadShort (net_chan.net_message)
 
-	// get the full level name
-	str = MSG_ReadString (&net_chan.net_message);
+	# get the full level name
+	strn = MSG_ReadString (net_chan.net_message)
 
-	if (cl_main.cl.playernum == -1)
-	{	// playing a cinematic or showing a pic, not a level
-		SCR_PlayCinematic (str);
-	}
-	else
-	{
-		// seperate the printfs so the server message can have a color
-		Com_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n");
-		Com_Printf ("%c%s\n", 2, str);
+	if cl_main.cl.playernum == -1:
+		# playing a cinematic or showing a pic, not a level
+		SCR_PlayCinematic (strn)
+	
+	else:
+	
+		# seperate the printfs so the server message can have a color
+		common.Com_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n")
+		common.Com_Printf ("{}{}\n".format(chr(2), str))
 
-		// need to prep refresh at next oportunity
-		cl_main.cl.refresh_prepped = false;
-	}
+		# need to prep refresh at next oportunity
+		cl_main.cl.refresh_prepped = False
+	
 
 
-/*
+"""
 ==================
 CL_ParseBaseline
 ==================

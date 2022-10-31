@@ -797,34 +797,36 @@ def MSG_ReadString (msg_read): #sizebuf_t *
 		c = MSG_ReadChar (msg_read)
 		if c == -1 or c == 0:
 			break
-		st.append(c)
+		st.append(chr(c))
 		l+=1
 	
 	#string[l] = 0;
 	
 	return "".join(st)
 
-"""
-char *MSG_ReadStringLine (sizebuf_t *msg_read)
-{
-	static char	string[2048];
-	int		l,c;
-	
-	l = 0;
-	do
-	{
-		c = MSG_ReadChar (msg_read);
-		if (c == -1 || c == 0 || c == '\n')
-			break;
-		string[l] = c;
-		l++;
-	} while (l < sizeof(string)-1);
-	
-	string[l] = 0;
-	
-	return string;
-}
 
+def MSG_ReadStringLine (msg_read): # sizebuf_t * (returns char *)
+
+	#static char	string[2048];
+	#int		l,c;
+	
+	l = 0
+	readStringSize = 2048
+	st = []
+	
+	while l < readStringSize-1:
+	
+		c = MSG_ReadChar (msg_read)
+		if c == -1 or c == 0 or c == '\n':
+			break
+		st.append(chr(c))
+		l+=1
+	
+	#string[l] = 0
+	
+	return "".join(st)
+
+"""
 float MSG_ReadCoord (sizebuf_t *msg_read)
 {
 	return MSG_ReadShort(msg_read) * (1.0/8);

@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // sv_user.c -- server code for moving users
 
 #include "server.h"
@@ -54,9 +55,11 @@ SV_New_f
 Sends the first message from the server to a connected client.
 This will be sent on the initial connection and upon each server load.
 ================
-*/
-void SV_New_f (void)
-{
+"""
+def SV_New_f (): #void
+
+	pass
+	"""
 	char		*gamedir;
 	int			playernum;
 	edict_t		*ent;
@@ -120,9 +123,11 @@ void SV_New_f (void)
 ==================
 SV_Configstrings_f
 ==================
-*/
-void SV_Configstrings_f (void)
-{
+"""
+def SV_Configstrings_f ():
+
+	pass
+	"""
 	int			start;
 
 	Com_DPrintf ("Configstrings() from %s\n", sv_client->name);
@@ -175,9 +180,11 @@ void SV_Configstrings_f (void)
 ==================
 SV_Baselines_f
 ==================
-*/
-void SV_Baselines_f (void)
-{
+"""
+def SV_Baselines_f ():
+
+	pass
+	"""
 	int		start;
 	entity_state_t	nullstate;
 	entity_state_t	*base;
@@ -234,9 +241,11 @@ void SV_Baselines_f (void)
 ==================
 SV_Begin_f
 ==================
-*/
-void SV_Begin_f (void)
-{
+"""
+def SV_Begin_f ():
+
+	pass
+	"""
 	Com_DPrintf ("Begin() from %s\n", sv_client->name);
 
 	// handle the case of a level changing while a client was connecting
@@ -661,4 +670,4 @@ void SV_ExecuteClientMessage (client_t *cl)
 		}
 	}
 }
-
+"""
