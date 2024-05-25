@@ -325,21 +325,19 @@ void MSG_WriteByte (sizebuf_t *sb, int c)
 	buf = SZ_GetSpace (sb, 1);
 	buf[0] = c;
 }
-
-void MSG_WriteShort (sizebuf_t *sb, int c)
-{
+"""
+def MSG_WriteShort (c):
+	"""
 	byte	*buf;
 	
 #ifdef PARANOID
 	if (c < ((short)0x8000) || c > (short)0x7fff)
 		Com_Error (q_shared.ERR_FATAL, "MSG_WriteShort: range error");
 #endif
+"""
+	return struct.pack("<H", c)
 
-	buf = SZ_GetSpace (sb, 2);
-	buf[0] = c&0xff;
-	buf[1] = c>>8;
-}
-
+"""
 void MSG_WriteLong (sizebuf_t *sb, int c)
 {
 	byte	*buf;

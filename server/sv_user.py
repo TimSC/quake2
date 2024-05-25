@@ -17,12 +17,16 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from server import sv_main
+from qcommon import cvar, qcommon, common, net_chan
 """
 // sv_user.c -- server code for moving users
 
 #include "server.h"
 
-edict_t	*sv_player;
+"""
+sv_player = None #edict_t *
+"""
 
 /*
 ============================================================
@@ -68,7 +72,7 @@ def SV_New_f (): #void
 
 	if (sv_client->state != cs_connected)
 	{
-		Com_Printf ("New not valid -- already spawned\n");
+		common.Com_Printf ("New not valid -- already spawned\n");
 		return;
 	}
 
@@ -134,14 +138,14 @@ def SV_Configstrings_f ():
 
 	if (sv_client->state != cs_connected)
 	{
-		Com_Printf ("configstrings not valid -- already spawned\n");
+		common.Com_Printf ("configstrings not valid -- already spawned\n");
 		return;
 	}
 
 	// handle the case of a level changing while a client was connecting
 	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
 	{
-		Com_Printf ("SV_Configstrings_f from different level\n");
+		common.Com_Printf ("SV_Configstrings_f from different level\n");
 		SV_New_f ();
 		return;
 	}
@@ -193,14 +197,14 @@ def SV_Baselines_f ():
 
 	if (sv_client->state != cs_connected)
 	{
-		Com_Printf ("baselines not valid -- already spawned\n");
+		common.Com_Printf ("baselines not valid -- already spawned\n");
 		return;
 	}
 	
 	// handle the case of a level changing while a client was connecting
 	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
 	{
-		Com_Printf ("SV_Baselines_f from different level\n");
+		common.Com_Printf ("SV_Baselines_f from different level\n");
 		SV_New_f ();
 		return;
 	}
@@ -251,7 +255,7 @@ def SV_Begin_f ():
 	// handle the case of a level changing while a client was connecting
 	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
 	{
-		Com_Printf ("SV_Begin_f from different level\n");
+		common.Com_Printf ("SV_Begin_f from different level\n");
 		SV_New_f ();
 		return;
 	}
@@ -538,9 +542,11 @@ SV_ExecuteClientMessage
 
 The current net_message is parsed for the given client
 ===================
-*/
-void SV_ExecuteClientMessage (client_t *cl)
-{
+"""
+def SV_ExecuteClientMessage (cl): #client_t *
+
+	global sv_player
+	"""
 	int		c;
 	char	*s;
 
@@ -552,31 +558,33 @@ void SV_ExecuteClientMessage (client_t *cl)
 	int		checksumIndex;
 	qboolean	move_issued;
 	int		lastframe;
+"""
+	sv_main.sv_client = cl
+	sv_player = sv_main.sv_client.edict
 
-	sv_client = cl;
-	sv_player = sv_client->edict;
+	# only allow one move command
+	move_issued = False
+	stringCmdCount = 0
 
-	// only allow one move command
-	move_issued = false;
-	stringCmdCount = 0;
+	while True:
+	
+		if net_chan.net_message.readcount > net_chan.net_message.cursize:
+		
+			common.Com_Printf ("SV_ReadClientMessage: badread\n")
+			SV_DropClient (cl)
+			return
 
-	while (1)
-	{
-		if (net_message.readcount > net_message.cursize)
-		{
-			Com_Printf ("SV_ReadClientMessage: badread\n");
-			SV_DropClient (cl);
-			return;
-		}	
+		c = common.MSG_ReadByte (net_chan.net_message)
+		if c == -1:
+			break
 
-		c = MSG_ReadByte (&net_message);
-		if (c == -1)
-			break;
-				
-		switch (c)
+		print ("SV_ExecuteClientMessage", c)
+
+		"""
+		switch (c):
 		{
 		default:
-			Com_Printf ("SV_ReadClientMessage: unknown command char\n");
+			common.Com_Printf ("SV_ReadClientMessage: unknown command char\n");
 			SV_DropClient (cl);
 			return;
 						
@@ -627,8 +635,9 @@ void SV_ExecuteClientMessage (client_t *cl)
 					cl->name, calculatedChecksum, checksum, 
 					cl->netchan.incoming_sequence);
 				return;
-			}
+			}"""
 
+		"""
 			if (!sv_paused->value)
 			{
 				net_drop = cl->netchan.dropped;
@@ -637,7 +646,7 @@ void SV_ExecuteClientMessage (client_t *cl)
 
 //if (net_drop > 2)
 
-//	Com_Printf ("drop %i\n", net_drop);
+//	common.Com_Printf ("drop %i\n", net_drop);
 					while (net_drop > 2)
 					{
 						SV_ClientThink (cl, &cl->lastcmd);

@@ -63,35 +63,40 @@ struct gclient_s
 	// this point in the structure
 };
 
+"""
+class edict_t(object):
 
-struct edict_s
-{
-	entity_state_t	s;
-	struct gclient_s	*client;
-	qboolean	inuse;
-	int			linkcount;
+	def __init__(self):
 
-	// FIXME: move these fields to a server private sv_entity_t
-	link_t		area;				// linked to a division node or leaf
-	
-	int			num_clusters;		// if -1, use headnode instead
-	int			clusternums[MAX_ENT_CLUSTERS];
-	int			headnode;			// unused if num_clusters != -1
-	int			areanum, areanum2;
+		pass
+		"""
 
-	//================================
+		entity_state_t	s;
+		struct gclient_s	*client;
+		qboolean	inuse;
+		int			linkcount;
 
-	int			svflags;			// SVF_NOCLIENT, SVF_DEADMONSTER, SVF_MONSTER, etc
-	vec3_t		mins, maxs;
-	vec3_t		absmin, absmax, size;
-	solid_t		solid;
-	int			clipmask;
-	edict_t		*owner;
+		# FIXME: move these fields to a server private sv_entity_t
+		link_t		area;				// linked to a division node or leaf
+		
+		int			num_clusters;		// if -1, use headnode instead
+		int			clusternums[MAX_ENT_CLUSTERS];
+		int			headnode;			// unused if num_clusters != -1
+		int			areanum, areanum2;
 
-	// the game dll can add anything it wants after
-	// this point in the structure
-};
+		#================================
 
+		int			svflags;			// SVF_NOCLIENT, SVF_DEADMONSTER, SVF_MONSTER, etc
+		vec3_t		mins, maxs;
+		vec3_t		absmin, absmax, size;
+		solid_t		solid;
+		int			clipmask;
+		edict_t		*owner;
+
+		# the game dll can add anything it wants after
+		# this point in the structure
+		"""
+"""
 #endif		// GAME_INCLUDE
 
 //===============================================================

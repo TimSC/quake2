@@ -648,7 +648,7 @@ def SV_ReadPackets ():
 						cl.netchan.remote_address.port = net_chan.net_from.port
 					
 
-					if net_chan.Netchan_Process(cl.netchan, net_message):
+					if net_chan.Netchan_Process(cl.netchan, net_chan.net_message):
 						# this is a valid, sequenced packet, so process it
 						if cl.state != sv_init.client_state_t.cs_zombie:
 						
@@ -1010,7 +1010,7 @@ def SV_Init ():
 
 	sv_reconnect_limit = cvar.Cvar_Get ("sv_reconnect_limit", "3", q_shared.CVAR_ARCHIVE)
 
-	net_message = ""
+	#net_chan.net_message = ""
 
 """
 ==================

@@ -255,7 +255,7 @@ def Netchan_Transmit (chan, data): #netchan_t *
 
 	# send the qport if we are a client
 	if chan.sock == qcommon.netsrc_t.NS_CLIENT:
-		send += struct.pack(">H", int(qport.value))
+		send += common.MSG_WriteShort(int(qport.value))
 
 	# copy the reliable message to the packet first
 	if send_reliable:
@@ -312,7 +312,7 @@ def Netchan_Process (chan, msg): #netchan_t *, sizebuf_t * (returns qboolean)
 	
 	# read the qport if we are a server
 	if chan.sock == qcommon.netsrc_t.NS_SERVER:
-		qport = MSG_ReadShort(msg)
+		qport = common.MSG_ReadShort(msg)
 
 	reliable_message = sequence >> 31
 	reliable_ack = sequence_ack >> 31
