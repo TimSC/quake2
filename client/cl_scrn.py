@@ -1300,7 +1300,7 @@ def SCR_UpdateScreen ():
 
 	# if the screen is disabled (loading plaque is up, or vid mode changing)
 	# do nothing at all
-	if cl_main.cls.disable_screen:
+	if cl_main.cls.disable_screen != 0:
 	
 		if q_shlinux.Sys_Milliseconds () - cl_main.cls.disable_screen > 120000:
 		
@@ -1308,7 +1308,6 @@ def SCR_UpdateScreen ():
 			common.Com_Printf ("Loading plaque timed out.\n")
 		
 		return
-	
 
 	if not scr_initialized or not console.con.initialized:
 		return				# not initialized yet

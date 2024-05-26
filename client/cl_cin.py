@@ -493,7 +493,6 @@ SCR_RunCinematic
 """
 def SCR_RunCinematic ():
 
-
 	#int		frame;
 
 	if cl_main.cl.cinematictime <= 0:

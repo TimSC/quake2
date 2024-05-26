@@ -112,8 +112,8 @@ class client_state_t(object):
 		int			parse_entities;		// index (not anded off) into cl_parse_entities[]
 		"""
 		self.cmd = q_shared.usercmd_t()
-		self.cmds = [] #usercmd_t[CMD_BACKUP], each mesage will send several old cmds
-		self.cmd_time = [] #int[CMD_BACKUP]	# time sent, for calculating pings
+		self.cmds = [q_shared.usercmd_t() for i in range(CMD_BACKUP)] #usercmd_t[CMD_BACKUP], each mesage will send several old cmds
+		self.cmd_time = [0 for i in range(CMD_BACKUP)] #int[CMD_BACKUP]	# time sent, for calculating pings
 		self.predicted_origins = [] #short[CMD_BACKUP][3], for debug comparing against server
 
 		for i in range(CMD_BACKUP):

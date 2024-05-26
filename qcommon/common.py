@@ -312,21 +312,20 @@ void MSG_WriteChar (sizebuf_t *sb, int c)
 	buf = SZ_GetSpace (sb, 1);
 	buf[0] = c;
 }
-
-void MSG_WriteByte (sizebuf_t *sb, int c)
-{
+"""
+def MSG_WriteByte (sb, c): #sizebuf_t *, int
+	"""
 	byte	*buf;
 	
 #ifdef PARANOID
 	if (c < 0 || c > 255)
 		Com_Error (q_shared.ERR_FATAL, "MSG_WriteByte: range error");
 #endif
-
-	buf = SZ_GetSpace (sb, 1);
-	buf[0] = c;
-}
 """
-def MSG_WriteShort (c):
+	sb += struct.pack("c", c)
+
+
+def MSG_WriteShort (sb, c):
 	"""
 	byte	*buf;
 	
@@ -335,7 +334,7 @@ def MSG_WriteShort (c):
 		Com_Error (q_shared.ERR_FATAL, "MSG_WriteShort: range error");
 #endif
 """
-	return struct.pack("<H", c)
+	sb += struct.pack("<H", c)
 
 """
 void MSG_WriteLong (sizebuf_t *sb, int c)
@@ -1345,15 +1344,16 @@ static byte chktbl[1024] = {
 0x39, 0x4f, 0xdd, 0xe4, 0xb6, 0x19, 0x27, 0xfb, 0xb8, 0xf5, 0x32, 0x73, 0xe5, 0xcb, 0x32
 };
 
-/*
+
 ====================
 COM_BlockSequenceCRCByte
 
 For proxy protecting
 ====================
-*/
-byte	COM_BlockSequenceCRCByte (byte *base, int length, int sequence)
-{
+"""
+def COM_BlockSequenceCRCByte (buff, baseOffset, length, sequence): #byte *, int , int
+
+	"""
 	int		n;
 	byte	*p;
 	int		x;
@@ -1383,10 +1383,10 @@ byte	COM_BlockSequenceCRCByte (byte *base, int length, int sequence)
 		x += chkb[n];
 
 	crc = (crc ^ x) & 0xff;
+	"""
+	return bytes(1)
 
-	return crc;
-}
-
+"""
 //========================================================
 
 float	frand(void)

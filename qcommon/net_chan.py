@@ -251,11 +251,11 @@ def Netchan_Transmit (chan, data): #netchan_t *
 	chan.outgoing_sequence+=1
 	chan.last_sent = q_shlinux.curtime
 
-	send = struct.pack(">ll", w1, w2)
+	send = bytearray(struct.pack(">ll", w1, w2))
 
 	# send the qport if we are a client
 	if chan.sock == qcommon.netsrc_t.NS_CLIENT:
-		send += common.MSG_WriteShort(int(qport.value))
+		common.MSG_WriteShort(send, int(qport.value))
 
 	# copy the reliable message to the packet first
 	if send_reliable:

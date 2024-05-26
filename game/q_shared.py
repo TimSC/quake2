@@ -513,7 +513,9 @@ BUTTON_ANY			= 128			# any key whatsoever
 # usercmd_t is sent to the server each client frame
 class usercmd_t(object):
 	def __init__(self):
+		self.reset()
 
+	def reset(self):
 		self.msec = 0 #byte	
 		self.buttons = 0 #byte	
 		self.angles = 0, 0, 0 #short	[3]

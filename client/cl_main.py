@@ -880,7 +880,7 @@ def CL_ConnectionlessPacket ():
 		cls.state = client.connstate_t.ca_connected
 		return
 	
-
+	print ("c", c)
 	"""
 	# server responding to a status broadcast
 	if (!strcmp(c, "info"))
@@ -1025,9 +1025,11 @@ def CL_ReadPackets ():
 ==============
 CL_FixUpGender_f
 ==============
-*/
-void CL_FixUpGender(void)
-{
+"""
+def CL_FixUpGender():
+
+	pass
+	"""
 	char *p;
 	char sk[80];
 
@@ -1050,7 +1052,7 @@ void CL_FixUpGender(void)
 			Cvar_Set ("gender", "none");
 		gender->modified = false;
 	}
-}
+
 
 /*
 ==============

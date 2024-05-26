@@ -25,9 +25,9 @@ from linux import in_linux, sys_linux
 // cl_main.cl.input.c  -- builds an intended movement command to send to the server
 
 #include "client.h"
-
-cvar_t	*cl_nodelta;
-
+"""
+cl_nodelta = None #cvar_t *
+"""
 extern	unsigned	sys_frame_time;
 """
 old_sys_frame_time = 0
@@ -422,7 +422,7 @@ CL_InitInput
 """
 def CL_InitInput ():
 
-	pass
+	global cl_nodelta
 	"""
 	Cmd_AddCommand ("centerview",IN_CenterView);
 
@@ -457,24 +457,24 @@ def CL_InitInput ():
 	Cmd_AddCommand ("impulse", IN_Impulse);
 	Cmd_AddCommand ("+klook", IN_KLookDown);
 	Cmd_AddCommand ("-klook", IN_KLookUp);
-
-	cl_nodelta = Cvar_Get ("cl_nodelta", "0", 0);
-}
-
+"""
+	cl_nodelta = cvar.Cvar_Get ("cl_nodelta", "0", 0)
 
 
-/*
+
+
+"""
 =================
 CL_SendCmd
 =================
 """
 def CL_SendCmd ():
 
-	buf = qcommon.sizebuf_t()
+	buf = bytearray()
 	#byte		data[128];
 	#int			i;
 	#usercmd_t	*cmd, *oldcmd;
-	#usercmd_t	nullcmd;
+	nullcmd = q_shared.usercmd_t()
 	#int			checksumIndex;
 
 	# build a command even if not connected
@@ -497,65 +497,62 @@ def CL_SendCmd ():
 			net_chan.Netchan_Transmit (cl_main.cls.netchan, b"")
 		return
 	
-
-	"""
 	# send a userinfo update if needed
-	if (userinfo_modified)
-	{
-		CL_FixUpGender();
-		userinfo_modified = false;
-		MSG_WriteByte (&cl_main.cls.netchan.message, clc_userinfo);
-		MSG_WriteString (&cl_main.cls.netchan.message, Cvar_Userinfo() );
-	}
+	if cvar.userinfo_modified:
+	
+		cl_main.CL_FixUpGender()
+		cvar.userinfo_modified = False
+		MSG_WriteByte (cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_userinfo)
+		MSG_WriteString (cl_main.cls.netchan.message, cvar.Cvar_Userinfo() )
+	
+	#SZ_Init (&buf, data, sizeof(data));
 
-	SZ_Init (&buf, data, sizeof(data));
-	"""
 	if cmd.buttons and cl_main.cl.cinematictime > 0 and not cl_main.cl.attractloop \
 		and cl_main.cls.realtime - cl_main.cl.cinematictime > 1000:
 		# skip the rest of the cinematic
 		cl_cin.SCR_FinishCinematic ()
 	
-	"""
 	# begin a client move command
-	MSG_WriteByte (&buf, clc_move);
+	common.MSG_WriteByte (buf, qcommon.clc_ops_e.clc_move)
 
 	# save the position for a checksum byte
-	checksumIndex = buf.cursize;
-	MSG_WriteByte (&buf, 0);
-
+	checksumIndex = len(buf)
+	common.MSG_WriteByte (buf, 0)
+	
 	# let the server know what the last frame we
 	# got was, so the next message can be delta compressed
-	if (cl_nodelta->value || !cl_main.cl.frame.valid || cl_main.cls.demowaiting)
-		MSG_WriteLong (&buf, -1);	// no compression
-	else
-		MSG_WriteLong (&buf, cl_main.cl.frame.serverframe);
+
+	if cl_nodelta.value or not cl_main.cl.frame.valid or cl_main.cls.demowaiting:
+		common.MSG_WriteLong (buf, -1)	# no compression
+	else:
+		common.MSG_WriteLong (buf, cl_main.cl.frame.serverframe)
 
 	# send this and the previous cmds in the message, so
 	# if the last packet was dropped, it can be recovered
-	i = (cl_main.cls.netchan.outgoing_sequence-2) & (CMD_BACKUP-1);
-	cmd = &cl_main.cl.cmds[i];
-	memset (&nullcmd, 0, sizeof(nullcmd));
-	MSG_WriteDeltaUsercmd (&buf, &nullcmd, cmd);
-	oldcmd = cmd;
+	
+	i = (cl_main.cls.netchan.outgoing_sequence-2) & (client.CMD_BACKUP-1)
+	cmd = cl_main.cl.cmds[i]
+	cmd.reset()
+	MSG_WriteDeltaUsercmd (buf, nullcmd, cmd)
+	oldcmd = cmd
 
-	i = (cl_main.cls.netchan.outgoing_sequence-1) & (CMD_BACKUP-1);
-	cmd = &cl_main.cl.cmds[i];
-	MSG_WriteDeltaUsercmd (&buf, oldcmd, cmd);
-	oldcmd = cmd;
+	i = (cl_main.cls.netchan.outgoing_sequence-1) & (client.CMD_BACKUP-1)
+	cmd = cl_main.cl.cmds[i]
+	MSG_WriteDeltaUsercmd (buf, oldcmd, cmd)
+	oldcmd = cmd
 
-	i = (cl_main.cls.netchan.outgoing_sequence) & (CMD_BACKUP-1);
-	cmd = &cl_main.cl.cmds[i];
-	MSG_WriteDeltaUsercmd (&buf, oldcmd, cmd);
+	i = (cl_main.cls.netchan.outgoing_sequence) & (client.CMD_BACKUP-1)
+	cmd = cl_main.cl.cmds[i]
+	MSG_WriteDeltaUsercmd (buf, oldcmd, cmd)
 
 	# calculate a checksum over the move commands
-	buf.data[checksumIndex] = COM_BlockSequenceCRCByte(
-		buf.data + checksumIndex + 1, buf.cursize - checksumIndex - 1,
-		cl_main.cls.netchan.outgoing_sequence);
+	buf[checksumIndex] = COM_BlockSequenceCRCByte(
+		buf, checksumIndex + 1, len(buf) - checksumIndex - 1,
+		cl_main.cls.netchan.outgoing_sequence)
 
 	#
 	# deliver the message
 	#
-	Netchan_Transmit (&cl_main.cls.netchan, buf.cursize, buf.data);	
+	net_chan.Netchan_Transmit (cl_main.cls.netchan, buf)
 
 
-"""

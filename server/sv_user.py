@@ -62,7 +62,7 @@ This will be sent on the initial connection and upon each server load.
 """
 def SV_New_f (): #void
 
-	pass
+	print ("SV_New_f")
 	"""
 	char		*gamedir;
 	int			playernum;
@@ -130,6 +130,7 @@ SV_Configstrings_f
 """
 def SV_Configstrings_f ():
 
+	print ("SV_Configstrings_f")
 	pass
 	"""
 	int			start;
@@ -187,6 +188,7 @@ SV_Baselines_f
 """
 def SV_Baselines_f ():
 
+	print ("SV_Baselines_f")
 	pass
 	"""
 	int		start;
@@ -248,7 +250,7 @@ SV_Begin_f
 """
 def SV_Begin_f ():
 
-	pass
+	print ("SV_Begin_f")
 	"""
 	Com_DPrintf ("Begin() from %s\n", sv_client->name);
 
@@ -576,7 +578,7 @@ def SV_ExecuteClientMessage (cl): #client_t *
 
 		c = common.MSG_ReadByte (net_chan.net_message)
 		if c == -1:
-			break
+			break # nothing to read
 
 		print ("SV_ExecuteClientMessage", c)
 
