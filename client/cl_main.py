@@ -440,12 +440,12 @@ def CL_CheckForResend ():
 	if (adr.port == 0)
 		adr.port = BigShort (qcommon.PORT_SERVER);
 
-	cls.connect_time = cls.realtime;	// for retransmit requests
+	cls.connect_time = cls.realtime;	# for retransmit requests
 
 	Com_Printf ("Connecting to %s...\n", cls.servername);
 
 	Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, "getchallenge\n");
-}
+
 
 
 /*
@@ -865,6 +865,7 @@ def CL_ConnectionlessPacket ():
 	c = cmd.Cmd_Argv(0)
 
 	common.Com_Printf ("{}: {}\n".format(net_udp.NET_AdrToString (net_chan.net_from), c))
+	print ("CL_ConnectionlessPacket", c)
 
 	# server connection
 	if c == "client_connect":
@@ -873,10 +874,11 @@ def CL_ConnectionlessPacket ():
 		
 			common.Com_Printf ("Dup connect received.  Ignored.\n")
 			return
-		
+
 		net_chan.Netchan_Setup (qcommon.netsrc_t.NS_CLIENT, cls.netchan, net_chan.net_from, cls.quakePort)
 		cls.netchan.message.data = struct.pack("B", qcommon.clc_ops_e.clc_stringcmd.value)
 		cls.netchan.message.data += b"new"
+		cls.netchan.message.cursize = len(cls.netchan.message.data)
 		cls.state = client.connstate_t.ca_connected
 		return
 	
@@ -1600,9 +1602,11 @@ cheatvar_t	cheatvars[] = {
 };
 
 int		numcheatvars;
+"""
+def CL_FixCvarCheats ():
 
-void CL_FixCvarCheats (void)
-{
+	pass
+	"""
 	int			i;
 	cheatvar_t	*var;
 
@@ -1647,13 +1651,13 @@ def CL_SendCommand ():
 
 	// allow mice or other external controllers to add commands
 	IN_Commands ();
-
-	// process console commands
-	Cbuf_Execute ();
-
-	// fix any cheating cvars
-	CL_FixCvarCheats ();
 	"""
+	# process console commands
+	cmd.Cbuf_Execute ()
+
+	# fix any cheating cvars
+	CL_FixCvarCheats ()
+
 	# send intentions now
 	cl_input.CL_SendCmd ()
 

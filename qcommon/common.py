@@ -325,7 +325,7 @@ def MSG_WriteByte (sb, c): #sizebuf_t *, int
 	sb += struct.pack("c", c)
 
 
-def MSG_WriteShort (sb, c):
+def MSG_WriteShort (sb: bytearray, c):
 	"""
 	byte	*buf;
 	
@@ -336,18 +336,20 @@ def MSG_WriteShort (sb, c):
 """
 	sb += struct.pack("<H", c)
 
-"""
-void MSG_WriteLong (sizebuf_t *sb, int c)
-{
-	byte	*buf;
-	
-	buf = SZ_GetSpace (sb, 4);
-	buf[0] = c&0xff;
-	buf[1] = (c>>8)&0xff;
-	buf[2] = (c>>16)&0xff;
-	buf[3] = c>>24;
-}
 
+def MSG_WriteLong (sb: bytearray, c: int): #sizebuf_t *sb, int c)
+
+	#byte	*buf;
+	
+	#buf = SZ_GetSpace (sb, 4);
+	#buf[0] = c&0xff;
+	#buf[1] = (c>>8)&0xff;
+	#buf[2] = (c>>16)&0xff;
+	#buf[3] = c>>24;
+
+	sb += struct.pack("<L", c)
+
+"""
 void MSG_WriteFloat (sizebuf_t *sb, float f)
 {
 	union
@@ -712,7 +714,6 @@ def MSG_ReadChar (msg_read): #sizebuf_t *
 def MSG_ReadByte (msg_read): #sizebuf_t *
 
 	#int	c;
-	
 	if msg_read.readcount+1 > msg_read.cursize:
 		c = -1
 	else:

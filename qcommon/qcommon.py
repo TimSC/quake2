@@ -612,7 +612,7 @@ class netchan_t(object):
 
 		# message is copied to this buffer when it is first transfered
 		self.reliable_length = 0 # int
-		self.reliable_buf = None #byte[MAX_MSGLEN-16]	# unacked reliable message
+		self.reliable_buf = bytearray(MAX_MSGLEN-16) #byte[MAX_MSGLEN-16]	# unacked reliable message
 
 """
 extern	netadr_t	net_from;

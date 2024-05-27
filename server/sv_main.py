@@ -72,10 +72,12 @@ Called when the player is totally leaving the server, either willingly
 or unwillingly.  This is NOT called if the entire server is quiting
 or crashing.
 =====================
-*/
-void SV_DropClient (client_t *drop)
-{
-	// add the disconnect
+"""
+def SV_DropClient (drop): #client_t *
+
+	print ("SV_DropClient")
+	"""
+	# add the disconnect
 	MSG_WriteByte (&drop->netchan.message, svc_disconnect);
 
 	if (drop->state == sv_init.server_state_t.cs_spawned)
@@ -93,11 +95,11 @@ void SV_DropClient (client_t *drop)
 
 	drop->state = sv_init.client_state_t.cs_zombie;		// become free in a few seconds
 	drop->name[0] = 0;
-}
+
+	"""
 
 
-
-/*
+"""
 ==============================================================================
 
 CONNECTIONLESS COMMANDS
@@ -622,7 +624,6 @@ def SV_ReadPackets ():
 				SV_ConnectionlessPacket ()
 				continue
 			
-			
 			# read the qport out of the message so we can fix up
 			# stupid address translating routers
 			common.MSG_BeginReading (net_chan.net_message)
@@ -647,7 +648,6 @@ def SV_ReadPackets ():
 						common.Com_Printf ("SV_ReadPackets: fixing up a translated port\n")
 						cl.netchan.remote_address.port = net_chan.net_from.port
 					
-
 					if net_chan.Netchan_Process(cl.netchan, net_chan.net_message):
 						# this is a valid, sequenced packet, so process it
 						if cl.state != sv_init.client_state_t.cs_zombie:

@@ -153,7 +153,7 @@ Cbuf_ExecuteText
 ============
 """
 def Cbuf_ExecuteText (exec_when, text): #int, char *
-	pass
+	print ("Cbuf_ExecuteText", exec_when, text)
 """
 	switch (exec_when):
 	

@@ -216,7 +216,7 @@ transmition / retransmition of the reliable messages.
 A 0 length will still generate a packet and deal with the reliable messages.
 ================
 """
-def Netchan_Transmit (chan, data): #netchan_t *
+def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 
 	assert isinstance(data, bytes)
 
@@ -236,9 +236,10 @@ def Netchan_Transmit (chan, data): #netchan_t *
 	send_reliable = Netchan_NeedReliable (chan)
 
 	if not chan.reliable_length and chan.message.cursize:
-	
-		chan.reliable_buf = chan.message_buf
-		chan.reliable_length = len(chan.message_buf)
+		print ("ttt", chan.message.cursize)
+		chan.reliable_buf = chan.message.data
+		chan.reliable_length = len(chan.message.data)
+		chan.message.data = None
 		chan.message.cursize = 0
 		chan.reliable_sequence ^= 1
 	
@@ -251,7 +252,9 @@ def Netchan_Transmit (chan, data): #netchan_t *
 	chan.outgoing_sequence+=1
 	chan.last_sent = q_shlinux.curtime
 
-	send = bytearray(struct.pack(">ll", w1, w2))
+	send = bytearray()
+	common.MSG_WriteLong(send, w1)
+	common.MSG_WriteLong(send, w2)
 
 	# send the qport if we are a client
 	if chan.sock == qcommon.netsrc_t.NS_CLIENT:
@@ -263,14 +266,14 @@ def Netchan_Transmit (chan, data): #netchan_t *
 		send += chan.reliable_buf
 		chan.last_reliable_sequence = chan.outgoing_sequence
 	
-	
 	# add the unreliable part if space is available
 	if qcommon.MAX_MSGLEN - len(send) >= len(data):
-		data += send
+		send += data
 	else:
 		common.Com_Printf ("Netchan_Transmit: dumped unreliable\n")
 
 	# send the datagram
+	#print ("tx", send)
 	net_udp.NET_SendPacket (chan.sock, send, chan.remote_address)
 
 	if showpackets.value != 0:

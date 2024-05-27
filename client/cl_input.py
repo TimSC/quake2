@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 from qcommon import cvar, net_chan, qcommon
 from game import q_shared
 from client import cl_main, client, keys, client
-from linux import in_linux, sys_linux
+from linux import in_linux, sys_linux, q_shlinux
 """
 // cl_main.cl.input.c  -- builds an intended movement command to send to the server
 
@@ -493,7 +493,7 @@ def CL_SendCmd ():
 
 	if cl_main.cls.state == client.connstate_t.ca_connected:
 	
-		if cl_main.cls.netchan.message.data is not None or curtime - cl_main.cls.netchan.last_sent > 1000:
+		if cl_main.cls.netchan.message.cursize or q_shlinux.curtime - cl_main.cls.netchan.last_sent > 1000:
 			net_chan.Netchan_Transmit (cl_main.cls.netchan, b"")
 		return
 	
