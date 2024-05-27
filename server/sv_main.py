@@ -613,7 +613,7 @@ def SV_ReadPackets ():
 	#client_t	*cl;
 	#int			qport;
 
-	rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
+	rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
 
 	while rx:
 		try:
@@ -664,7 +664,7 @@ def SV_ReadPackets ():
 				continue
 
 		finally:
-			rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
+			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_SERVER)
 
 """
 ==================

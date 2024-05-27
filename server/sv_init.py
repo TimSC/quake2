@@ -69,8 +69,8 @@ class server_t(object):
 
 		# the multicast buffer is used to send a message to a set of clients
 		# it is only used to marshall data until SV_Multicast is called
-		self.multicast = None # sizebuf_t	;
-		self.multicast_buf = None # byte		[MAX_MSGLEN];
+		self.multicast = qcommon.sizebuf_t() # sizebuf_t	;
+		#self.multicast_buf = None # byte		[MAX_MSGLEN];
 
 		# demo server information
 		self.demofile = None # FILE		*;
@@ -125,10 +125,10 @@ class client_t(object):
 		int				surpressCount;		// number of messages rate supressed
 		"""
 		self.edict = None #edict_t*, EDICT_NUM(clientnum+1)
+		
+		self.name = None #char[32];			// extracted from userinfo, high bits masked
+		self.messagelevel = None #int;		// for filtering printed messages
 		"""
-		char			name[32];			// extracted from userinfo, high bits masked
-		int				messagelevel;		// for filtering printed messages
-
 		// The datagram is written to by sound calls, prints, temp ents, etc.
 		// It can be harmlessly overflowed.
 		"""
@@ -387,7 +387,7 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 		pm_airaccelerate = 0;
 	}
 	"""
-	sv.multicast = common.SZ_Init (sv.multicast_buf);
+	common.SZ_Init (sv.multicast, qcommon.MAX_MSGLEN)
 
 	sv.name = server
 

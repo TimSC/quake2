@@ -166,7 +166,7 @@ def Netchan_Setup (sock, chan, adr, qport): #netsrc_t, netchan_t *, netadr_t, in
 	chan.incoming_sequence = 0
 	chan.outgoing_sequence = 1
 
-	#SZ_Init (&chanmessage, chan->message_buf, sizeof(chan->message_buf))
+	common.SZ_Init (chan.message, qcommon.MAX_MSGLEN)
 	chan.message.allowoverflow = True
 
 
@@ -220,10 +220,11 @@ def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 
 	assert isinstance(data, bytes)
 
-	#sizebuf_t	send;
+	send = qcommon.sizebuf_t()
 	#byte		send_buf[qcommon.MAX_MSGLEN];
 	#qboolean	send_reliable;
 	#unsigned	w1, w2;
+
 
 	# check for message overflow
 	if chan.message.overflowed:
@@ -239,12 +240,12 @@ def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 		print ("ttt", chan.message.cursize)
 		chan.reliable_buf = chan.message.data
 		chan.reliable_length = len(chan.message.data)
-		chan.message.data = None
+		chan.message.data = bytearray()
 		chan.message.cursize = 0
 		chan.reliable_sequence ^= 1
 	
 	# write the packet header
-	#SZ_Init (&send, send_buf, sizeof(send_buf));
+	common.SZ_Init (send, qcommon.MAX_MSGLEN)
 
 	w1 = ( chan.outgoing_sequence & ~(1<<31) ) | (send_reliable<<31)
 	w2 = ( chan.incoming_sequence & ~(1<<31) ) | (chan.incoming_reliable_sequence<<31)
@@ -252,7 +253,7 @@ def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 	chan.outgoing_sequence+=1
 	chan.last_sent = q_shlinux.curtime
 
-	send = bytearray()
+
 	common.MSG_WriteLong(send, w1)
 	common.MSG_WriteLong(send, w2)
 
@@ -263,18 +264,18 @@ def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 	# copy the reliable message to the packet first
 	if send_reliable:
 	
-		send += chan.reliable_buf
+		common.SZ_Write(send, chan.reliable_buf)
 		chan.last_reliable_sequence = chan.outgoing_sequence
 	
 	# add the unreliable part if space is available
-	if qcommon.MAX_MSGLEN - len(send) >= len(data):
-		send += data
+	if send.maxsize - send.cursize >= len(data):
+		common.SZ_Write(send, data)
 	else:
 		common.Com_Printf ("Netchan_Transmit: dumped unreliable\n")
 
 	# send the datagram
 	#print ("tx", send)
-	net_udp.NET_SendPacket (chan.sock, send, chan.remote_address)
+	net_udp.NET_SendPacket (chan.sock, send.data, chan.remote_address)
 
 	if showpackets.value != 0:
 	

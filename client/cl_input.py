@@ -505,7 +505,7 @@ def CL_SendCmd ():
 		MSG_WriteByte (cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_userinfo)
 		MSG_WriteString (cl_main.cls.netchan.message, cvar.Cvar_Userinfo() )
 	
-	#SZ_Init (&buf, data, sizeof(data));
+	SZ_Init (buf, 128)
 
 	if cmd.buttons and cl_main.cl.cinematictime > 0 and not cl_main.cl.attractloop \
 		and cl_main.cls.realtime - cl_main.cl.cinematictime > 1000:

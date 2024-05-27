@@ -41,18 +41,19 @@ sv_client and sv_player will be valid.
 ==================
 SV_BeginDemoServer
 ==================
-*/
-void SV_BeginDemoserver (void)
-{
-	char		name[MAX_OSPATH];
+"""
 
-	Com_sprintf (name, sizeof(name), "demos/%s", sv.name);
-	FS_FOpenFile (name, &sv.demofile);
-	if (!sv.demofile)
-		Com_Error (ERR_DROP, "Couldn't open %s\n", name);
-}
+def SV_BeginDemoserver ():
 
-/*
+	#char		name[MAX_OSPATH];
+
+	q_shared.Com_sprintf (name, MAX_OSPATH, "demos/{}".format(sv.name))
+	FS_FOpenFile (name, sv.demofile)
+	if not sv.demofile:
+		common.Com_Error (ERR_DROP, "Couldn't open %s\n", name)
+
+
+"""
 ================
 SV_New_f
 
@@ -62,50 +63,49 @@ This will be sent on the initial connection and upon each server load.
 """
 def SV_New_f (): #void
 
-	print ("SV_New_f")
 	"""
 	char		*gamedir;
 	int			playernum;
 	edict_t		*ent;
 	"""
 
-	"""
-	Com_DPrintf ("New() from %s\n", sv_main.sv_client->name);
+	
+	common.Com_DPrintf ("New() from {}\n".format(sv_main.sv_client.name))
+	
+	if sv_main.sv_client.state != sv_init.client_state_t.cs_connected:
+	
+		common.Com_Printf ("New not valid -- already spawned\n")
+		return
+	
 
-	if (sv_main.sv_client->state != cs_connected)
-	{
-		common.Com_Printf ("New not valid -- already spawned\n");
-		return;
-	}
+	# demo servers just dump the file message
+	if sv_init.sv.state == sv_init.server_state_t.ss_demo:
+	
+		SV_BeginDemoserver ()
+		return
+	
 
-	// demo servers just dump the file message
-	if (sv.state == ss_demo)
-	{
-		SV_BeginDemoserver ();
-		return;
-	}
+	#
+	# serverdata needs to go over for all types of servers
+	# to make sure the protocol is right, and to set the gamedir
+	#
+	gamedir = cvar.Cvar_VariableString ("gamedir")
 
-	//
-	// serverdata needs to go over for all types of servers
-	// to make sure the protocol is right, and to set the gamedir
-	//
-	gamedir = Cvar_VariableString ("gamedir");
-
-	// send the serverdata
-	MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_serverdata);
-	MSG_WriteLong (&sv_main.sv_client->netchan.message, PROTOCOL_VERSION);
-	MSG_WriteLong (&sv_main.sv_client->netchan.message, svs.spawncount);
-	MSG_WriteByte (&sv_main.sv_client->netchan.message, sv.attractloop);
-	MSG_WriteString (&sv_main.sv_client->netchan.message, gamedir);
-
+	# send the serverdata
+	common.MSG_WriteByte (sv_main.sv_client.netchan.message, qcommon.svc_ops_e.svc_serverdata.value.to_bytes(1, 'big'))
+	common.MSG_WriteLong (sv_main.sv_client.netchan.message, qcommon.PROTOCOL_VERSION)
+	common.MSG_WriteLong (sv_main.sv_client.netchan.message, sv_init.svs.spawncount)
+	common.MSG_WriteByte (sv_main.sv_client.netchan.message, sv_init.sv.attractloop.to_bytes(1, 'big'))
+	common.MSG_WriteString (sv_main.sv_client.netchan.message, gamedir.encode('ascii'))
+"""
 	if (sv.state == ss_cinematic || sv.state == ss_pic)
-		playernum = -1;
+		playernum = -1
 	else
-		playernum = sv_main.sv_client - svs.clients;
-	MSG_WriteShort (&sv_main.sv_client->netchan.message, playernum);
+		playernum = sv_main.sv_client - svs.clients
+	MSG_WriteShort (&sv_main.sv_client->netchan.message, playernum)
 
 	// send full levelname
-	MSG_WriteString (&sv_main.sv_client->netchan.message, sv.configstrings[CS_NAME]);
+	MSG_WriteString (&sv_main.sv_client->netchan.message, sv.configstrings[CS_NAME])
 
 	//
 	// game server
@@ -137,9 +137,9 @@ def SV_Configstrings_f ():
 	"""
 	int			start;
 
-	Com_DPrintf ("Configstrings() from %s\n", sv_main.sv_client->name);
+	common.Com_DPrintf ("Configstrings() from %s\n", sv_main.sv_client->name);
 
-	if (sv_main.sv_client->state != cs_connected)
+	if (sv_main.sv_client->state != sv_init.client_state_t.cs_connected)
 	{
 		common.Com_Printf ("configstrings not valid -- already spawned\n");
 		return;
@@ -197,9 +197,9 @@ def SV_Baselines_f ():
 	entity_state_t	nullstate;
 	entity_state_t	*base;
 
-	Com_DPrintf ("Baselines() from %s\n", sv_main.sv_client->name);
+	common.Com_DPrintf ("Baselines() from %s\n", sv_main.sv_client->name);
 
-	if (sv_main.sv_client->state != cs_connected)
+	if (sv_main.sv_client->state != sv_init.client_state_t.cs_connected)
 	{
 		common.Com_Printf ("baselines not valid -- already spawned\n");
 		return;
@@ -254,7 +254,7 @@ def SV_Begin_f ():
 
 	print ("SV_Begin_f")
 	"""
-	Com_DPrintf ("Begin() from %s\n", sv_main.sv_client->name);
+	common.Com_DPrintf ("Begin() from %s\n", sv_main.sv_client->name);
 
 	// handle the case of a level changing while a client was connecting
 	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
@@ -374,7 +374,7 @@ def SV_BeginDownload_f():
 		// download  ZOID
 		|| (strncmp(name, "maps/", 5) == 0 && file_from_pak))
 	{
-		Com_DPrintf ("Couldn't download %s to %s\n", name, sv_main.sv_client->name);
+		common.Com_DPrintf ("Couldn't download %s to %s\n", name, sv_main.sv_client->name);
 		if (sv_main.sv_client->download) {
 			FS_FreeFile (sv_main.sv_client->download);
 			sv_main.sv_client->download = NULL;
@@ -387,7 +387,7 @@ def SV_BeginDownload_f():
 	}
 
 	SV_NextDownload_f ();
-	Com_DPrintf ("Downloading %s to %s\n", name, sv_main.sv_client->name);
+	common.Com_DPrintf ("Downloading %s to %s\n", name, sv_main.sv_client->name);
 }
 
 
@@ -455,11 +455,11 @@ def SV_Nextserver_f ():
 	print ("SV_Nextserver_f")
 	"""
 	if ( atoi(Cmd_Argv(1)) != svs.spawncount ) {
-		Com_DPrintf ("Nextserver() from wrong level, from %s\n", sv_main.sv_client->name);
+		common.Com_DPrintf ("Nextserver() from wrong level, from %s\n", sv_main.sv_client->name);
 		return;		// leftover from last server
 	}
 
-	Com_DPrintf ("Nextserver() from %s\n", sv_main.sv_client->name);
+	common.Com_DPrintf ("Nextserver() from %s\n", sv_main.sv_client->name);
 
 	SV_Nextserver ();
 
@@ -527,7 +527,7 @@ void SV_ClientThink (client_t *cl, usercmd_t *cmd)
 
 	if (cl->commandMsec < 0 && sv_enforcetime->value )
 	{
-		Com_DPrintf ("commandMsec underflow from %s\n", cl->name);
+		common.Com_DPrintf ("commandMsec underflow from %s\n", cl->name);
 		return;
 	}
 
@@ -631,7 +631,7 @@ def SV_ExecuteClientMessage (cl): #client_t *
 
 			if (calculatedChecksum != checksum)
 			{
-				Com_DPrintf ("Failed command checksum for %s (%d != %d)/%d\n", 
+				common.Com_DPrintf ("Failed command checksum for %s (%d != %d)/%d\n", 
 					cl->name, calculatedChecksum, checksum, 
 					cl->netchan.incoming_sequence);
 				return;

@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import struct
 from client import cl_main, cl_scrn
-from qcommon import net_chan, qcommon, common
+from qcommon import net_chan, qcommon, common, cmd
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -681,30 +681,30 @@ def CL_ParseServerMessage ():
 			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Bad server message")
 			break
 
-		cmd = common.MSG_ReadByte (net_chan.net_message)
+		cmdval = common.MSG_ReadByte (net_chan.net_message)
 
-		if cmd == -1:
+		if cmdval == -1:
 		
 			SHOWNET("END OF MESSAGE")
 			break
 		
 		if cl_main.cl_shownet.value>=2:
 		
-			if not svc_strings[cmd]:
-				common.Com_Printf ("{:3d}:BAD CMD {:d}\n".format(net_chan.net_message.readcount-1,cmd))
+			if not svc_strings[cmdval]:
+				common.Com_Printf ("{:3d}:BAD CMD {:d}\n".format(net_chan.net_message.readcount-1,cmdval))
 			else:
-				SHOWNET(svc_strings[cmd])
+				SHOWNET(svc_strings[cmdval])
 		
 		# other commands
-		if cmd == qcommon.svc_ops_e.svc_nop:
+		if cmdval == qcommon.svc_ops_e.svc_nop.value:
 			##Com_Printf ("svc_nop\n");
 			pass
 			
-		elif cmd == qcommon.svc_ops_e.svc_disconnect:
+		elif cmdval == qcommon.svc_ops_e.svc_disconnect.value:
 			common.Com_Error (ERR_DISCONNECT,"Server disconnected\n");
 
 
-		elif cmd == qcommon.svc_ops_e.svc_reconnect:
+		elif cmdval == qcommon.svc_ops_e.svc_reconnect.value:
 			common.Com_Printf ("Server disconnected, reconnecting\n");
 			if cl_main.cls.download:
 				#ZOID, close download
@@ -715,7 +715,7 @@ def CL_ParseServerMessage ():
 			cl_main.cls.connect_time = -99999	# CL_CheckForResend() will fire immediately
 
 
-		elif cmd == qcommon.svc_ops_e.svc_print:
+		elif cmdval == qcommon.svc_ops_e.svc_print.value:
 			i = common.MSG_ReadByte (net_chan.net_message)
 			if i == PRINT_CHAT:
 			
@@ -726,68 +726,67 @@ def CL_ParseServerMessage ():
 			con.ormask = 0
 
 			
-		elif cmd == qcommon.svc_ops_e.svc_centerprint:
+		elif cmdval == qcommon.svc_ops_e.svc_centerprint.value:
 			SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message.data))
 
 			
-		elif cmd == qcommon.svc_ops_e.svc_stufftext:
+		elif cmdval == qcommon.svc_ops_e.svc_stufftext.value:
 			s = common.MSG_ReadString(net_chan.net_message.data)
 			common.Com_DPrintf ("stufftext: {}\n".format(s))
 			cmd.Cbuf_AddText (s)
 
 			
-		elif cmd == qcommon.svc_ops_e.svc_serverdata:
+		elif cmdval == qcommon.svc_ops_e.svc_serverdata.value:
 			cmd.Cbuf_Execute ()		# make sure any stuffed commands are done
 			CL_ParseServerData ()
 
 			
-		elif cmd == qcommon.svc_ops_e.svc_configstring:
+		elif cmdval == qcommon.svc_ops_e.svc_configstring.value:
 			CL_ParseConfigString ()
 
 			
-		elif cmd == qcommon.svc_ops_e.svc_sound:
+		elif cmdval == qcommon.svc_ops_e.svc_sound.value:
 			CL_ParseStartSoundPacket()
 
 			
-		elif cmd == qcommon.svc_ops_e.svc_spawnbaseline:
+		elif cmdval == qcommon.svc_ops_e.svc_spawnbaseline.value:
 			CL_ParseBaseline ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_temp_entity:
+		elif cmdval == qcommon.svc_ops_e.svc_temp_entity.value:
 			CL_ParseTEnt ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_muzzleflash:
+		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash.value:
 			CL_ParseMuzzleFlash ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_muzzleflash2:
+		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash2.value:
 			CL_ParseMuzzleFlash2 ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_download:
+		elif cmdval == qcommon.svc_ops_e.svc_download.value:
 			CL_ParseDownload ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_frame:
+		elif cmdval == qcommon.svc_ops_e.svc_frame.value:
 			CL_ParseFrame ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_inventory:
+		elif cmdval == qcommon.svc_ops_e.svc_inventory.value:
 			CL_ParseInventory ()
 
 
-		elif cmd == qcommon.svc_ops_e.svc_layout:
+		elif cmdval == qcommon.svc_ops_e.svc_layout.value:
 			s = MSG_ReadString(net_chan.net_message.data)
 			cl_main.cl.layout = s
 
 
-		elif cmd in [qcommon.svc_ops_e.svc_playerinfo, qcommon.svc_ops_e.svc_packetentities, qcommon.svc_ops_e.svc_deltapacketentities]:
+		elif cmdval in [qcommon.svc_ops_e.svc_playerinfo.value, qcommon.svc_ops_e.svc_packetentities.value, qcommon.svc_ops_e.svc_deltapacketentities.value]:
 			common.Com_Error (qcommon.ERR_DROP, "Out of place frame data");
 
 
 		else:
-			assert 0
 			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Illegible server message\n")
 
 

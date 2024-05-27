@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import qcommon
+from qcommon import qcommon, common
 """
 // net_wins.c
 
@@ -243,12 +243,17 @@ def NET_GetLoopPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t
 	if len(loop.msgs) == 0:
 		return False, None, None
 
-	net_message = loop.msgs.pop(0)
+	net_message = qcommon.sizebuf_t()
+	common.SZ_Init (net_message, qcommon.MAX_MSGLEN)
+	net_message.data = loop.msgs.pop(0)
+	net_message.cursize = len(net_message.data)
+
 	return True, net_local_adr, net_message
 
 
-def NET_SendLoopPacket (sock, data, to): #netsrc_t, void *, netadr_t
+def NET_SendLoopPacket (sock, data: bytes, to): #netsrc_t, void *, netadr_t
 
+	assert isinstance(data, bytes) or isinstance(data, bytearray)
 	loop = loopbacks[sock.value^1]
 
 	if len(loop.msgs) >= MAX_LOOPBACK:
@@ -269,8 +274,9 @@ def NET_GetPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t *)
 	#int		err;
 
 	rx, net_from, net_message = NET_GetLoopPacket (sock)
+	assert net_message is None or isinstance(net_message, qcommon.sizebuf_t)
 	if rx:
-		return True, net_from, net_message, len(net_message)
+		return True, net_from, net_message
 	"""
 	for (protocol = 0 ; protocol < 2 ; protocol++)
 	{
@@ -309,7 +315,7 @@ def NET_GetPacket (sock): #netsrc_t (returns qboolean, netadr_t *, sizebuf_t *)
 		return True, net_from, net_message
 	}
 """
-	return False, None, None, 0
+	return False, None, None
 
 """
 //=============================================================================

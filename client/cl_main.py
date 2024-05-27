@@ -876,9 +876,8 @@ def CL_ConnectionlessPacket ():
 			return
 
 		net_chan.Netchan_Setup (qcommon.netsrc_t.NS_CLIENT, cls.netchan, net_chan.net_from, cls.quakePort)
-		cls.netchan.message.data = struct.pack("B", qcommon.clc_ops_e.clc_stringcmd.value)
-		cls.netchan.message.data += b"new"
-		cls.netchan.message.cursize = len(cls.netchan.message.data)
+		common.MSG_WriteChar(cls.netchan.message, struct.pack("B", qcommon.clc_ops_e.clc_stringcmd.value))
+		common.MSG_WriteString(cls.netchan.message, b"new")
 		cls.state = client.connstate_t.ca_connected
 		return
 	
@@ -962,7 +961,7 @@ CL_ReadPackets
 """
 def CL_ReadPackets ():
 
-	rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+	rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
 
 	while rx:
 		try:
@@ -1000,7 +999,7 @@ def CL_ReadPackets ():
 			cl_parse.CL_ParseServerMessage ()
 
 		finally:
-			rx, net_chan.net_from, net_chan.net_message.data, net_chan.net_message.cursize = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
 	"""
 	//
 	// check timeout

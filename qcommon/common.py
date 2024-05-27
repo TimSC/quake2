@@ -299,9 +299,10 @@ vec3_t	bytedirs[NUMVERTEXNORMALS] =
 //
 // writing functions
 //
+"""
+def MSG_WriteChar (sb: qcommon.sizebuf_t, c):
 
-void MSG_WriteChar (sizebuf_t *sb, int c)
-{
+	"""
 	byte	*buf;
 	
 #ifdef PARANOID
@@ -311,9 +312,14 @@ void MSG_WriteChar (sizebuf_t *sb, int c)
 
 	buf = SZ_GetSpace (sb, 1);
 	buf[0] = c;
-}
-"""
-def MSG_WriteByte (sb, c): #sizebuf_t *, int
+	"""
+	assert len(c) == 1
+	offset = SZ_GetSpace(sb, 1)
+
+	struct.pack_into("c", sb.data, offset, c)
+
+def MSG_WriteByte (sb: qcommon.sizebuf_t, c): #sizebuf_t *, int
+
 	"""
 	byte	*buf;
 	
@@ -322,10 +328,13 @@ def MSG_WriteByte (sb, c): #sizebuf_t *, int
 		Com_Error (q_shared.ERR_FATAL, "MSG_WriteByte: range error");
 #endif
 """
-	sb += struct.pack("c", c)
+	assert len(c) == 1
+	offset = SZ_GetSpace(sb, 1)
+
+	struct.pack_into("c", sb.data, offset, c)
 
 
-def MSG_WriteShort (sb: bytearray, c):
+def MSG_WriteShort (sb: qcommon.sizebuf_t, c):
 	"""
 	byte	*buf;
 	
@@ -334,10 +343,12 @@ def MSG_WriteShort (sb: bytearray, c):
 		Com_Error (q_shared.ERR_FATAL, "MSG_WriteShort: range error");
 #endif
 """
-	sb += struct.pack("<H", c)
+	offset = SZ_GetSpace(sb, 2)
+
+	struct.pack_into("<H", sb.data, offset, c)
 
 
-def MSG_WriteLong (sb: bytearray, c: int): #sizebuf_t *sb, int c)
+def MSG_WriteLong (sb: qcommon.sizebuf_t, c: int): #sizebuf_t *sb, int c)
 
 	#byte	*buf;
 	
@@ -347,7 +358,9 @@ def MSG_WriteLong (sb: bytearray, c: int): #sizebuf_t *sb, int c)
 	#buf[2] = (c>>16)&0xff;
 	#buf[3] = c>>24;
 
-	sb += struct.pack("<L", c)
+	offset = SZ_GetSpace(sb, 4)
+
+	struct.pack_into("<L", sb.data, offset, c)
 
 """
 void MSG_WriteFloat (sizebuf_t *sb, float f)
@@ -364,15 +377,18 @@ void MSG_WriteFloat (sizebuf_t *sb, float f)
 	
 	SZ_Write (sb, &dat.l, 4);
 }
+"""
+def MSG_WriteString (sb: qcommon.sizebuf_t, s): #sizebuf_t
 
-void MSG_WriteString (sizebuf_t *sb, char *s)
-{
-	if (!s)
-		SZ_Write (sb, "", 1);
-	else
-		SZ_Write (sb, s, strlen(s)+1);
-}
+	assert isinstance(s, bytes) or isinstance(s, bytearray)
 
+	if s is None:
+		SZ_Write (sb, b"\0")
+	else:
+		SZ_Write (sb, s)
+		SZ_Write (sb, b"\0")
+
+"""
 void MSG_WriteCoord (sizebuf_t *sb, float f)
 {
 	MSG_WriteShort (sb, (int)(f*8));
@@ -897,14 +913,17 @@ void MSG_ReadData (sizebuf_t *msg_read, void *data, int len)
 
 //===========================================================================
 """
-def SZ_Init (data): #sizebuf_t *, byte *, int
+def SZ_Init (buf, length): #sizebuf_t *, byte *, int
 
 	#memset (buf, 0, sizeof(*buf));
 	#buf->data = data;
 	#buf->maxsize = length;
-	if data is None:
-		return None
-	return data.serialize()
+	#if data is None:
+	#	return None
+	#return data.serialize()
+
+	buf.data = bytearray()
+	buf.maxsize = length
 
 """
 void SZ_Clear (sizebuf_t *buf)
@@ -912,35 +931,38 @@ void SZ_Clear (sizebuf_t *buf)
 	buf->cursize = 0;
 	buf->overflowed = false;
 }
+"""
+def SZ_GetSpace (buf: qcommon.sizebuf_t, length): #sizebuf_t *, int (void *)
 
-void *SZ_GetSpace (sizebuf_t *buf, int length)
-{
-	void	*data;
+	#void	*data;
 	
-	if (buf->cursize + length > buf->maxsize)
-	{
-		if (!buf->allowoverflow)
-			Com_Error (q_shared.ERR_FATAL, "SZ_GetSpace: overflow without allowoverflow set");
+	if buf.cursize + length > buf.maxsize:
+	
+		if not buf.allowoverflow:
+			Com_Error (q_shared.ERR_FATAL, "SZ_GetSpace: overflow without allowoverflow set")
 		
-		if (length > buf->maxsize)
-			Com_Error (q_shared.ERR_FATAL, "SZ_GetSpace: %i is > full buffer size", length);
+		if length > buf.maxsize:
+			Com_Error (q_shared.ERR_FATAL, "SZ_GetSpace: {} is > full buffer size".format(length))
 			
-		Com_Printf ("SZ_GetSpace: overflow\n");
-		SZ_Clear (buf); 
-		buf->overflowed = true;
-	}
-
-	data = buf->data + buf->cursize;
-	buf->cursize += length;
+		Com_Printf ("SZ_GetSpace: overflow\n")
+		SZ_Clear (buf)
+		buf.overflowed = True
 	
-	return data;
-}
+	offset = buf.cursize
+	buf.data += bytearray(length)
+	buf.cursize += length
+	
+	return offset
 
-void SZ_Write (sizebuf_t *buf, void *data, int length)
-{
-	memcpy (SZ_GetSpace(buf,length),data,length);		
-}
 
+
+def SZ_Write (buf: qcommon.sizebuf_t, data):
+
+	offset = SZ_GetSpace(buf, len(data))
+
+	buf.data[offset:offset+len(data)] = data
+
+"""
 void SZ_Print (sizebuf_t *buf, char *data)
 {
 	int		len;
