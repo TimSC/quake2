@@ -380,8 +380,7 @@ void MSG_WriteFloat (sizebuf_t *sb, float f)
 """
 def MSG_WriteString (sb: qcommon.sizebuf_t, s): #sizebuf_t
 
-	assert isinstance(s, bytes) or isinstance(s, bytearray)
-
+	assert isinstance(s, bytes) or isinstance(s, bytearray) or s is None
 	if s is None:
 		SZ_Write (sb, b"\0")
 	else:
@@ -925,13 +924,13 @@ def SZ_Init (buf, length): #sizebuf_t *, byte *, int
 	buf.data = bytearray()
 	buf.maxsize = length
 
-"""
-void SZ_Clear (sizebuf_t *buf)
-{
-	buf->cursize = 0;
-	buf->overflowed = false;
-}
-"""
+
+def SZ_Clear (buf: qcommon.sizebuf_t):
+
+	buf.cursize = 0
+	buf.overflowed = False
+	buf.data = bytearray()
+
 def SZ_GetSpace (buf: qcommon.sizebuf_t, length): #sizebuf_t *, int (void *)
 
 	#void	*data;

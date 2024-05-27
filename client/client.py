@@ -97,7 +97,9 @@ CMD_BACKUP		= 64	# allow a lot of command backups for very fast systems
 """
 class client_state_t(object):
 	def __init__(self):
+		self.reset()
 
+	def reset(self):
 		"""
 		int			timeoutcount;
 
@@ -174,8 +176,9 @@ class client_state_t(object):
 		self.attractloop = False		# qboolean, running the attract loop, any key will menu
 		"""
 		int			servercount;	// server identification for prespawns
-		char		gamedir[MAX_QPATH];
 		"""
+		self.gamedir = None #char[MAX_QPATH];
+
 		self.playernum = 0 #int FIXME what should the default be?
 		"""
 		char		configstrings[MAX_CONFIGSTRINGS][MAX_QPATH];

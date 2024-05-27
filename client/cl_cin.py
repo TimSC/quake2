@@ -582,7 +582,7 @@ SCR_PlayCinematic
 """
 def SCR_PlayCinematic (arg): # char *
 
-	print ("SCR_PlayCinematic")
+	print ("SCR_PlayCinematic", arg)
 	pass
 	"""
 	int		width, height;

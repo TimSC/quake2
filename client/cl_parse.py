@@ -18,8 +18,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn, client
-from qcommon import net_chan, qcommon, common, cmd
+from client import cl_main, cl_scrn, client, cl_cin
+from game import q_shared
+from qcommon import net_chan, qcommon, common, cmd, files
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -318,31 +319,33 @@ def CL_ParseServerData ():
 	cl_main.cls.serverProtocol = i
 
 	# BIG HACK to let demos from release work with the 3.0x patch!!!
-	if Com_ServerState() and PROTOCOL_VERSION == 34:
+	if common.Com_ServerState() and qcommon.PROTOCOL_VERSION == 34:
 		pass
-	elif i != PROTOCOL_VERSION:
+	elif i != PROTOCOL_VERSION.PROTOCOL_VERSION:
 		Com_Error (qcommon.ERR_DROP,"Server returned version {:d}, not {:d}", i, PROTOCOL_VERSION)
 
-	cl_main.cl.servercount = MSG_ReadLong (net_chan.net_message)
-	cl_main.cl.attractloop = MSG_ReadByte (net_chan.net_message)
+	cl_main.cl.servercount = common.MSG_ReadLong (net_chan.net_message)
+	cl_main.cl.attractloop = common.MSG_ReadByte (net_chan.net_message)
 
 	# game directory
-	strn = MSG_ReadString (net_chan.net_message)
-	strncpy (cl_main.cl.gamedir, str, sizeof(cl_main.cl.gamedir)-1)
+	strn = common.MSG_ReadString (net_chan.net_message)
+	cl_main.cl.gamedir = strn[:q_shared.MAX_QPATH]
 
 	# set gamedir
-	if ((len(strn)>0 and (len(files.fs_gamedirvar.string)==0 or (files.fs_gamedirvar.string!=strn))) or (len(strn)==0 and len(files.fs_gamedirvar.string)>0)):
+	if (len(strn)>0 and (len(files.fs_gamedirvar.string)==0 or (files.fs_gamedirvar.string!=strn))) \
+		or (len(strn)==0 and len(files.fs_gamedirvar.string)>0):
+
 		cvar.Cvar_Set("game", strn)
 
 	# parse player entity number
-	cl_main.cl.playernum = MSG_ReadShort (net_chan.net_message)
+	cl_main.cl.playernum = common.MSG_ReadShort (net_chan.net_message)
 
 	# get the full level name
-	strn = MSG_ReadString (net_chan.net_message)
+	strn = common.MSG_ReadString (net_chan.net_message)
 
 	if cl_main.cl.playernum == -1:
 		# playing a cinematic or showing a pic, not a level
-		SCR_PlayCinematic (strn)
+		cl_cin.SCR_PlayCinematic (strn)
 	
 	else:
 	

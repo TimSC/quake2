@@ -560,14 +560,14 @@ def CL_ClearState ():
 	S_StopAllSounds ();
 	CL_ClearEffects ();
 	CL_ClearTEnts ();
-
-// wipe the entire cl structure
-	memset (&cl, 0, sizeof(cl));
-	memset (&cl_entities, 0, sizeof(cl_entities));
-
-	SZ_Clear (&cls.netchan.message);
-
 	"""
+# wipe the entire cl structure
+	cl.reset()
+	#memset (&cl_entities, 0, sizeof(cl_entities));
+
+	common.SZ_Clear (cls.netchan.message)
+
+
 
 """
 =====================
