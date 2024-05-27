@@ -17,7 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from client import cl_main
+import os
+from client import cl_main, cl_scrn, client
+from qcommon import files, cvar
 """
 #include "client.h"
 
@@ -427,9 +429,11 @@ cblock_t Huff1Decompress (cblock_t in)
 ==================
 SCR_ReadNextFrame
 ==================
-*/
-byte *SCR_ReadNextFrame (void)
-{
+"""
+def SCR_ReadNextFrame (): #byte *
+
+	pass
+	"""
 	int		r;
 	int		command;
 	byte	samples[22050/14*4];
@@ -582,80 +586,85 @@ SCR_PlayCinematic
 """
 def SCR_PlayCinematic (arg): # char *
 
-	print ("SCR_PlayCinematic", arg)
-	pass
 	"""
 	int		width, height;
 	byte	*palette;
 	char	name[MAX_OSPATH], *dot;
 	int		old_khz;
+	"""
+	# make sure CD isn't playing music
+	#CDAudio_Stop()
 
-	// make sure CD isn't playing music
-	CDAudio_Stop();
+	cl_main.cl.cinematicframe = 0
+	#dot = strstr (arg, ".")
+	arg_split = os.path.splitext(arg)
+	if len(arg_split) >= 2:
+		dot = arg_split[1]
+	else:
+		dot = None
 
-	cl_main.cl.cinematicframe = 0;
-	dot = strstr (arg, ".");
-	if (dot && !strcmp (dot, ".pcx"))
-	{	// static pcx image
-		Com_sprintf (name, sizeof(name), "pics/%s", arg);
-		SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height);
-		cl_main.cl.cinematicframe = -1;
-		cl_main.cl.cinematictime = 1;
-		SCR_EndLoadingPlaque ();
-		cl_main.cls.state = ca_active;
-		if (!cin.pic)
-		{
-			Com_Printf ("%s not found.\n", name);
-			cl_main.cl.cinematictime = 0;
-		}
-		else
-		{
-			memcpy (cl_main.cl.cinematicpalette, palette, sizeof(cl_main.cl.cinematicpalette));
-			Z_Free (palette);
-		}
-		return;
-	}
+	
+	if dot == ".pcx":
+		"""
+		# static pcx image
+		Com_sprintf (name, sizeof(name), "pics/%s", arg)
+		SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height)
+		cl_main.cl.cinematicframe = -1
+		cl_main.cl.cinematictime = 1
+		SCR_EndLoadingPlaque ()
+		cl_main.cls.state = ca_active
+		if !cin.pic:
+		
+			Com_Printf ("%s not found.\n", name)
+			cl_main.cl.cinematictime = 0
+		
+		else:
+		
+			memcpy (cl_main.cl.cinematicpalette, palette, sizeof(cl_main.cl.cinematicpalette))
+			Z_Free (palette)
+			"""
+		return
 
-	Com_sprintf (name, sizeof(name), "video/%s", arg);
-	FS_FOpenFile (name, &cl_main.cl.cinematic_file);
-	if (!cl_main.cl.cinematic_file)
-	{
-//		Com_Error (ERR_DROP, "Cinematic %s not found.\n", name);
-		SCR_FinishCinematic ();
-		cl_main.cl.cinematictime = 0;	// done
-		return;
-	}
 
-	SCR_EndLoadingPlaque ();
+	name = "video/{}".format(arg)
+	cl_main.cl.cinematic_file = files.FS_FOpenFile (name)
+	if cl_main.cl.cinematic_file is None:
+	
+#		Com_Error (ERR_DROP, "Cinematic %s not found.\n", name);
+		SCR_FinishCinematic ()
+		cl_main.cl.cinematictime = 0	# done
+		return
+	
 
-	cl_main.cls.state = ca_active;
+	cl_scrn.SCR_EndLoadingPlaque ()
 
-	FS_Read (&width, 4, cl_main.cl.cinematic_file);
-	FS_Read (&height, 4, cl_main.cl.cinematic_file);
-	cin.width = LittleLong(width);
-	cin.height = LittleLong(height);
+	cl_main.cls.state = client.connstate_t.ca_active
 
-	FS_Read (&cin.s_rate, 4, cl_main.cl.cinematic_file);
-	cin.s_rate = LittleLong(cin.s_rate);
-	FS_Read (&cin.s_width, 4, cl_main.cl.cinematic_file);
-	cin.s_width = LittleLong(cin.s_width);
-	FS_Read (&cin.s_channels, 4, cl_main.cl.cinematic_file);
-	cin.s_channels = LittleLong(cin.s_channels);
+	width = files.FS_Read (4, cl_main.cl.cinematic_file)
+	height = files.FS_Read (4, cl_main.cl.cinematic_file)
+	cin.width = LittleLong(width)
+	cin.height = LittleLong(height)
 
-	Huff1TableInit ();
+	cin.s_rate = files.FS_Read (4, cl_main.cl.cinematic_file)
+	cin.s_rate = LittleLong(cin.s_rate)
+	cin.s_width = files.FS_Read (4, cl_main.cl.cinematic_file)
+	cin.s_width = LittleLong(cin.s_width)
+	cin.s_channels = files.FS_Read (4, cl_main.cl.cinematic_file)
+	cin.s_channels = LittleLong(cin.s_channels)
 
-	// switch up to 22 khz sound if necessary
-	old_khz = Cvar_VariableValue ("s_khz");
-	if (old_khz != cin.s_rate/1000)
-	{
-		cin.restart_sound = true;
-		Cvar_SetValue ("s_khz", cin.s_rate/1000);
-		CL_Snd_Restart_f ();
-		Cvar_SetValue ("s_khz", old_khz);
-	}
+	Huff1TableInit ()
 
-	cl_main.cl.cinematicframe = 0;
-	cin.pic = SCR_ReadNextFrame ();
-	cl_main.cl.cinematictime = Sys_Milliseconds ();
-}
-"""
+	# switch up to 22 khz sound if necessary
+	old_khz = cvar.Cvar_VariableValue ("s_khz")
+	if old_khz != cin.s_rate//1000:
+	
+		cin.restart_sound = true
+		cvar.Cvar_SetValue ("s_khz", cin.s_rate//1000)
+		CL_Snd_Restart_f ()
+		cvar.Cvar_SetValue ("s_khz", old_khz)
+	
+
+	cl_main.cl.cinematicframe = 0
+	cin.pic = SCR_ReadNextFrame ()
+	cl_main.cl.cinematictime = Sys_Milliseconds ()
+

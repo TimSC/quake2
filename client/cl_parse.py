@@ -338,11 +338,12 @@ def CL_ParseServerData ():
 		cvar.Cvar_Set("game", strn)
 
 	# parse player entity number
-	cl_main.cl.playernum = common.MSG_ReadShort (net_chan.net_message)
+	cl_main.cl.playernum = common.MSG_ReadSShort (net_chan.net_message)
 
 	# get the full level name
 	strn = common.MSG_ReadString (net_chan.net_message)
 
+	print ("cl_main.cl.playernum", cl_main.cl.playernum)
 	if cl_main.cl.playernum == -1:
 		# playing a cinematic or showing a pic, not a level
 		cl_cin.SCR_PlayCinematic (strn)

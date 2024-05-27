@@ -751,8 +751,20 @@ def MSG_ReadShort (msg_read): #sizebuf_t *
 	if msg_read.readcount+2 > msg_read.cursize:
 		c = -1
 	else:		
-		c = (msg_read.data[msg_read.readcount] \
-		+ (msg_read.data[msg_read.readcount+1]<<8));
+		c = struct.unpack_from("<H", msg_read.data, msg_read.readcount)[0]
+	
+	msg_read.readcount += 2
+	
+	return c
+
+def MSG_ReadSShort (msg_read): #sizebuf_t *
+
+	#int	c;
+	
+	if msg_read.readcount+2 > msg_read.cursize:
+		c = -1
+	else:
+		c = struct.unpack_from("<h", msg_read.data, msg_read.readcount)[0]
 	
 	msg_read.readcount += 2
 	

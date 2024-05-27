@@ -352,8 +352,12 @@ Properly handles partial reads
 */
 void CDAudio_Stop(void);
 #define	MAX_READ	0x10000		// read in blocks of 64k
-void FS_Read (void *buffer, int len, FILE *f)
-{
+"""
+def FS_Read (length, f): #int, FILE * (out void *)
+
+	
+	pass
+	"""
 	int		block, remaining;
 	int		read;
 	byte	*buf;
@@ -361,18 +365,18 @@ void FS_Read (void *buffer, int len, FILE *f)
 
 	buf = (byte *)buffer;
 
-	// read in chunks for progress bar
+	# read in chunks for progress bar
 	remaining = len;
 	tries = 0;
-	while (remaining)
-	{
+	while remaining:
+	
 		block = remaining;
 		if (block > MAX_READ)
 			block = MAX_READ;
 		read = fread (buf, 1, block, f);
 		if (read == 0)
 		{
-			// we might have been trying to read from a CD
+			# we might have been trying to read from a CD
 			if (!tries)
 			{
 				tries = 1;
@@ -385,12 +389,12 @@ void FS_Read (void *buffer, int len, FILE *f)
 		if (read == -1)
 			Com_Error (ERR_FATAL, "FS_Read: -1 bytes read");
 
-		// do some progress bar thing here...
+		# do some progress bar thing here...
 
 		remaining -= read;
 		buf += read;
-	}
-}
+	
+
 
 /*
 ============
