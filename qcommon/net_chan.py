@@ -237,7 +237,6 @@ def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 	send_reliable = Netchan_NeedReliable (chan)
 
 	if not chan.reliable_length and chan.message.cursize:
-		print ("ttt", chan.message.cursize)
 		chan.reliable_buf = chan.message.data
 		chan.reliable_length = len(chan.message.data)
 		chan.message.data = bytearray()

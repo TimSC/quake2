@@ -347,6 +347,12 @@ def MSG_WriteShort (sb: qcommon.sizebuf_t, c):
 
 	struct.pack_into("<H", sb.data, offset, c)
 
+def MSG_WriteSShort (sb: qcommon.sizebuf_t, c):
+
+	offset = SZ_GetSpace(sb, 2)
+
+	struct.pack_into("<h", sb.data, offset, c)
+
 
 def MSG_WriteLong (sb: qcommon.sizebuf_t, c: int): #sizebuf_t *sb, int c)
 
@@ -803,19 +809,18 @@ def MSG_ReadString (msg_read): #sizebuf_t *
 	#int		l,c;
 	l = 0
 	readStringSize = 2048
-	st = []
+	st = bytearray()
 
 	while l < readStringSize-1:
 	
 		c = MSG_ReadChar (msg_read)
 		if c == -1 or c == 0:
 			break
-		st.append(chr(c))
+		st += c.to_bytes(1, 'big')
 		l+=1
 	
 	#string[l] = 0;
-	
-	return "".join(st)
+	return st.decode('ascii')
 
 
 def MSG_ReadStringLine (msg_read): # sizebuf_t * (returns char *)
@@ -825,19 +830,19 @@ def MSG_ReadStringLine (msg_read): # sizebuf_t * (returns char *)
 	
 	l = 0
 	readStringSize = 2048
-	st = []
+	st = bytearray()
 	
 	while l < readStringSize-1:
 	
 		c = MSG_ReadChar (msg_read)
 		if c == -1 or c == 0 or c == '\n':
 			break
-		st.append(chr(c))
+		st += c.to_bytes(1, 'big')
 		l+=1
 	
 	#string[l] = 0
 	
-	return "".join(st)
+	return st.decode('ascii')
 
 """
 float MSG_ReadCoord (sizebuf_t *msg_read)

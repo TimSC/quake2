@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from server import sv_main, sv_init
 from qcommon import cvar, qcommon, common, net_chan, cmd
+from game import q_shared
 """
 // sv_user.c -- server code for moving users
 
@@ -97,32 +98,34 @@ def SV_New_f (): #void
 	common.MSG_WriteLong (sv_main.sv_client.netchan.message, sv_init.svs.spawncount)
 	common.MSG_WriteByte (sv_main.sv_client.netchan.message, sv_init.sv.attractloop.to_bytes(1, 'big'))
 	common.MSG_WriteString (sv_main.sv_client.netchan.message, gamedir.encode('ascii'))
-"""
-	if (sv.state == ss_cinematic || sv.state == ss_pic)
+
+	if sv_init.sv.state == sv_init.server_state_t.ss_cinematic or sv_init.sv.state == sv_init.server_state_t.ss_pic:
 		playernum = -1
-	else
-		playernum = sv_main.sv_client - svs.clients
-	MSG_WriteShort (&sv_main.sv_client->netchan.message, playernum)
+	else:
+		playernum = sv_main.sv_client - sv_init.svs.clients
+	common.MSG_WriteSShort (sv_main.sv_client.netchan.message, playernum)
 
-	// send full levelname
-	MSG_WriteString (&sv_main.sv_client->netchan.message, sv.configstrings[CS_NAME])
+	# send full levelname
+	common.MSG_WriteString (sv_main.sv_client.netchan.message, sv_init.sv.configstrings[q_shared.CS_NAME].encode('ascii'))
 
-	//
-	// game server
-	// 
-	if (sv.state == ss_game)
-	{
-		// set up the entity for the client
+	#
+	# game server
+	# 
+	if sv_init.sv.state == sv_init.server_state_t.ss_game:
+	
+		pass
+		"""
+		# set up the entity for the client
 		ent = EDICT_NUM(playernum+1);
 		ent->s.number = playernum+1;
 		sv_main.sv_client->edict = ent;
 		memset (&sv_main.sv_client->lastcmd, 0, sizeof(sv_main.sv_client->lastcmd));
 
-		// begin fetching configstrings
+		# begin fetching configstrings
 		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_stufftext);
 		MSG_WriteString (&sv_main.sv_client->netchan.message, va("cmd configstrings %i 0\n",svs.spawncount) );
-	"""
-
+	
+		"""
 
 
 """
@@ -504,7 +507,7 @@ def SV_ExecuteUserCommand (s): #char *
 
 	if cmd.Cmd_Argv(0) in ucmds:
 		ucmds[cmd.Cmd_Argv(0)]()
-	elif sv.state == ss_game:
+	elif sv_init.sv.state == ss_game:
 		ge.ClientCommand (sv_player)
 
 #	SV_EndRedirect ()
@@ -575,9 +578,8 @@ def SV_ExecuteClientMessage (cl): #client_t *
 			sv_main.SV_DropClient (cl)
 			return
 
-		print ("b", net_chan.net_message.data, net_chan.net_message.readcount, net_chan.net_message.data[net_chan.net_message.readcount:])
 		c = common.MSG_ReadByte (net_chan.net_message)
-		print ("c", -1, qcommon.clc_ops_e.clc_stringcmd.value)
+
 		if c == -1:
 			break # nothing to read
 

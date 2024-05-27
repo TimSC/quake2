@@ -678,7 +678,6 @@ def CL_ParseServerMessage ():
 	# parse the message
 	#
 	while 1:
-	
 		if net_chan.net_message.readcount > net_chan.net_message.cursize:
 		
 			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Bad server message")
