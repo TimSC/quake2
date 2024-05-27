@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn
+from client import cl_main, cl_scrn, client
 from qcommon import net_chan, qcommon, common, cmd
 """
 // cl_parse.c  -- parse a message received from the server
@@ -310,11 +310,11 @@ def CL_ParseServerData ():
 	# wipe the client_state_t struct
 	#
 
-	CL_ClearState ()
-	cl_main.cls.state = ca_connected
+	cl_main.CL_ClearState ()
+	cl_main.cls.state = client.connstate_t.ca_connected
 
 	# parse protocol version number
-	i = MSG_ReadLong (net_chan.net_message)
+	i = common.MSG_ReadLong (net_chan.net_message)
 	cl_main.cls.serverProtocol = i
 
 	# BIG HACK to let demos from release work with the 3.0x patch!!!

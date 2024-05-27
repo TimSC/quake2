@@ -553,9 +553,10 @@ void CL_Rcon_f (void)
 CL_ClearState
 
 =====================
-*/
-void CL_ClearState (void)
-{
+"""
+def CL_ClearState ():
+
+	"""
 	S_StopAllSounds ();
 	CL_ClearEffects ();
 	CL_ClearTEnts ();
@@ -566,9 +567,9 @@ void CL_ClearState (void)
 
 	SZ_Clear (&cls.netchan.message);
 
-}
+	"""
 
-/*
+"""
 =====================
 CL_Disconnect
 
