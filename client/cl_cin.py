@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import os
 from client import cl_main, cl_scrn, client
-from qcommon import files, cvar
+from qcommon import files, cvar, common, qcommon
 from game import q_shared
 from linux import q_shlinux
 """
@@ -41,10 +41,11 @@ class cinematics_t(object):
 
 		self.width = None #int
 		self.height = None #int
-		"""
-		byte	*pic;
-		byte	*pic_pending;
 
+		self.pic = None #byte *
+		self.pic_pending = None #byte *
+
+		"""
 		// order 1 huffman stuff
 		int		*hnodes1;	// [256][256][2];
 		int		numhnodes1[256];
@@ -210,8 +211,8 @@ Called when either the cinematic completes, or it is aborted
 def SCR_FinishCinematic ():
 
 	# tell the server to advance to the next map / cinematic
-	MSG_WriteByte (cl_main.cls.netchan.message, clc_stringcmd)
-	SZ_Print (cl_main.cls.netchan.message, "nextserver {}\n".format(cl_main.cl.servercount))
+	common.MSG_WriteByte (cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd.value.to_bytes(1, 'big'))
+	common.SZ_Print (cl_main.cls.netchan.message, "nextserver {}\n".format(cl_main.cl.servercount))
 
 """
 //==========================================================================
@@ -545,7 +546,7 @@ def SCR_RunCinematic ():
 		SCR_StopCinematic ()
 		SCR_FinishCinematic ()
 		cl_main.cl.cinematictime = 1	# hack to get the black screen behind loading
-		SCR_BeginLoadingPlaque ()
+		cl_scrn.SCR_BeginLoadingPlaque ()
 		cl_main.cl.cinematictime = 0
 		return
 	
@@ -619,10 +620,10 @@ def SCR_PlayCinematic (arg): # char *
 		"""
 		# static pcx image
 		Com_sprintf (name, sizeof(name), "pics/%s", arg)
-		SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height)
+		cl_scrn.SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height)
 		cl_main.cl.cinematicframe = -1
 		cl_main.cl.cinematictime = 1
-		SCR_EndLoadingPlaque ()
+		cl_scrn.SCR_EndLoadingPlaque ()
 		cl_main.cls.state = ca_active
 		if !cin.pic:
 		

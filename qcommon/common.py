@@ -982,33 +982,49 @@ def SZ_GetSpace (buf: qcommon.sizebuf_t, length): #sizebuf_t *, int (void *)
 
 def SZ_Write (buf: qcommon.sizebuf_t, data):
 
+	assert isinstance(data, bytes) or isinstance(data, bytearray)
+
 	offset = SZ_GetSpace(buf, len(data))
 
 	buf.data[offset:offset+len(data)] = data
 
-"""
-void SZ_Print (sizebuf_t *buf, char *data)
-{
-	int		len;
+
+def SZ_Print (buf: qcommon.sizebuf_t, data): #char *
+
+	#int		len;
+	assert isinstance(data, str)
 	
-	len = strlen(data)+1;
+	data = data.encode('ascii')
+	length = len(data)+1
 
-	if (buf->cursize)
-	{
-		if (buf->data[buf->cursize-1])
-			memcpy ((byte *)SZ_GetSpace(buf, len),data,len); // no trailing 0
-		else
-			memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); // write over trailing 0
-	}
-	else
-		memcpy ((byte *)SZ_GetSpace(buf, len),data,len);
-}
+	if buf.cursize > 0:
+	
+		if buf.data[buf.cursize-1] != 0:
+			offset = SZ_GetSpace(buf, length)
+			buf.data[offset:offset+len(data)-1] = data
+			buf.data[offset+len(data)-1] = 0 # string terminator
+
+			#memcpy ((byte *)SZ_GetSpace(buf, len),data,len); # no trailing 0
+		else:
+			offset = SZ_GetSpace(buf, length)
+			buf.data[offset-1:offset+len(data)-2] = data
+			buf.data[offset+len(data)-1] = 0 # string terminator
+
+			#memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); # write over trailing 0
+	
+	else:
+		offset = SZ_GetSpace(buf, len(data))
+
+		buf.data[offset:offset+len(data)] = data
+		buf.data[offset+len(data)] = 0
+		#memcpy ((byte *)SZ_GetSpace(buf, len),data,len);
 
 
-//============================================================================
+
+#============================================================================
 
 
-/*
+"""
 ================
 COM_CheckParm
 

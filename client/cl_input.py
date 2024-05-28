@@ -553,6 +553,6 @@ def CL_SendCmd ():
 	#
 	# deliver the message
 	#
-	net_chan.Netchan_Transmit (cl_main.cls.netchan, buf)
+	net_chan.Netchan_Transmit (cl_main.cls.netchan, buf.data)
 
 
