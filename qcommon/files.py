@@ -351,12 +351,12 @@ Properly handles partial reads
 =================
 */
 void CDAudio_Stop(void);
-#define	MAX_READ	0x10000		// read in blocks of 64k
 """
+MAX_READ = 0x10000		# read in blocks of 64k
+
 def FS_Read (length, f): #int, FILE * (out void *)
 
 	
-	pass
 	"""
 	int		block, remaining;
 	int		read;
@@ -364,39 +364,44 @@ def FS_Read (length, f): #int, FILE * (out void *)
 	int		tries;
 
 	buf = (byte *)buffer;
+	"""
+	buf = bytearray()
 
 	# read in chunks for progress bar
-	remaining = len;
-	tries = 0;
+	remaining = length
+	tries = 0
 	while remaining:
 	
-		block = remaining;
-		if (block > MAX_READ)
-			block = MAX_READ;
-		read = fread (buf, 1, block, f);
-		if (read == 0)
-		{
-			# we might have been trying to read from a CD
-			if (!tries)
-			{
-				tries = 1;
-				CDAudio_Stop();
-			}
-			else
-				Com_Error (ERR_FATAL, "FS_Read: 0 bytes read");
-		}
+		block = remaining
+		if block > MAX_READ:
+			block = MAX_READ
+	
+		try:
+			read = f.read (block)
+			if len(read) == 0:
+			
+				# we might have been trying to read from a CD
+				if tries==0:
+				
+					tries = 1
+					#CDAudio_Stop()
+				
+				else:
+					common.Com_Error (q_shared.ERR_FATAL, "FS_Read: 0 bytes read");
+		
 
-		if (read == -1)
-			Com_Error (ERR_FATAL, "FS_Read: -1 bytes read");
+		except Exception as err:
+			print (err)
+			common.Com_Error (q_shared.ERR_FATAL, "FS_Read: -1 bytes read");
 
 		# do some progress bar thing here...
 
-		remaining -= read;
-		buf += read;
+		remaining -= len(read)
+		buf += read
 	
+	return buf
 
-
-/*
+"""
 ============
 FS_LoadFile
 

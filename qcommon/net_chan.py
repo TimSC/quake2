@@ -218,7 +218,7 @@ A 0 length will still generate a packet and deal with the reliable messages.
 """
 def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 
-	assert isinstance(data, bytes)
+	assert isinstance(data, bytes) or isinstance(data, bytearray)
 
 	send = qcommon.sizebuf_t()
 	#byte		send_buf[qcommon.MAX_MSGLEN];

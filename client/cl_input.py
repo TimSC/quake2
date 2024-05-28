@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, net_chan, qcommon
+from qcommon import cvar, net_chan, qcommon, common
 from game import q_shared
 from client import cl_main, client, keys, client
 from linux import in_linux, sys_linux, q_shlinux
@@ -470,7 +470,7 @@ CL_SendCmd
 """
 def CL_SendCmd ():
 
-	buf = bytearray()
+	buf = qcommon.sizebuf_t()
 	#byte		data[128];
 	#int			i;
 	#usercmd_t	*cmd, *oldcmd;
@@ -505,7 +505,7 @@ def CL_SendCmd ():
 		MSG_WriteByte (cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_userinfo)
 		MSG_WriteString (cl_main.cls.netchan.message, cvar.Cvar_Userinfo() )
 	
-	SZ_Init (buf, 128)
+	common.SZ_Init (buf, 128)
 
 	if cmd.buttons and cl_main.cl.cinematictime > 0 and not cl_main.cl.attractloop \
 		and cl_main.cls.realtime - cl_main.cl.cinematictime > 1000:
@@ -513,17 +513,17 @@ def CL_SendCmd ():
 		cl_cin.SCR_FinishCinematic ()
 	
 	# begin a client move command
-	common.MSG_WriteByte (buf, qcommon.clc_ops_e.clc_move)
+	common.MSG_WriteByte (buf, qcommon.clc_ops_e.clc_move.value.to_bytes(1, 'big'))
 
 	# save the position for a checksum byte
-	checksumIndex = len(buf)
-	common.MSG_WriteByte (buf, 0)
+	checksumIndex = len(buf.data)
+	common.MSG_WriteByte (buf, b'\x00')
 	
 	# let the server know what the last frame we
 	# got was, so the next message can be delta compressed
 
 	if cl_nodelta.value or not cl_main.cl.frame.valid or cl_main.cls.demowaiting:
-		common.MSG_WriteLong (buf, -1)	# no compression
+		common.MSG_WriteSLong (buf, -1)	# no compression
 	else:
 		common.MSG_WriteLong (buf, cl_main.cl.frame.serverframe)
 
@@ -533,22 +533,22 @@ def CL_SendCmd ():
 	i = (cl_main.cls.netchan.outgoing_sequence-2) & (client.CMD_BACKUP-1)
 	cmd = cl_main.cl.cmds[i]
 	cmd.reset()
-	MSG_WriteDeltaUsercmd (buf, nullcmd, cmd)
+	common.MSG_WriteDeltaUsercmd (buf, nullcmd, cmd)
 	oldcmd = cmd
 
 	i = (cl_main.cls.netchan.outgoing_sequence-1) & (client.CMD_BACKUP-1)
 	cmd = cl_main.cl.cmds[i]
-	MSG_WriteDeltaUsercmd (buf, oldcmd, cmd)
+	common.MSG_WriteDeltaUsercmd (buf, oldcmd, cmd)
 	oldcmd = cmd
 
 	i = (cl_main.cls.netchan.outgoing_sequence) & (client.CMD_BACKUP-1)
 	cmd = cl_main.cl.cmds[i]
-	MSG_WriteDeltaUsercmd (buf, oldcmd, cmd)
+	common.MSG_WriteDeltaUsercmd (buf, oldcmd, cmd)
 
 	# calculate a checksum over the move commands
-	buf[checksumIndex] = COM_BlockSequenceCRCByte(
-		buf, checksumIndex + 1, len(buf) - checksumIndex - 1,
-		cl_main.cls.netchan.outgoing_sequence)
+	buf.data[checksumIndex] = common.COM_BlockSequenceCRCByte(
+		buf, checksumIndex + 1, len(buf.data) - checksumIndex - 1,
+		cl_main.cls.netchan.outgoing_sequence)[0]
 
 	#
 	# deliver the message

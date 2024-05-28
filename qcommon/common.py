@@ -368,6 +368,12 @@ def MSG_WriteLong (sb: qcommon.sizebuf_t, c: int): #sizebuf_t *sb, int c)
 
 	struct.pack_into("<L", sb.data, offset, c)
 
+def MSG_WriteSLong (sb: qcommon.sizebuf_t, c: int): #sizebuf_t *sb, int c)
+
+	offset = SZ_GetSpace(sb, 4)
+
+	struct.pack_into("<l", sb.data, offset, c)
+
 """
 void MSG_WriteFloat (sizebuf_t *sb, float f)
 {
@@ -416,9 +422,11 @@ void MSG_WriteAngle16 (sizebuf_t *sb, float f)
 	MSG_WriteShort (sb, ANGLE2SHORT(f));
 }
 
+"""
+def MSG_WriteDeltaUsercmd (buf, from_cmd, cmd): #sizebuf_t *, usercmd_t *, usercmd_t *
 
-void MSG_WriteDeltaUsercmd (sizebuf_t *buf, usercmd_t *from, usercmd_t *cmd)
-{
+	pass
+	"""
 	int		bits;
 
 //

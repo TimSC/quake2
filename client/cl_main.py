@@ -1074,14 +1074,15 @@ CL_Snd_Restart_f
 Restart the sound subsystem so it can pick up
 new parameters and flush all sounds
 =================
-*/
-void CL_Snd_Restart_f (void)
-{
-	S_Shutdown ();
-	S_Init ();
-	CL_RegisterSounds ();
-}
+"""
+def CL_Snd_Restart_f ():
 
+	pass
+	#S_Shutdown ();
+	#S_Init ();
+	#CL_RegisterSounds ();
+
+"""
 int precache_check; // for autodownload of precache items
 int precache_spawncount;
 int precache_tex;

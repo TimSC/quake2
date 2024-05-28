@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import os
 from client import cl_main, cl_scrn, client
 from qcommon import files, cvar
+from game import q_shared
+from linux import q_shlinux
 """
 #include "client.h"
 
@@ -28,29 +30,32 @@ typedef struct
 	byte	*data;
 	int		count;
 } cblock_t;
+"""
+class cinematics_t(object):
+	def __init__(self):
 
-typedef struct
-{
-	qboolean	restart_sound;
-	int		s_rate;
-	int		s_width;
-	int		s_channels;
+		self.restart_sound=False # qboolean
+		self.s_rate = None #int
+		self.s_width = None #int
+		self.s_channels = None #int
 
-	int		width;
-	int		height;
-	byte	*pic;
-	byte	*pic_pending;
+		self.width = None #int
+		self.height = None #int
+		"""
+		byte	*pic;
+		byte	*pic_pending;
 
-	// order 1 huffman stuff
-	int		*hnodes1;	// [256][256][2];
-	int		numhnodes1[256];
+		// order 1 huffman stuff
+		int		*hnodes1;	// [256][256][2];
+		int		numhnodes1[256];
 
-	int		h_used[512];
-	int		h_count[512];
-} cinematics_t;
+		int		h_used[512];
+		int		h_count[512];
+		"""
 
-cinematics_t	cin;
+cin = cinematics_t()
 
+"""
 /*
 =================================================================
 
@@ -156,6 +161,7 @@ SCR_StopCinematic
 """
 def SCR_StopCinematic ():
 	
+	global cin
 	
 	cl_main.cl.cinematictime = 0	# done
 	"""
@@ -243,15 +249,17 @@ int	SmallestNode1 (int numhnodes)
 }
 
 
-/*
+
 ==================
 Huff1TableInit
 
 Reads the 64k counts table and initializes the node trees
 ==================
-*/
-void Huff1TableInit (void)
-{
+"""
+def Huff1TableInit ():
+
+	global cin
+	"""
 	int		prev;
 	int		j;
 	int		*node, *nodebase;
@@ -497,6 +505,7 @@ SCR_RunCinematic
 """
 def SCR_RunCinematic ():
 
+	global cin
 	#int		frame;
 
 	if cl_main.cl.cinematictime <= 0:
@@ -525,10 +534,11 @@ def SCR_RunCinematic ():
 	}
 	if (cin.pic)
 		Z_Free (cin.pic);
-	cin.pic = cin.pic_pending;
-	cin.pic_pending = NULL;
-	cin.pic_pending = SCR_ReadNextFrame ();
 	"""
+	cin.pic = cin.pic_pending
+	cin.pic_pending = None
+	cin.pic_pending = SCR_ReadNextFrame ()
+
 	cin.pic_pending = False
 	if not cin.pic_pending:
 	
@@ -586,6 +596,7 @@ SCR_PlayCinematic
 """
 def SCR_PlayCinematic (arg): # char *
 
+	global cin
 	"""
 	int		width, height;
 	byte	*palette;
@@ -627,7 +638,7 @@ def SCR_PlayCinematic (arg): # char *
 
 
 	name = "video/{}".format(arg)
-	cl_main.cl.cinematic_file = files.FS_FOpenFile (name)
+	file_length, cl_main.cl.cinematic_file = files.FS_FOpenFile (name)
 	if cl_main.cl.cinematic_file is None:
 	
 #		Com_Error (ERR_DROP, "Cinematic %s not found.\n", name);
@@ -642,15 +653,15 @@ def SCR_PlayCinematic (arg): # char *
 
 	width = files.FS_Read (4, cl_main.cl.cinematic_file)
 	height = files.FS_Read (4, cl_main.cl.cinematic_file)
-	cin.width = LittleLong(width)
-	cin.height = LittleLong(height)
+	cin.width = q_shared.LittleLong(width)
+	cin.height = q_shared.LittleLong(height)
 
 	cin.s_rate = files.FS_Read (4, cl_main.cl.cinematic_file)
-	cin.s_rate = LittleLong(cin.s_rate)
+	cin.s_rate = q_shared.LittleLong(cin.s_rate)
 	cin.s_width = files.FS_Read (4, cl_main.cl.cinematic_file)
-	cin.s_width = LittleLong(cin.s_width)
+	cin.s_width = q_shared.LittleLong(cin.s_width)
 	cin.s_channels = files.FS_Read (4, cl_main.cl.cinematic_file)
-	cin.s_channels = LittleLong(cin.s_channels)
+	cin.s_channels = q_shared.LittleLong(cin.s_channels)
 
 	Huff1TableInit ()
 
@@ -658,13 +669,13 @@ def SCR_PlayCinematic (arg): # char *
 	old_khz = cvar.Cvar_VariableValue ("s_khz")
 	if old_khz != cin.s_rate//1000:
 	
-		cin.restart_sound = true
+		cin.restart_sound = True
 		cvar.Cvar_SetValue ("s_khz", cin.s_rate//1000)
-		CL_Snd_Restart_f ()
+		cl_main.CL_Snd_Restart_f ()
 		cvar.Cvar_SetValue ("s_khz", old_khz)
 	
 
 	cl_main.cl.cinematicframe = 0
 	cin.pic = SCR_ReadNextFrame ()
-	cl_main.cl.cinematictime = Sys_Milliseconds ()
+	cl_main.cl.cinematictime = q_shlinux.Sys_Milliseconds ()
 
