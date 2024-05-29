@@ -45,28 +45,26 @@ class cinematics_t(object):
 		self.pic = None #byte *
 		self.pic_pending = None #byte *
 
-		"""
-		// order 1 huffman stuff
-		int		*hnodes1;	// [256][256][2];
-		int		numhnodes1[256];
+		# order 1 huffman stuff
+		self.hnodes1 = None #int * // [256][256][2]
+		self.numhnodes1 = None #int[256]
 
-		int		h_used[512];
-		int		h_count[512];
-		"""
+		self.h_used = None #int[512]
+		self.h_count = None #int[512]
+
 
 cin = cinematics_t()
 
 """
-/*
 =================================================================
 
 PCX LOADING
 
 =================================================================
-*/
+"""
 
 
-/*
+"""
 ==============
 SCR_LoadPCX
 ==============
@@ -214,6 +212,7 @@ def SCR_FinishCinematic ():
 	common.MSG_WriteByte (cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd.value.to_bytes(1, 'big'))
 	common.SZ_Print (cl_main.cls.netchan.message, "nextserver {}\n".format(cl_main.cl.servercount))
 
+
 """
 //==========================================================================
 
@@ -221,36 +220,34 @@ def SCR_FinishCinematic ():
 ==================
 SmallestNode1
 ==================
-*/
-int	SmallestNode1 (int numhnodes)
-{
-	int		i;
-	int		best, bestnode;
+"""
+def	SmallestNode1 (numhnodes): #int
 
-	best = 99999999;
-	bestnode = -1;
-	for (i=0 ; i<numhnodes ; i++)
-	{
-		if (cin.h_used[i])
-			continue;
-		if (!cin.h_count[i])
-			continue;
-		if (cin.h_count[i] < best)
-		{
-			best = cin.h_count[i];
-			bestnode = i;
-		}
-	}
+	#int		i;
+	#int		best, bestnode;
 
-	if (bestnode == -1)
-		return -1;
+	best = 99999999
+	bestnode = -1
+	for i in range(numhnodes):
+	
+		if cin.h_used[i]:
+			continue
+		if not cin.h_count[i]:
+			continue
+		if cin.h_count[i] < best:
+		
+			best = cin.h_count[i]
+			bestnode = i
 
-	cin.h_used[bestnode] = true;
-	return bestnode;
-}
+	if bestnode == -1:
+		return -1
+
+	cin.h_used[bestnode] = True
+	return bestnode
 
 
 
+"""
 ==================
 Huff1TableInit
 
@@ -266,46 +263,47 @@ def Huff1TableInit ():
 	int		*node, *nodebase;
 	byte	counts[256];
 	int		numhnodes;
+	"""
 
-	cin.hnodes1 = Z_Malloc (256*256*2*4);
-	memset (cin.hnodes1, 0, 256*256*2*4);
+	cin.hnodes1 = [0] * (256*256*2*4)
+	cin.numhnodes1 = [0]*256 #int[256]
 
-	for (prev=0 ; prev<256 ; prev++)
-	{
-		memset (cin.h_count,0,sizeof(cin.h_count));
-		memset (cin.h_used,0,sizeof(cin.h_used));
+	for prev in range(256):
+	
+		cin.h_count = [0]*512
+		cin.h_used = [0]*512
 
-		// read a row of counts
-		FS_Read (counts, sizeof(counts), cl_main.cl.cinematic_file);
-		for (j=0 ; j<256 ; j++)
-			cin.h_count[j] = counts[j];
+		# read a row of counts
+		counts = files.FS_Read (256, cl_main.cl.cinematic_file)
+		for j in range(256):
+			cin.h_count[j] = counts[j]
 
-		// build the nodes
-		numhnodes = 256;
-		nodebase = cin.hnodes1 + prev*256*2;
+		# build the nodes
+		numhnodes = 256
+		nodebase = prev * 256 * 2
 
-		while (numhnodes != 511)
-		{
-			node = nodebase + (numhnodes-256)*2;
+		while numhnodes != 511:
+		
+			node = nodebase + (numhnodes - 256) * 2
 
-			// pick two lowest counts
-			node[0] = SmallestNode1 (numhnodes);
-			if (node[0] == -1)
-				break;	// no more
+			# pick two lowest counts
+			v1 = SmallestNode1(numhnodes)
+			cin.hnodes1[node+0] = v1
+			if v1 == -1:
+				break	# no more
 
-			node[1] = SmallestNode1 (numhnodes);
-			if (node[1] == -1)
-				break;
+			v2 = SmallestNode1(numhnodes)
+			cin.hnodes1[node+1] = v2
+			if v2 == -1:
+				break
 
-			cin.h_count[numhnodes] = cin.h_count[node[0]] + cin.h_count[node[1]];
-			numhnodes++;
-		}
+			cin.h_count[numhnodes] = cin.h_count[v1] + cin.h_count[v2]
+			numhnodes+=1
+		
 
-		cin.numhnodes1[prev] = numhnodes-1;
-	}
-}
-
-/*
+		cin.numhnodes1[prev] = numhnodes-1
+	
+"""
 ==================
 Huff1Decompress
 ==================
@@ -441,7 +439,7 @@ SCR_ReadNextFrame
 """
 def SCR_ReadNextFrame (): #byte *
 
-	pass
+	print ("SCR_ReadNextFrame")
 	"""
 	int		r;
 	int		command;

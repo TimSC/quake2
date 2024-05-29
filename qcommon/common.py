@@ -1000,20 +1000,21 @@ def SZ_Print (buf: qcommon.sizebuf_t, data): #char *
 	if buf.cursize > 0:
 	
 		if buf.data[buf.cursize-1] != 0:
+
 			offset = SZ_GetSpace(buf, length)
-			buf.data[offset:offset+len(data)-1] = data
-			buf.data[offset+len(data)-1] = 0 # string terminator
+			buf.data[offset:offset+len(data)] = data
+			buf.data[offset+len(data)] = 0 # string terminator
 
 			#memcpy ((byte *)SZ_GetSpace(buf, len),data,len); # no trailing 0
 		else:
-			offset = SZ_GetSpace(buf, length)
+
+			offset = SZ_GetSpace(buf, length-2)
 			buf.data[offset-1:offset+len(data)-2] = data
 			buf.data[offset+len(data)-1] = 0 # string terminator
 
 			#memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); # write over trailing 0
-	
 	else:
-		offset = SZ_GetSpace(buf, len(data))
+		offset = SZ_GetSpace(buf, length)
 
 		buf.data[offset:offset+len(data)] = data
 		buf.data[offset+len(data)] = 0
