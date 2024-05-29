@@ -318,6 +318,7 @@ extern unsigned	r_rawpalette[256];
 """
 def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, int, byte *
 
+	print ("Draw_StretchRaw")
 	pass
 	"""
 	unsigned	image32[256*256];

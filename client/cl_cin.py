@@ -21,7 +21,7 @@ import os
 from client import cl_main, cl_scrn, client
 from qcommon import files, cvar, common, qcommon
 from game import q_shared
-from linux import q_shlinux
+from linux import q_shlinux, vid_so
 """
 #include "client.h"
 
@@ -307,139 +307,70 @@ def Huff1TableInit ():
 ==================
 Huff1Decompress
 ==================
-*/
-cblock_t Huff1Decompress (cblock_t in)
-{
-	byte		*input;
-	byte		*out_p;
-	int			nodenum;
-	int			count;
-	cblock_t	out;
-	int			inbyte;
-	int			*hnodes, *hnodesbase;
-//int		i;
+"""
+def Huff1Decompress (in_blk): #cblock_t
 
-	// get decompressed count
-	count = in.data[0] + (in.data[1]<<8) + (in.data[2]<<16) + (in.data[3]<<24);
-	input = in.data + 4;
-	out_p = out.data = Z_Malloc (count);
+	"""
+	byte *input;
+	int nodenum;
+	int count;
+	cblock_t out;
+	int inbyte;
+	int *hnodes, *hnodesbase;
+	"""
 
-	// read bits
+	# get decompressed count
+	count = in_blk[0] + (in_blk[1] << 8) + (in_blk[2] << 16) + (in_blk[3] << 24)
+	input_offset = 0
+	input_data = in_blk[4:]
+	out = bytearray(count)
+	out_p = 0
 
-	hnodesbase = cin.hnodes1 - 256*2;	// nodes 0-255 aren't stored
+	# read bits 
+	hnodesbase = - 256 * 2 # index into cin.hnodes1, nodes 0-255 aren't stored
 
-	hnodes = hnodesbase;
-	nodenum = cin.numhnodes1[0];
-	while (count)
-	{
-		inbyte = *input++;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-	}
+	hnodes = hnodesbase
+	nodenum = cin.numhnodes1[0]
 
-	if (input - in.data != in.count && input - in.data != in.count+1)
-	{
-		Com_Printf ("Decompression overread by %i", (input - in.data) - in.count);
-	}
-	out.count = out_p - out.data;
+	while count:
+	
+		inbyte = input_data[input_offset]
 
-	return out;
-}
+		for i in range(8):
+		
+			if nodenum < 256:
+			
+				hnodes = hnodesbase + (nodenum << 9)
+				out[out_p] = nodenum
+				out_p += 1
 
-/*
+				count -= 1
+				if count==0:
+					break
+				
+				nodenum = cin.numhnodes1[nodenum]
+			
+			nodenum = cin.hnodes1[hnodes + nodenum * 2 + (inbyte & 1)]
+			inbyte >>= 1
+		
+		input_offset +=1
+	
+	if (input_offset+4 != len(in_blk)) and (input_offset+4 != len(in_blk) + 1):
+	
+		common.Com_Printf("Decompression overread by {}".format((input_offset+4) - len(in_blk)))
+	
+	out = out[:out_p]
+	assert len(out) == out_p
+
+	return out
+
+"""
 ==================
 SCR_ReadNextFrame
 ==================
 """
 def SCR_ReadNextFrame (): #byte *
 
-	print ("SCR_ReadNextFrame")
 	"""
 	int		r;
 	int		command;
@@ -447,56 +378,60 @@ def SCR_ReadNextFrame (): #byte *
 	byte	compressed[0x20000];
 	int		size;
 	byte	*pic;
-	cblock_t	in, huf1;
+	cblock_t	in_blk, huf1;
 	int		start, end, count;
+	"""
 
-	// read the next frame
-	r = fread (&command, 4, 1, cl_main.cl.cinematic_file);
-	if (r == 0)		// we'll give it one more chance
-		r = fread (&command, 4, 1, cl_main.cl.cinematic_file);
+	# read the next frame
+	try:
+		command = cl_main.cl.cinematic_file.read(4)
+	except:
+		try:
+			# we'll give it one more chance
+			command = cl_main.cl.cinematic_file.read(4)
+		except:
+			return None
 
-	if (r != 1)
-		return NULL;
-	command = LittleLong(command);
-	if (command == 2)
-		return NULL;	// last frame marker
+	command = q_shared.LittleLong(command)
+	if command == 2:
+		return None	# last frame marker
 
-	if (command == 1)
-	{	// read palette
-		FS_Read (cl_main.cl.cinematicpalette, sizeof(cl_main.cl.cinematicpalette), cl_main.cl.cinematic_file);
-		cl_main.cl.cinematicpalette_active=0;	// dubious....  exposes an edge case
-	}
+	if command == 1:
+		# read palette
+		cl_main.cl.cinematicpalette = files.FS_Read (768, cl_main.cl.cinematic_file)
+		cl_main.cl.cinematicpalette_active=False	# dubious....  exposes an edge case
+	
 
-	// decompress the next frame
-	FS_Read (&size, 4, cl_main.cl.cinematic_file);
-	size = LittleLong(size);
-	if (size > sizeof(compressed) || size < 1)
-		Com_Error (ERR_DROP, "Bad compressed frame size");
-	FS_Read (compressed, size, cl_main.cl.cinematic_file);
+	# decompress the next frame
+	size = files.FS_Read (4, cl_main.cl.cinematic_file)
+	size = q_shared.LittleLong(size)
+	print ("read size", size)
+	if size > 0x20000 or size < 1:
+		common.Com_Error (ERR_DROP, "Bad compressed frame size")
+	compressed = files.FS_Read (size, cl_main.cl.cinematic_file)
 
-	// read sound
-	start = cl_main.cl.cinematicframe*cin.s_rate/14;
-	end = (cl_main.cl.cinematicframe+1)*cin.s_rate/14;
-	count = end - start;
+	# read sound
+	start = cl_main.cl.cinematicframe*cin.s_rate//14
+	end = (cl_main.cl.cinematicframe+1)*cin.s_rate//14
+	count = end - start
 
-	FS_Read (samples, count*cin.s_width*cin.s_channels, cl_main.cl.cinematic_file);
+	samples = files.FS_Read (count*cin.s_width*cin.s_channels, cl_main.cl.cinematic_file)
 
-	S_RawSamples (count, cin.s_rate, cin.s_width, cin.s_channels, samples);
+	#S_RawSamples (count, cin.s_rate, cin.s_width, cin.s_channels, samples)
 
-	in.data = compressed;
-	in.count = size;
+	in_blk = compressed
 
-	huf1 = Huff1Decompress (in);
+	huf1 = Huff1Decompress (in_blk)
 
-	pic = huf1.data;
+	pic = huf1
 
-	cl_main.cl.cinematicframe++;
+	cl_main.cl.cinematicframe+=1
 
-	return pic;
-}
+	return pic
 
 
-/*
+
+"""
 ==================
 SCR_RunCinematic
 
@@ -557,37 +492,38 @@ SCR_DrawCinematic
 Returns true if a cinematic is active, meaning the view rendering
 should be skipped
 ==================
-*/
-qboolean SCR_DrawCinematic (void)
-{
-	if (cl_main.cl.cinematictime <= 0)
-	{
-		return false;
-	}
+"""
+def SCR_DrawCinematic (): #(qboolean)
 
-	if (cl_main.cls.key_dest == key_menu)
-	{	// blank screen and pause if menu is up
-		re.CinematicSetPalette(NULL);
-		cl_main.cl.cinematicpalette_active = false;
-		return true;
-	}
+	
+	if cl_main.cl.cinematictime <= 0:
+	
+		return False
+	
 
-	if (!cl_main.cl.cinematicpalette_active)
-	{
-		re.CinematicSetPalette(cl_main.cl.cinematicpalette);
-		cl_main.cl.cinematicpalette_active = true;
-	}
+	if cl_main.cls.key_dest == client.keydest_t.key_menu:
+		# blank screen and pause if menu is up
+		vid_so.re.CinematicSetPalette(None)
+		cl_main.cl.cinematicpalette_active = False
+		return True
+	
 
-	if (!cin.pic)
-		return true;
+	if not cl_main.cl.cinematicpalette_active:
+	
+		vid_so.re.CinematicSetPalette(cl_main.cl.cinematicpalette)
+		cl_main.cl.cinematicpalette_active = True
+	
 
-	re.DrawStretchRaw (0, 0, viddef.width, viddef.height,
-		cin.width, cin.height, cin.pic);
+	if cin.pic is None:
+		return True
 
-	return true;
-}
+	vid_so.re.DrawStretchRaw (0, 0, vid_so.viddef.width, vid_so.viddef.height,
+		cin.width, cin.height, cin.pic)
 
-/*
+	return True
+
+
+"""
 ==================
 SCR_PlayCinematic
 
@@ -635,7 +571,6 @@ def SCR_PlayCinematic (arg): # char *
 			"""
 		return
 
-
 	name = "video/{}".format(arg)
 	file_length, cl_main.cl.cinematic_file = files.FS_FOpenFile (name)
 	if cl_main.cl.cinematic_file is None:
@@ -645,7 +580,6 @@ def SCR_PlayCinematic (arg): # char *
 		cl_main.cl.cinematictime = 0	# done
 		return
 	
-
 	cl_scrn.SCR_EndLoadingPlaque ()
 
 	cl_main.cls.state = client.connstate_t.ca_active

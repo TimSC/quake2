@@ -163,17 +163,15 @@ class client_state_t(object):
 		// FIXME: move this cinematic stuff into the cin_t structure
 		"""
 		self.cinematic_file = None # file handle 
-
 		self.cinematictime = 0 #int, cls.realtime for first cinematic frame
-		"""
-		int			cinematicframe;
-		char		cinematicpalette[768];
-		qboolean	cinematicpalette_active;
+		self.cinematicframe = None #int
+		self.cinematicpalette = None# char[768]
+		self.cinematicpalette_active = False #qboolean
 
-		//
-		// server state information
-		//
-		"""
+		#
+		# server state information
+		#
+
 		self.attractloop = False		# qboolean, running the attract loop, any key will menu
 		"""
 		int			servercount;	// server identification for prespawns

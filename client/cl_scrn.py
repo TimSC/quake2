@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, qcommon, common
-from client import console, cl_main, client, menu
+from client import console, cl_main, client, menu, cl_cin
 from linux import q_shlinux, vid_so
 from game import q_shared
 """
@@ -1357,10 +1357,10 @@ def SCR_UpdateScreen ():
 		# and console specially
 		elif cl_main.cl.cinematictime > 0:
 		
-			pass
-			"""
-			if (cl_main.cls.key_dest == key_menu)
-			{
+			
+			if cl_main.cls.key_dest == client.keydest_t.key_menu:
+				pass
+				"""
 				if (cl_main.cl.cinematicpalette_active)
 				{
 					vid_so.re.CinematicSetPalette(NULL)
@@ -1369,9 +1369,11 @@ def SCR_UpdateScreen ():
 				M_Draw ()
 				##vid_so.re.EndFrame()
 				##return
-			}
-			else if (cl_main.cls.key_dest == key_console)
-			{
+				"""
+
+			elif cl_main.cls.key_dest == client.keydest_t.key_console:
+				pass
+				"""
 				if (cl_main.cl.cinematicpalette_active)
 				{
 					vid_so.re.CinematicSetPalette(NULL)
@@ -1380,14 +1382,14 @@ def SCR_UpdateScreen ():
 				SCR_DrawConsole ()
 				##vid_so.re.EndFrame()
 				##return
-			}
-			else
-			{
-				SCR_DrawCinematic()
+				"""
+			else:
+			
+				cl_cin.SCR_DrawCinematic()
 				##vid_so.re.EndFrame()
 				##return
-			}
-			"""
+			
+
 		
 		else:
 		
