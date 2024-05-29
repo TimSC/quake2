@@ -21,6 +21,7 @@ import struct
 import OpenGL.GL as GL
 from ref_gl import gl_rmain, gl_image
 from game import q_shared
+from linux import qgl_linux
 """
 // draw.c
 
@@ -318,8 +319,6 @@ extern unsigned	r_rawpalette[256];
 """
 def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, int, byte *
 
-	print ("Draw_StretchRaw")
-	pass
 	"""
 	unsigned	image32[256*256];
 	unsigned char image8[256*256];
@@ -329,45 +328,45 @@ def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, in
 	float		hscale;
 	int			row;
 	float		t;
+	"""
+	image32 = [0] * (256*256)
 
-	GL_Bind (0);
+	gl_image.GL_Bind (0)
 
-	if (rows<=256)
-	{
-		hscale = 1;
-		trows = rows;
-	}
-	else
-	{
-		hscale = rows/256.0;
-		trows = 256;
-	}
-	t = rows*hscale / 256;
+	if rows<=256:
+	
+		hscale = 1
+		trows = rows
+	
+	else:
+	
+		hscale = rows/256.0
+		trows = 256
+	
+	t = rows*hscale / 256
+	
+	if not qgl_linux.qglColorTableEXT:
 
-	if ( !qglColorTableEXT )
-	{
-		unsigned *dest;
-
-		for (i=0 ; i<trows ; i++)
-		{
-			row = (int)(i*hscale);
-			if (row > rows)
+		for i in range(trows):
+		
+			row = int(i*hscale)
+			if row > rows:
 				break;
-			source = data + cols*row;
-			dest = &image32[i*256];
-			fracstep = cols*0x10000/256;
-			frac = fracstep >> 1;
-			for (j=0 ; j<256 ; j++)
-			{
-				dest[j] = r_rawpalette[source[frac>>16]];
-				frac += fracstep;
-			}
-		}
+			source = cols*row
+			dest = i*256
+			fracstep = cols*0x10000//256
+			frac = fracstep >> 1
+			for j in range(256):
+			
+				image32[dest + j] = gl_rmain.r_rawpalette[data[source+frac>>16]]
+				frac += fracstep
 
-		qglTexImage2D (GL_TEXTURE_2D, 0, gl_tex_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, image32);
-	}
-	else
-	{
+		GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, gl_image.gl_tex_solid_format, 256, 256, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image32);
+		#qglTexImage2D (GL_TEXTURE_2D, 0, gl_tex_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, image32);
+	
+	else:
+		raise NotImplemented()
+		"""
 		unsigned char *dest;
 
 		for (i=0 ; i<trows ; i++)
@@ -394,25 +393,26 @@ def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, in
 					   GL_COLOR_INDEX, 
 					   GL_UNSIGNED_BYTE, 
 					   image8 );
-	}
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		"""
 
-	if ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) 
-		qglDisable (GL_ALPHA_TEST);
+	
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+	GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
 
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (0, 0);
-	qglVertex2f (x, y);
-	qglTexCoord2f (1, 0);
-	qglVertex2f (x+w, y);
-	qglTexCoord2f (1, t);
-	qglVertex2f (x+w, y+h);
-	qglTexCoord2f (0, t);
-	qglVertex2f (x, y+h);
-	qglEnd ();
+	#if ( gl_rmain.gl_config.renderer == GL.GL_RENDERER_MCD ) or ( gl_rmain.gl_config.renderer & GL.GL_RENDERER_RENDITION ):
+	#	GL.glDisable (GL.GL_ALPHA_TEST)
 
-	if ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) 
-		qglEnable (GL_ALPHA_TEST);
-}
-"""
+	GL.glBegin (GL.GL_QUADS)
+	GL.glTexCoord2f (0, 0)
+	GL.glVertex2f (x, y)
+	GL.glTexCoord2f (1, 0)
+	GL.glVertex2f (x+w, y)
+	GL.glTexCoord2f (1, t)
+	GL.glVertex2f (x+w, y+h)
+	GL.glTexCoord2f (0, t)
+	GL.glVertex2f (x, y+h)
+	GL.glEnd ()
+
+	#if ( gl_rmain.gl_config.renderer == GL.GL_RENDERER_MCD ) or ( gl_rmain.gl_config.renderer & GL.GL_RENDERER_RENDITION ):
+	#	GL.glEnable (GL.GL_ALPHA_TEST)
+

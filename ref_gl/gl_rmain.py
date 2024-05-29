@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import struct
 import OpenGL.GL as GL
 import OpenGL.GLU as GLU
 from OpenGL.GL import glGetString
@@ -1648,44 +1649,44 @@ def R_BeginFrame( camera_separation ): #float
 R_SetPalette
 =============
 */
-unsigned r_rawpalette[256];
 """
+r_rawpalette = [0]*256 #unsigned[256];
+
 def R_SetPalette (palette): #const unsigned char *
 	
-	pass
-	"""
-	int		i;
+	#int		i;
+	global r_rawpalette
 
-	byte *rp = ( byte * ) r_rawpalette;
+	#byte *rp = ( byte * ) r_rawpalette;
 
-	if ( palette )
-	{
-		for ( i = 0; i < 256; i++ )
-		{
-			rp[i*4+0] = palette[i*3+0];
-			rp[i*4+1] = palette[i*3+1];
-			rp[i*4+2] = palette[i*3+2];
-			rp[i*4+3] = 0xff;
-		}
-	}
-	else
-	{
-		for ( i = 0; i < 256; i++ )
-		{
-			rp[i*4+0] = d_8to24table[i] & 0xff;
-			rp[i*4+1] = ( d_8to24table[i] >> 8 ) & 0xff;
-			rp[i*4+2] = ( d_8to24table[i] >> 16 ) & 0xff;
-			rp[i*4+3] = 0xff;
-		}
-	}
-	GL_SetTexturePalette( r_rawpalette );
+	if palette is not None:
+	
+		for i in range(256):
+		
+			c = [0, 0, 0, 0]
+			c[0] = palette[i*3+0]
+			c[1] = palette[i*3+1]
+			c[2] = palette[i*3+2]
+			c[3] = 0xff
+			r_rawpalette[i] = struct.unpack("<L", struct.pack("<BBBB", *c))[0]
+		
+	else:
+	
+		for i in range(256):
+		
+			r_rawpalette[i*4+0] = gl_image.d_8to24table[i] & 0xff
+			r_rawpalette[i*4+1] = ( gl_image.d_8to24table[i] >> 8 ) & 0xff
+			r_rawpalette[i*4+2] = ( gl_image.d_8to24table[i] >> 16 ) & 0xff
+			r_rawpalette[i*4+3] = 0xff
+		
+	gl_image.GL_SetTexturePalette( r_rawpalette )
 
-	qglClearColor (0,0,0,0);
-	qglClear (GL_COLOR_BUFFER_BIT);
-	qglClearColor (1,0, 0.5 , 0.5);
-}
+	GL.glClearColor (0,0,0,0)
+	GL.glClear (GL.GL_COLOR_BUFFER_BIT)
+	GL.glClearColor (1,0, 0.5 , 0.5)
 
-/*
+
+"""
 ** R_DrawBeam
 */
 void R_DrawBeam( entity_t *e )

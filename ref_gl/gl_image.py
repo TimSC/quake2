@@ -92,10 +92,12 @@ gl_tex_alpha_format = 4 #int
 
 gl_filter_min = GL.GL_LINEAR_MIPMAP_NEAREST #int
 gl_filter_max = GL.GL_LINEAR #int
-"""
 
-void GL_SetTexturePalette( unsigned palette[256] )
-{
+
+def GL_SetTexturePalette(palette): #unsigned palette[256]
+
+	pass
+	"""
 	int i;
 	unsigned char temptable[768];
 
@@ -115,8 +117,9 @@ void GL_SetTexturePalette( unsigned palette[256] )
 						   GL_UNSIGNED_BYTE,
 						   temptable );
 	}
-}
+	"""
 
+"""
 void GL_EnableMultitexture( qboolean enable )
 {
 	if ( !qglSelectTextureSGIS && !qglActiveTextureARB )
