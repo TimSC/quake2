@@ -329,7 +329,7 @@ def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, in
 	int			row;
 	float		t;
 	"""
-	image32 = [0] * (256*256)
+	image32 = bytearray(256*256*4)
 
 	gl_image.GL_Bind (0)
 
@@ -342,7 +342,7 @@ def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, in
 	
 		hscale = rows/256.0
 		trows = 256
-	
+
 	t = rows*hscale / 256
 	
 	if not qgl_linux.qglColorTableEXT:
@@ -351,19 +351,18 @@ def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, in
 		
 			row = int(i*hscale)
 			if row > rows:
-				break;
+				break
 			source = cols*row
 			dest = i*256
 			fracstep = cols*0x10000//256
 			frac = fracstep >> 1
 			for j in range(256):
 			
-				image32[dest + j] = gl_rmain.r_rawpalette[data[source+frac>>16]]
+				image32[(dest + j)*4:(dest + j + 1)*4] = struct.pack("<L", gl_rmain.r_rawpalette[data[source+(frac>>16)]])
 				frac += fracstep
 
-		GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, gl_image.gl_tex_solid_format, 256, 256, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image32);
-		#qglTexImage2D (GL_TEXTURE_2D, 0, gl_tex_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, image32);
-	
+		GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, gl_image.gl_tex_solid_format, 256, 256, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image32)
+			
 	else:
 		raise NotImplemented()
 		"""

@@ -333,8 +333,10 @@ def Huff1Decompress (in_blk): #cblock_t
 	nodenum = cin.numhnodes1[0]
 
 	while count:
-	
-		inbyte = input_data[input_offset]
+		if input_offset < len(input_data):
+			inbyte = input_data[input_offset]
+		else:
+			inbyte = 0
 
 		for i in range(8):
 		
@@ -473,7 +475,6 @@ def SCR_RunCinematic ():
 	cin.pic_pending = None
 	cin.pic_pending = SCR_ReadNextFrame ()
 
-	cin.pic_pending = False
 	if not cin.pic_pending:
 	
 		SCR_StopCinematic ()
