@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import pygame
+from client import snd_dma
+
 """
 #include <unistd.h>
 #include <fcntl.h>
@@ -43,11 +45,18 @@ cvar_t *snddevice;
 
 static int tryrates[] = { 11025, 22051, 44100, 8000 };
 """
+dma_channel = None
+
 def SNDDMA_Init(): #(returns qboolean)
 
-	pygame.mixer.init()
+	global dma_channel
 
-	return True
+	pygame.mixer.init(44100//2)
+
+	pygame.mixer.set_reserved(1)
+	dma_channel = pygame.mixer.find_channel(True)
+	
+
 	"""
 	int rc;
     int fmt;
@@ -126,8 +135,10 @@ def SNDDMA_Init(): #(returns qboolean)
         if (fmt & AFMT_S16_LE) dma.samplebits = 16;
         else if (fmt & AFMT_U8) dma.samplebits = 8;
     }
+	"""
+	snd_dma.dma.speed, snd_format, snd_channels = pygame.mixer.get_init()
 
-	dma.speed = (int)sndspeed->value;
+	"""
 	if (!dma.speed) {
         for (i=0 ; i<sizeof(tryrates)/4 ; i++)
             if (!ioctl(audio_fd, SNDCTL_DSP_SPEED, &tryrates[i])) break;
@@ -236,9 +247,9 @@ def SNDDMA_Init(): #(returns qboolean)
 
 	snd_inited = 1;
 	return 1;
-
-
-
+"""
+	return True
+"""
 int SNDDMA_GetDMAPos(void)
 {
 

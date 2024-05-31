@@ -17,15 +17,22 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from client import snd_dma
+import struct
+import pygame
+from linux import snd_linux
+from client import snd_dma, snd_loc
 """
 // snd_mix.c -- portable code to mix sounds for snd_dma.c
 
 #include "client.h"
 #include "snd_loc.h"
+"""
+PAINTBUFFER_SIZE = 2048
+paintbuffer = []
+for i in range(PAINTBUFFER_SIZE):
+	paintbuffer.append(snd_loc.portable_samplepair_t())
 
-#define	PAINTBUFFER_SIZE	2048
-portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE];
+"""
 int		snd_scaletable[32][256];
 int 	*snd_p, snd_linear_count, snd_vol;
 short	*snd_out;
@@ -226,6 +233,8 @@ void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int endtime, int offse
 """
 def S_PaintChannels(endtime): #int
 
+	global paintbuffer, PAINTBUFFER_SIZE
+
 	"""
 	int 	i;
 	int 	end;
@@ -244,8 +253,8 @@ def S_PaintChannels(endtime): #int
 
 		# if paintbuffer is smaller than DMA buffer
 		end = endtime
-		#if endtime - paintedtime > PAINTBUFFER_SIZE:
-		#	end = paintedtime + PAINTBUFFER_SIZE
+		if endtime - snd_dma.paintedtime > PAINTBUFFER_SIZE:
+			end = snd_dma.paintedtime + PAINTBUFFER_SIZE
 
 		# start any playsounds
 		
@@ -263,36 +272,44 @@ def S_PaintChannels(endtime): #int
 			#	end = ps.begin		# stop here
 			break
 		
-		"""
+
 		# clear the paint buffer
-		if (s_rawend < paintedtime)
-		{
+		if snd_dma.s_rawend < snd_dma.paintedtime:
+		
 			## Com_Printf ("clear\n");
-			memset(paintbuffer, 0, (end - paintedtime) * sizeof(portable_samplepair_t));
-		}
-		else
-		{	# copy from the streaming sound source
-			int		s;
-			int		stop;
+			#memset(paintbuffer, 0, (end - paintedtime) * sizeof(portable_samplepair_t))
+			for i in range(snd_dma.paintedtime, end):
+				paintbuffer[i-snd_dma.paintedtime].clear()
+		
+		else:
+			# copy from the streaming sound source
+			#int		s;
+			#int		stop;
 
-			stop = (end < s_rawend) ? end : s_rawend;
+			if end < snd_dma.s_rawend:
+				stop = end
+			else:
+				stop = snd_dma.s_rawend
 
-			for (i=paintedtime ; i<stop ; i++)
-			{
-				s = i&(MAX_RAW_SAMPLES-1);
-				paintbuffer[i-paintedtime] = s_rawsamples[s];
-			}
+			for i in range(snd_dma.paintedtime, stop):
+			
+				s = i&(snd_loc.MAX_RAW_SAMPLES-1)
+				paintbuffer[i-snd_dma.paintedtime] = snd_dma.s_rawsamples[s]			
+
 ##		if (i != end)
 ##			Com_Printf ("partial stream\n");
 ##		else
 ##			Com_Printf ("full stream\n");
-			for ( ; i<end ; i++)
-			{
-				paintbuffer[i-paintedtime].left =
-				paintbuffer[i-paintedtime].right = 0;
-			}
-		}
+			underrun = False
+			for i in range(stop, end):
+				# Buffer underrun, so pad paint buffer with zeros
+				underrun = True
+				paintbuffer[i-snd_dma.paintedtime].left = 0
+				paintbuffer[i-snd_dma.paintedtime].right = 0
+		
+			if underrun: print ("underrun")
 
+		"""
 
 		# paint in the channels.
 		ch = channels;
@@ -348,12 +365,25 @@ def S_PaintChannels(endtime): #int
 															  
 		}
 """
-		# transfer out according to DMA format
-		#S_TransferPaintBuffer(end);
-		snd_dma.paintedtime = end;
-"""
 
-"""
+		startrange = None
+		endrange = None
+		raw_buff = bytearray()
+		
+		for i in range(snd_dma.paintedtime, end):
+			s = i-snd_dma.paintedtime
+			samp = paintbuffer[s]
+			raw_buff += struct.pack("<hh", samp.left, samp.right)
+
+			if startrange is None: startrange = s
+			endrange = s
+
+		# transfer out according to DMA format
+		raw_snd = pygame.mixer.Sound(buffer=raw_buff)
+		snd_linux.dma_channel.queue(raw_snd)
+
+		snd_dma.paintedtime = end
+
 def S_InitScaletable ():
 	pass
 	"""

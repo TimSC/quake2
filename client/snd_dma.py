@@ -90,17 +90,17 @@ s_show = None #cvar_t		*
 s_mixahead = None #cvar_t		*
 s_primary = None #cvar_t		*
 
-"""
+s_rawend = 0 #int
+s_rawsamples = [] #portable_samplepair_t	[MAX_RAW_SAMPLES];
+for i in range(snd_loc.MAX_RAW_SAMPLES):
+	s_rawsamples.append(snd_loc.portable_samplepair_t())
 
-int		s_rawend;
-portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
+
+## ====================================================================
+## User-setable variables
+## ====================================================================
 
 
-// ====================================================================
-// User-setable variables
-// ====================================================================
-
-"""
 def S_SoundInfo_f():
 
 	global sound_started
@@ -453,7 +453,7 @@ def S_SpatializeOrigin (origin, master_vol, dist_mult): #vec3_t, float, float (r
 	vec_t		lscale, rscale, scale;
 	vec3_t		source_vec;
 
-	if (cls.state != ca_active)
+	if (cl_main.cls.state != ca_active)
 	{
 		*left_vol = *right_vol = 255;
 		return;
@@ -776,15 +776,16 @@ S_ClearBuffer
 """
 def S_ClearBuffer ():
 
+	global s_rawend
 	#int		clear;
 		
 	global sound_started
 
 	if not sound_started:
 		return;
-	"""
-	s_rawend = 0;
 
+	s_rawend = 0
+	"""
 	if (dma.samplebits == 8)
 		clear = 0x80;
 	else
@@ -860,7 +861,7 @@ void S_AddLoopSounds (void)
 	if (cl_paused->value)
 		return;
 
-	if (cls.state != ca_active)
+	if (cl_main.cls.state != ca_active)
 		return;
 
 	if (!cl.sound_prepped)
@@ -935,68 +936,84 @@ S_RawSamples
 
 Cinematic streaming and voice over network
 ============
-*/
-void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
-{
+"""
+def S_RawSamples (samples: int, rate: int, width: int, channels: int, data): # byte *
+
+	global sound_started, s_rawend, s_rawsamples, paintedtime
+
+	"""
 	int		i;
 	int		src, dst;
 	float	scale;
+	"""
 
-	if (!sound_started)
-		return;
+	if not sound_started:
+		return
 
-	if (s_rawend < paintedtime)
-		s_rawend = paintedtime;
-	scale = (float)rate / dma.speed;
+	if s_rawend < paintedtime:
+		s_rawend = paintedtime
+	scale = rate / dma.speed
 
-//Com_Printf ("%i < %i < %i\n", soundtime, paintedtime, s_rawend);
-	if (channels == 2 && width == 2)
-	{
-		if (scale == 1.0)
-		{	// optimized case
-			for (i=0 ; i<samples ; i++)
-			{
-				dst = s_rawend&(MAX_RAW_SAMPLES-1);
-				s_rawend++;
-				s_rawsamples[dst].left =
-					LittleShort(((short *)data)[i*2]) << 8;
-				s_rawsamples[dst].right =
-					LittleShort(((short *)data)[i*2+1]) << 8;
-			}
-		}
-		else
-		{
-			for (i=0 ; ; i++)
-			{
-				src = i*scale;
-				if (src >= samples)
-					break;
-				dst = s_rawend&(MAX_RAW_SAMPLES-1);
-				s_rawend++;
-				s_rawsamples[dst].left =
-					LittleShort(((short *)data)[src*2]) << 8;
-				s_rawsamples[dst].right =
-					LittleShort(((short *)data)[src*2+1]) << 8;
-			}
-		}
-	}
-	else if (channels == 1 && width == 2)
-	{
+#Com_Printf ("%i < %i < %i\n", soundtime, paintedtime, s_rawend);
+	if channels == 2 and width == 2:
+	
+		if rate == dma.speed:
+			# optimized case
+			rangestart = None
+			rangeend = None
+
+			for i in range(samples):
+			
+				dst = s_rawend&(snd_loc.MAX_RAW_SAMPLES-1)
+				s_rawend+=1
+				s_rawsamples[dst].left = \
+					q_shared.LittleSShort(data[i*4:i*4+2] )
+				s_rawsamples[dst].right = \
+					q_shared.LittleSShort(data[i*4+2:i*4+4] )
+
+				#print ("a", dst, s_rawsamples[dst].left, s_rawsamples[dst].right)
+				if rangestart is None:
+					rangestart = dst
+				rangeend = dst
+
+		else:
+			i = 0
+			while True:
+			
+				src = int(i*scale)
+				if src >= samples:
+					break
+				dst = s_rawend&(snd_loc.MAX_RAW_SAMPLES-1)
+				s_rawend+=1
+
+				s_rawsamples[dst].left = \
+					q_shared.LittleSShort(data[src*2:src*2+2] )
+				s_rawsamples[dst].right = \
+					q_shared.LittleSShort(data[src*2+2:src*2+4] )
+				i += 1
+			
+	elif channels == 1 and width == 2:
+	
+		pass
+		"""
 		for (i=0 ; ; i++)
 		{
 			src = i*scale;
 			if (src >= samples)
 				break;
-			dst = s_rawend&(MAX_RAW_SAMPLES-1);
+			dst = s_rawend&(snd_loc.MAX_RAW_SAMPLES-1);
 			s_rawend++;
 			s_rawsamples[dst].left =
 				LittleShort(((short *)data)[src]) << 8;
 			s_rawsamples[dst].right =
 				LittleShort(((short *)data)[src]) << 8;
 		}
-	}
-	else if (channels == 2 && width == 1)
-	{
+		"""
+	
+	elif channels == 2 and width == 1:
+	
+		pass
+		"""
 		for (i=0 ; ; i++)
 		{
 			src = i*scale;
@@ -1009,9 +1026,12 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 			s_rawsamples[dst].right =
 				((char *)data)[src*2+1] << 16;
 		}
-	}
-	else if (channels == 1 && width == 1)
-	{
+		"""
+	
+	elif channels == 1 and width == 1:
+		
+		pass
+		"""
 		for (i=0 ; ; i++)
 		{
 			src = i*scale;
@@ -1023,9 +1043,9 @@ void S_RawSamples (int samples, int rate, int width, int channels, byte *data)
 				(((byte *)data)[src]-128) << 16;
 			s_rawsamples[dst].right = (((byte *)data)[src]-128) << 16;
 		}
-	}
-}
+		"""
 
+"""
 //=============================================================================
 
 /*
@@ -1049,16 +1069,16 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 	if not sound_started:
 		return
 
-	"""
+
 	# if the laoding plaque is up, clear everything
 	# out to make sure we aren't looping a dirty
 	# dma buffer while loading
-	if (cls.disable_screen)
-	{
-		S_ClearBuffer ();
-		return;
-	}
-
+	if cl_main.cls.disable_screen:
+	
+		S_ClearBuffer ()
+		return
+	
+	"""
 	# rebuild scale tables if volume is modified
 	if (s_volume->modified)
 		S_InitScaletable ();
@@ -1145,7 +1165,7 @@ def GetSoundtime():
 
 	soundtime = buffers*fullsamples + samplepos/dma.channels;
 	"""
-	soundtime = q_shlinux.Sys_Milliseconds()
+	soundtime = q_shlinux.Sys_Milliseconds() * dma.speed // 1000
 
 
 def S_Update_():
@@ -1169,25 +1189,23 @@ def S_Update_():
 	GetSoundtime()
 
 	# check to make sure that we haven't overshot
-	#if paintedtime < soundtime:
+	if paintedtime < soundtime:
 	
 	#	common.Com_DPrintf ("S_Update_ : overflow\n")
-	#	paintedtime = soundtime
+		paintedtime = soundtime
 	
-	endtime = soundtime #FIXME is mix ahead needed?
-	"""
+	
 	# mix ahead of current position
-	endtime = soundtime + s_mixahead->value * dma.speed;
+	endtime = int(soundtime + s_mixahead.value * dma.speed)
 	##endtime = (soundtime + 4096) & ~4095;
 
 	# mix to an even submission block size
-	endtime = (endtime + dma.submission_chunk-1)
-		& ~(dma.submission_chunk-1);
-	samps = dma.samples >> (dma.channels-1);
-	if (endtime - soundtime > samps)
-		endtime = soundtime + samps;
-	"""
-
+	#endtime = (endtime + dma.submission_chunk-1) \
+	#	& ~(dma.submission_chunk-1)
+	#samps = dma.samples >> (dma.channels-1)
+	#if endtime - soundtime > samps:
+	#	endtime = soundtime + samps
+	
 	snd_mix.S_PaintChannels (endtime)
 
 	#SNDDMA_Submit ()

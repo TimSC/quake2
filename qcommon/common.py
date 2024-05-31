@@ -1487,6 +1487,7 @@ Qcommon_Init
 
 def Qcommon_Init (): #int argc, char **argv
 
+	pygame.mixer.pre_init(44100//2)
 	pygame.init()
 	global host_speeds, log_stats, developer, timescale, fixedtime, logfile_active, showtrace, dedicated
 

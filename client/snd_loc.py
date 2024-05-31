@@ -18,17 +18,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 
-"""
-// snd_loc.h -- private sound functions
 
-// !!! if this is changed, the asm code must change !!!
-typedef struct
-{
-	int			left;
-	int			right;
-} portable_samplepair_t;
+# snd_loc.h -- private sound functions
 
-"""
+# !!! if this is changed, the asm code must change !!!
+class portable_samplepair_t(object):
+
+	def __init__(self):
+		self.clear()
+
+	def clear(self):
+		self.left = 0 #int			
+		self.right = 0 #int
+
 class sfxcache_t(object):
 	def __init__(self):
 		self.length = None #int
@@ -151,10 +153,10 @@ extern	vec3_t	listener_right;
 extern	vec3_t	listener_up;
 extern	dma_t	dma;
 extern	playsound_t	s_pendingplays;
-
-#define	MAX_RAW_SAMPLES	8192
-extern	portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
-
+"""
+MAX_RAW_SAMPLES = 8192
+#extern	portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
+"""
 extern cvar_t	*s_volume;
 extern cvar_t	*s_nosound;
 extern cvar_t	*s_loadas8bit;

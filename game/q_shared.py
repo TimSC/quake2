@@ -2136,10 +2136,17 @@ int		(*_BigLong) (int l);
 int		(*_LittleLong) (int l);
 float	(*_BigFloat) (float l);
 float	(*_LittleFloat) (float l);
-
-short	BigShort(short l){return _BigShort(l);}
-short	LittleShort(short l) {return _LittleShort(l);}
 """
+def BigShort(l):
+	return struct.unpack(">H", l)[0]
+def LittleShort(l):
+	return struct.unpack("<H", l)[0]
+
+def BigSShort(l):
+	return struct.unpack(">h", l)[0]
+def LittleSShort(l):
+	return struct.unpack("<h", l)[0]
+
 def BigLong (l): #int, (returns int)
 	return struct.unpack(">I", l)[0]
 def LittleLong (l): #int, (returns int)

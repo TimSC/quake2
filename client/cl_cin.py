@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import os
-from client import cl_main, cl_scrn, client
+from client import cl_main, cl_scrn, client, snd_dma
 from qcommon import files, cvar, common, qcommon
 from game import q_shared
 from linux import q_shlinux, vid_so
@@ -407,7 +407,6 @@ def SCR_ReadNextFrame (): #byte *
 	# decompress the next frame
 	size = files.FS_Read (4, cl_main.cl.cinematic_file)
 	size = q_shared.LittleLong(size)
-	print ("read size", size)
 	if size > 0x20000 or size < 1:
 		common.Com_Error (ERR_DROP, "Bad compressed frame size")
 	compressed = files.FS_Read (size, cl_main.cl.cinematic_file)
@@ -419,7 +418,7 @@ def SCR_ReadNextFrame (): #byte *
 
 	samples = files.FS_Read (count*cin.s_width*cin.s_channels, cl_main.cl.cinematic_file)
 
-	#S_RawSamples (count, cin.s_rate, cin.s_width, cin.s_channels, samples)
+	snd_dma.S_RawSamples (count, cin.s_rate, cin.s_width, cin.s_channels, samples)
 
 	in_blk = compressed
 
