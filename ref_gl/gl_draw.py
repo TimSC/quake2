@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import struct
 import OpenGL.GL as GL
+from PIL import Image
 from ref_gl import gl_rmain, gl_image
 from game import q_shared
 from linux import qgl_linux
@@ -347,21 +348,17 @@ def Draw_StretchRaw (x, y, w, h, cols, rows, data): #int, int, int, int, int, in
 	
 	if not qgl_linux.qglColorTableEXT:
 
-		for i in range(trows):
-		
-			row = int(i*hscale)
-			if row > rows:
-				break
-			source = cols*row
-			dest = i*256
-			fracstep = cols*0x10000//256
-			frac = fracstep >> 1
-			for j in range(256):
-			
-				image32[(dest + j)*4:(dest + j + 1)*4] = struct.pack("<L", gl_rmain.r_rawpalette[data[source+(frac>>16)]])
-				frac += fracstep
+		raw_palette_buff = bytearray()
+		for col in gl_rmain.r_rawpalette:
+			raw_palette_buff += struct.pack("<L", col)[:3]	
 
-		GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, gl_image.gl_tex_solid_format, 256, 256, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image32)
+		img = Image.frombuffer("P", (cols, rows), data, 'raw', 'P', 0, 1)
+		img.putpalette(raw_palette_buff)
+		img = img.resize((256, 256))
+		img = img.convert("RGBA")
+
+		GL.glTexImage2D (GL.GL_TEXTURE_2D, 0, gl_image.gl_tex_solid_format, 
+			256, 256, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, img.tobytes())
 			
 	else:
 		raise NotImplemented()
