@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import os
+import struct
 from client import cl_main, cl_scrn, client, snd_dma
 from qcommon import files, cvar, common, qcommon
 from game import q_shared
@@ -48,7 +49,7 @@ class cinematics_t(object):
 		# order 1 huffman stuff
 		self.hnodes1 = None #int * // [256][256][2]
 		self.numhnodes1 = None #int[256]
-		self.hnodes1table = None
+		self.hnodes1tree = None
 
 		self.h_used = None #int[512]
 		self.h_count = None #int[512]
@@ -269,7 +270,8 @@ def Huff1TableInit ():
 	"""
 
 	cin.hnodes1 = [0] * (256*256*2*4)
-	cin.numhnodes1 = [0]*256 #int[256]
+	cin.numhnodes1 = [0]*256 #int[256] Mapping from previous pixel to specalized huff tree
+
 
 	for prev in range(256):
 	
@@ -307,15 +309,40 @@ def Huff1TableInit ():
 		cin.numhnodes1[prev] = numhnodes-1
 
 	#Convert to higher level (python friendly) representation
-	cin.hnodes1table = []
+	cin.hnodes1tree = [] # Node tree
+	cin.hnodes1vals = [] # Leaf node values
+
 	for prevpixel in range(256):
 		collect1 = []
+		vals = []
 		for nodenum in range(256):
-			leftRightNextNode = (cin.hnodes1[prevpixel * 512 + nodenum * 2 + 0],
-				cin.hnodes1[prevpixel * 512 + nodenum * 2 + 1]) 
-			collect1.append(leftRightNextNode)
-		cin.hnodes1table.append(tuple(collect1))
-	cin.hnodes1table = tuple(cin.hnodes1table)
+			leftRightNextNode = [cin.hnodes1[prevpixel * 512 + nodenum * 2 + 0],
+				cin.hnodes1[prevpixel * 512 + nodenum * 2 + 1]]
+
+			leftRightVals = [None, None]
+			if leftRightNextNode[0] < 256:
+				leftRightVals[0] = leftRightNextNode[0]
+				leftRightNextNode[0] = None
+			else:
+				leftRightNextNode[0] -= 256
+			if leftRightNextNode[1] < 256:
+				leftRightVals[1] = leftRightNextNode[1]
+				leftRightNextNode[1] = None
+			else:
+				leftRightNextNode[1] -= 256
+
+			collect1.append(tuple(leftRightNextNode))
+			vals.append(tuple(leftRightVals))
+
+		cin.hnodes1tree.append(tuple(collect1))
+		cin.hnodes1vals.append(tuple(vals))
+
+	cin.hnodes1tree = tuple(cin.hnodes1tree)
+	cin.hnodes1vals = tuple(cin.hnodes1vals)
+
+	for i in range(256):
+		cin.numhnodes1[i] -= 256
+	cin.numhnodes1 = tuple(cin.numhnodes1)
 
 """
 ==================
@@ -323,6 +350,8 @@ Huff1Decompress
 ==================
 """
 def Huff1Decompress (in_blk): #cblock_t
+
+	# Algorithm explained https://multimedia.cx/mirror/idcin.html
 
 	"""
 	byte *input;
@@ -334,15 +363,16 @@ def Huff1Decompress (in_blk): #cblock_t
 	"""
 
 	# get decompressed count
-	count = in_blk[0] + (in_blk[1] << 8) + (in_blk[2] << 16) + (in_blk[3] << 24)
+	count = struct.unpack("<L", in_blk[:4])[0]
 	input_offset = 0
 	input_data = in_blk[4:]
 	out = bytearray(count)
 	out_p = 0
 
 	# read bits 
-	prevpixel = 0 # Value range 0 to 253?
-	nodenum = cin.numhnodes1[0] # Value range 1 to 381
+	prevpixel = 0
+	nodenum = cin.numhnodes1[0]
+	nodeval = None
 
 	while count:
 		if input_offset < len(input_data):
@@ -352,21 +382,24 @@ def Huff1Decompress (in_blk): #cblock_t
 
 		for i in range(8):
 
-			if nodenum < 256:
+			if nodeval is not None:
 			
 				# Found leaf node of tree, getting pixel value
-				prevpixel = nodenum
-				out[out_p] = nodenum
+				out[out_p] = nodeval
 				out_p += 1
 
 				count -= 1
 				if count==0:
 					break
 				
-				# Change to root node of tree corresponding previous pixel
+				# Change to root node of tree corresponding to previous pixel
+				prevpixel = nodeval
 				nodenum = cin.numhnodes1[prevpixel]
 
-			nodenum = cin.hnodes1table[prevpixel][nodenum-256][inbyte & 1]
+			# Traverse down the tree to next node
+			prevnodenum = nodenum
+			nodenum = cin.hnodes1tree[prevpixel][prevnodenum][inbyte & 1]
+			nodeval = cin.hnodes1vals[prevpixel][prevnodenum][inbyte & 1]
 			inbyte >>= 1
 		
 		input_offset +=1
