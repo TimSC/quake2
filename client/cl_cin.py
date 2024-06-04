@@ -308,11 +308,11 @@ def Huff1TableInit ():
 
 	#Convert to higher level (python friendly) representation
 	cin.hnodes1table = []
-	for hnodesc in range(256):
+	for prevpixel in range(256):
 		collect1 = []
 		for nodenum in range(256):
-			leftRightNextNode = (cin.hnodes1[hnodesc * 512 + nodenum * 2 + 0],
-				cin.hnodes1[hnodesc * 512 + nodenum * 2 + 1]) 
+			leftRightNextNode = (cin.hnodes1[prevpixel * 512 + nodenum * 2 + 0],
+				cin.hnodes1[prevpixel * 512 + nodenum * 2 + 1]) 
 			collect1.append(leftRightNextNode)
 		cin.hnodes1table.append(tuple(collect1))
 	cin.hnodes1table = tuple(cin.hnodes1table)
@@ -341,10 +341,7 @@ def Huff1Decompress (in_blk): #cblock_t
 	out_p = 0
 
 	# read bits 
-	hnodesbase = - 256 * 2 # index into cin.hnodes1, nodes 0-255 aren't stored
-
-	hnodes = hnodesbase # Value range -512 to 128512
-	hnodesc = hnodes // 512 # Value range -1 to 252?
+	prevpixel = 0 # Value range 0 to 253?
 	nodenum = cin.numhnodes1[0] # Value range 1 to 381
 
 	while count:
@@ -357,8 +354,8 @@ def Huff1Decompress (in_blk): #cblock_t
 
 			if nodenum < 256:
 			
-				hnodes = hnodesbase + (nodenum << 9)
-				hnodesc = hnodes // 512
+				# Found leaf node of tree, getting pixel value
+				prevpixel = nodenum
 				out[out_p] = nodenum
 				out_p += 1
 
@@ -366,9 +363,10 @@ def Huff1Decompress (in_blk): #cblock_t
 				if count==0:
 					break
 				
-				nodenum = cin.numhnodes1[nodenum]
+				# Change to root node of tree corresponding previous pixel
+				nodenum = cin.numhnodes1[prevpixel]
 
-			nodenum = cin.hnodes1table[hnodesc+1][nodenum-256][inbyte & 1]
+			nodenum = cin.hnodes1table[prevpixel][nodenum-256][inbyte & 1]
 			inbyte >>= 1
 		
 		input_offset +=1
