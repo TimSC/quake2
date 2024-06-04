@@ -48,6 +48,7 @@ class cinematics_t(object):
 		# order 1 huffman stuff
 		self.hnodes1 = None #int * // [256][256][2]
 		self.numhnodes1 = None #int[256]
+		self.hnodes1table = None
 
 		self.h_used = None #int[512]
 		self.h_count = None #int[512]
@@ -304,10 +305,17 @@ def Huff1TableInit ():
 		
 
 		cin.numhnodes1[prev] = numhnodes-1
-	
 
-nodenumvals = set()
-hnodesvals = set()
+	#Convert to higher level (python friendly) representation
+	cin.hnodes1table = []
+	for hnodesc in range(256):
+		collect1 = []
+		for nodenum in range(256):
+			leftRightNextNode = (cin.hnodes1[hnodesc * 512 + nodenum * 2 + 0],
+				cin.hnodes1[hnodesc * 512 + nodenum * 2 + 1]) 
+			collect1.append(leftRightNextNode)
+		cin.hnodes1table.append(tuple(collect1))
+	cin.hnodes1table = tuple(cin.hnodes1table)
 
 """
 ==================
@@ -336,7 +344,7 @@ def Huff1Decompress (in_blk): #cblock_t
 	hnodesbase = - 256 * 2 # index into cin.hnodes1, nodes 0-255 aren't stored
 
 	hnodes = hnodesbase # Value range -512 to 128512
-	hnodesc = hnodes // 512
+	hnodesc = hnodes // 512 # Value range -1 to 252?
 	nodenum = cin.numhnodes1[0] # Value range 1 to 381
 
 	while count:
@@ -359,17 +367,11 @@ def Huff1Decompress (in_blk): #cblock_t
 					break
 				
 				nodenum = cin.numhnodes1[nodenum]
-			
-			nodenumvals.add(nodenum)
-			hnodesvals.add(hnodesc)
 
-			nodenum = cin.hnodes1[hnodesc * 512 + nodenum * 2 + (inbyte & 1)]
+			nodenum = cin.hnodes1table[hnodesc+1][nodenum-256][inbyte & 1]
 			inbyte >>= 1
 		
 		input_offset +=1
-
-	print ("nodenumvals", min(nodenumvals), max(nodenumvals))
-	print ("hnodesvals", min(hnodesvals), max(hnodesvals))
 	
 	if (input_offset+4 != len(in_blk)) and (input_offset+4 != len(in_blk) + 1):
 	
