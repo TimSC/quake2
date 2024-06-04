@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import os
 import struct
+import numpy as np
+import cl_cin_extras
 from client import cl_main, cl_scrn, client, snd_dma
 from qcommon import files, cvar, common, qcommon
 from game import q_shared
@@ -311,38 +313,48 @@ def Huff1TableInit ():
 	#Convert to higher level (python friendly) representation
 	cin.hnodes1tree = [] # Node tree
 	cin.hnodes1vals = [] # Leaf node values
+	cin.hnodes1leaf = []
 
 	for prevpixel in range(256):
 		collect1 = []
 		vals = []
+		leafs = []
+
 		for nodenum in range(256):
 			leftRightNextNode = [cin.hnodes1[prevpixel * 512 + nodenum * 2 + 0],
 				cin.hnodes1[prevpixel * 512 + nodenum * 2 + 1]]
 
-			leftRightVals = [None, None]
+			leftRightVals = [0, 0]
+			leftRightLeaf = [0, 0]
 			if leftRightNextNode[0] < 256:
 				leftRightVals[0] = leftRightNextNode[0]
-				leftRightNextNode[0] = None
+				leftRightNextNode[0] = 0
+				leftRightLeaf[0] = 1
 			else:
 				leftRightNextNode[0] -= 256
 			if leftRightNextNode[1] < 256:
 				leftRightVals[1] = leftRightNextNode[1]
-				leftRightNextNode[1] = None
+				leftRightNextNode[1] = 0
+				leftRightLeaf[1] = 1
 			else:
 				leftRightNextNode[1] -= 256
 
 			collect1.append(tuple(leftRightNextNode))
 			vals.append(tuple(leftRightVals))
+			leafs.append(tuple(leftRightLeaf))
 
 		cin.hnodes1tree.append(tuple(collect1))
 		cin.hnodes1vals.append(tuple(vals))
+		cin.hnodes1leaf.append(tuple(leafs))
 
-	cin.hnodes1tree = tuple(cin.hnodes1tree)
-	cin.hnodes1vals = tuple(cin.hnodes1vals)
+	cin.hnodes1tree = np.array(cin.hnodes1tree, dtype=np.uint8)
+	cin.hnodes1vals = np.array(cin.hnodes1vals, dtype=np.uint8)
+	cin.hnodes1leaf = np.array(cin.hnodes1leaf, dtype=np.uint8)
 
 	for i in range(256):
 		cin.numhnodes1[i] -= 256
-	cin.numhnodes1 = tuple(cin.numhnodes1)
+	cin.numhnodes1 = np.array(cin.numhnodes1, dtype=np.uint8)
+
 
 """
 ==================
@@ -467,9 +479,9 @@ def SCR_ReadNextFrame (): #byte *
 
 	snd_dma.S_RawSamples (count, cin.s_rate, cin.s_width, cin.s_channels, samples)
 
-	in_blk = compressed
+	in_blk = bytes(compressed)
 
-	huf1 = Huff1Decompress (in_blk)
+	huf1 = cl_cin_extras.Huff1Decompress (in_blk, cin.hnodes1tree, cin.hnodes1vals, cin.hnodes1leaf, cin.numhnodes1)
 
 	pic = huf1
 

@@ -1,2 +1,4 @@
 pygame
 pyopengl
+cython
+numpy

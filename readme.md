@@ -15,5 +15,7 @@ this code.
 
    pip3 install -r requirements.txt
 
+   python3 setup.py build_ext --inplace
+
    python3 main.py +set basedir /path/to/quake2data/Data
 
