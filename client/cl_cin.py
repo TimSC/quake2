@@ -197,7 +197,9 @@ def SCR_StopCinematic ():
 		CL_Snd_Restart_f ();
 	}
 
-}
+}f
+
+
 
 /*
 ====================
@@ -303,6 +305,10 @@ def Huff1TableInit ():
 
 		cin.numhnodes1[prev] = numhnodes-1
 	
+
+nodenumvals = set()
+hnodesvals = set()
+
 """
 ==================
 Huff1Decompress
@@ -329,8 +335,9 @@ def Huff1Decompress (in_blk): #cblock_t
 	# read bits 
 	hnodesbase = - 256 * 2 # index into cin.hnodes1, nodes 0-255 aren't stored
 
-	hnodes = hnodesbase
-	nodenum = cin.numhnodes1[0]
+	hnodes = hnodesbase # Value range -512 to 128512
+	hnodesc = hnodes // 512
+	nodenum = cin.numhnodes1[0] # Value range 1 to 381
 
 	while count:
 		if input_offset < len(input_data):
@@ -339,10 +346,11 @@ def Huff1Decompress (in_blk): #cblock_t
 			inbyte = 0
 
 		for i in range(8):
-		
+
 			if nodenum < 256:
 			
 				hnodes = hnodesbase + (nodenum << 9)
+				hnodesc = hnodes // 512
 				out[out_p] = nodenum
 				out_p += 1
 
@@ -352,10 +360,16 @@ def Huff1Decompress (in_blk): #cblock_t
 				
 				nodenum = cin.numhnodes1[nodenum]
 			
-			nodenum = cin.hnodes1[hnodes + nodenum * 2 + (inbyte & 1)]
+			nodenumvals.add(nodenum)
+			hnodesvals.add(hnodesc)
+
+			nodenum = cin.hnodes1[hnodesc * 512 + nodenum * 2 + (inbyte & 1)]
 			inbyte >>= 1
 		
 		input_offset +=1
+
+	print ("nodenumvals", min(nodenumvals), max(nodenumvals))
+	print ("hnodesvals", min(hnodesvals), max(hnodesvals))
 	
 	if (input_offset+4 != len(in_blk)) and (input_offset+4 != len(in_blk) + 1):
 	
