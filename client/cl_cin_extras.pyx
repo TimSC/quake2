@@ -41,11 +41,13 @@ def Huff1Decompress (in_blk: bytes, numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1
 	inbyte: numpy.uint8_t = 0
 
 	while count:
+		# Read input byte
 		if input_offset < len(input_data):
 			inbyte = input_data[input_offset]
 		else:
 			inbyte = 0
 
+		# Iterate over bits of input byte
 		for i in range(8):
 
 			if leaf:
