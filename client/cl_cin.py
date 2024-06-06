@@ -423,28 +423,25 @@ def SCR_RunCinematic ():
 		SCR_StopCinematic ()
 		return
 	
-	"""
+	if cl_main.cl.cinematicframe == -1:
+		return		# static image
 
-	if (cl_main.cl.cinematicframe == -1)
-		return;		// static image
-
-	if (cl_main.cls.key_dest != key_game)
-	{	// pause if menu or console is up
-		cl_main.cl.cinematictime = cl_main.cls.realtime - cl_main.cl.cinematicframe*1000/14;
-		return;
-	}
-
-	frame = (cl_main.cls.realtime - cl_main.cl.cinematictime)*14.0/1000;
-	if (frame <= cl_main.cl.cinematicframe)
-		return;
-	if (frame > cl_main.cl.cinematicframe+1)
-	{
-		Com_Printf ("Dropped frame: %i > %i\n", frame, cl_main.cl.cinematicframe+1);
-		cl_main.cl.cinematictime = cl_main.cls.realtime - cl_main.cl.cinematicframe*1000/14;
-	}
-	if (cin.pic)
-		Z_Free (cin.pic);
-	"""
+	if cl_main.cls.key_dest != client.keydest_t.key_game:
+		# pause if menu or console is up
+		cl_main.cl.cinematictime = cl_main.cls.realtime - cl_main.cl.cinematicframe*1000//14
+		return
+	
+	frame = (cl_main.cls.realtime - cl_main.cl.cinematictime)*14.0/1000
+	if frame <= cl_main.cl.cinematicframe:
+		return
+	if frame > cl_main.cl.cinematicframe+1:
+	
+		common.Com_Printf ("Dropped frame: {} > {}\n".format(frame, cl_main.cl.cinematicframe+1))
+		cl_main.cl.cinematictime = cl_main.cls.realtime - cl_main.cl.cinematicframe*1000//14
+	
+	if cin.pic is not None:
+		cin.pic = None
+	
 	cin.pic = cin.pic_pending
 	cin.pic_pending = None
 	cin.pic_pending = SCR_ReadNextFrame ()

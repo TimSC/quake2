@@ -33,7 +33,6 @@ def Huff1Decompress (in_blk: bytes, numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1
 	out: bytearray = bytearray(count)
 	out_p: numpy.uint32_t = 0
 
-	# read bits 
 	prevpixel: numpy.uint8_t = 0
 	nodenum: numpy.uint8_t = numhnodes1[0]
 	nodeval: numpy.uint8_t = 0
