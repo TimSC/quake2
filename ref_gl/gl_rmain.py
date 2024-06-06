@@ -1674,11 +1674,12 @@ def R_SetPalette (palette): #const unsigned char *
 	
 		for i in range(256):
 		
-			r_rawpalette[i*4+0] = gl_image.d_8to24table[i] & 0xff
-			r_rawpalette[i*4+1] = ( gl_image.d_8to24table[i] >> 8 ) & 0xff
-			r_rawpalette[i*4+2] = ( gl_image.d_8to24table[i] >> 16 ) & 0xff
+			col = gl_image.d_8to24table[i]
+			r_rawpalette[i*4+0] = col[0]
+			r_rawpalette[i*4+1] = col[1]
+			r_rawpalette[i*4+2] = col[2]
 			r_rawpalette[i*4+3] = 0xff
-		
+	
 	gl_image.GL_SetTexturePalette( r_rawpalette )
 
 	GL.glClearColor (0,0,0,0)

@@ -72,9 +72,11 @@ PCX LOADING
 ==============
 SCR_LoadPCX
 ==============
-*/
-void SCR_LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *height)
-{
+"""
+def SCR_LoadPCX (filename): # char * (byte **pic, byte **palette, int *width, int *height)
+
+	print ("SCR_LoadPCX")
+	"""
 	byte	*raw;
 	pcx_t	*pcx;
 	int		x, y;
@@ -167,45 +169,40 @@ def SCR_StopCinematic ():
 	global cin
 	
 	cl_main.cl.cinematictime = 0	# done
-	"""
-	if (cin.pic)
-	{
-		Z_Free (cin.pic);
-		cin.pic = NULL;
-	}
-	if (cin.pic_pending)
-	{
-		Z_Free (cin.pic_pending);
-		cin.pic_pending = NULL;
-	}
-	if (cl_main.cl.cinematicpalette_active)
-	{
-		re.CinematicSetPalette(NULL);
-		cl_main.cl.cinematicpalette_active = false;
-	}
-	if (cl_main.cl.cinematic_file)
-	{
-		fclose (cl_main.cl.cinematic_file);
-		cl_main.cl.cinematic_file = NULL;
-	}
-	if (cin.hnodes1)
-	{
-		Z_Free (cin.hnodes1);
-		cin.hnodes1 = NULL;
-	}
+	
+	if cin.pic is not None:
+		cin.pic = None
+	
+	if cin.pic_pending is not None:
+		cin.pic_pending = None
+	
+	if cl_main.cl.cinematicpalette_active:
+	
+		vid_so.re.CinematicSetPalette(None)
+		cl_main.cl.cinematicpalette_active = False
+	
+	if cl_main.cl.cinematic_file is not None:
+		cl_main.cl.cinematic_file = None
 
-	// switch back down to 11 khz sound if necessary
-	if (cin.restart_sound)
-	{
-		cin.restart_sound = false;
-		CL_Snd_Restart_f ();
-	}
+	if cin.hnodes1 is not None:
+	
+		cin.hnodes1 = None
+		cin.hnodes1tree = None
+		cin.hnodes1vals = None
+		cin.hnodes1leaf = None
+		cin.numhnodes1 = None
 
-}f
+	# switch back down to 11 khz sound if necessary
+	if cin.restart_sound:
+	
+		cin.restart_sound = False
+		CL_Snd_Restart_f ()
+	
 
 
 
-/*
+
+"""
 ====================
 SCR_FinishCinematic
 
@@ -523,24 +520,22 @@ def SCR_PlayCinematic (arg): # char *
 
 	
 	if dot == ".pcx":
-		"""
+		
 		# static pcx image
 		Com_sprintf (name, sizeof(name), "pics/%s", arg)
-		cl_scrn.SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height)
+		cin.pic, palette, cin.width, cin.height = SCR_LoadPCX (name)
 		cl_main.cl.cinematicframe = -1
 		cl_main.cl.cinematictime = 1
 		cl_scrn.SCR_EndLoadingPlaque ()
 		cl_main.cls.state = ca_active
-		if !cin.pic:
+		if cin.pic is None:
 		
-			Com_Printf ("%s not found.\n", name)
+			common.Com_Printf ("{} not found.\n".format(name))
 			cl_main.cl.cinematictime = 0
 		
 		else:
-		
-			memcpy (cl_main.cl.cinematicpalette, palette, sizeof(cl_main.cl.cinematicpalette))
-			Z_Free (palette)
-			"""
+			cl_main.cl.cinematicpalette = palette
+			
 		return
 
 	name = "video/{}".format(arg)
