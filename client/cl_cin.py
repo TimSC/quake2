@@ -196,7 +196,7 @@ def SCR_StopCinematic ():
 	if cin.restart_sound:
 	
 		cin.restart_sound = False
-		CL_Snd_Restart_f ()
+		cl_main.CL_Snd_Restart_f ()
 	
 
 

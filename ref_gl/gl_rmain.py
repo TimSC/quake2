@@ -1674,11 +1674,8 @@ def R_SetPalette (palette): #const unsigned char *
 	
 		for i in range(256):
 		
-			col = gl_image.d_8to24table[i]
-			r_rawpalette[i*4+0] = col[0]
-			r_rawpalette[i*4+1] = col[1]
-			r_rawpalette[i*4+2] = col[2]
-			r_rawpalette[i*4+3] = 0xff
+			c = gl_image.d_8to24table[i]
+			r_rawpalette[i] = struct.unpack("<L", struct.pack("<BBBB", c[0], c[1], c[2], 0xff))[0]
 	
 	gl_image.GL_SetTexturePalette( r_rawpalette )
 

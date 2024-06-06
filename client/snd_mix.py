@@ -231,9 +231,12 @@ void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int endtime, int offset
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int endtime, int offset);
 
 """
+raw_buff = bytearray()
+
 def S_PaintChannels(endtime): #int
 
 	global paintbuffer, PAINTBUFFER_SIZE
+	global raw_buff
 
 	"""
 	int 	i;
@@ -366,21 +369,30 @@ def S_PaintChannels(endtime): #int
 		}
 """
 
+		#if test is None:
+		#	test = wave.open("test.wav", "w")
+		#	test.setnchannels(2)
+		#	test.setsampwidth(2)
+		#	test.setframerate(44100//2)
+
 		startrange = None
 		endrange = None
-		raw_buff = bytearray()
 		
 		for i in range(snd_dma.paintedtime, end):
 			s = i-snd_dma.paintedtime
 			samp = paintbuffer[s]
 			raw_buff += struct.pack("<hh", samp.left, samp.right)
+			#test.writeframes(struct.pack("<hh", samp.left, samp.right))
 
 			if startrange is None: startrange = s
 			endrange = s
 
-		# transfer out according to DMA format
-		raw_snd = pygame.mixer.Sound(buffer=raw_buff)
-		snd_linux.dma_channel.queue(raw_snd)
+		if snd_linux.dma_channel.get_queue() is None:
+
+			# transfer out according to DMA format
+			raw_snd = pygame.mixer.Sound(buffer=raw_buff)
+			snd_linux.dma_channel.queue(raw_snd)
+			raw_buff = bytearray()
 
 		snd_dma.paintedtime = end
 
