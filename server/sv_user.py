@@ -579,16 +579,18 @@ def SV_ExecuteClientMessage (cl): #client_t *
 			return
 
 		c = common.MSG_ReadByte (net_chan.net_message)
-
 		if c == -1:
 			break # nothing to read
 
-		print ("SV_ExecuteClientMessage", c)
-
-		if c == qcommon.clc_ops_e.clc_nop.value:
+		try:
+			c = qcommon.clc_ops_e(c)
+		except ValueError:
 			pass
 
-		elif c == qcommon.clc_ops_e.clc_userinfo.value:
+		if c == qcommon.clc_ops_e.clc_nop:
+			pass
+
+		elif c == qcommon.clc_ops_e.clc_userinfo:
 			pass
 			"""
 			strncpy (cl->userinfo, MSG_ReadString (&net_message), sizeof(cl->userinfo)-1);
@@ -596,16 +598,17 @@ def SV_ExecuteClientMessage (cl): #client_t *
 			break;
 			"""
 
-		elif c == qcommon.clc_ops_e.clc_move.value:
-			pass
-			"""
-			if (move_issued)
-				return;		// someone is trying to cheat...
+		elif c == qcommon.clc_ops_e.clc_move:
 
-			move_issued = true;
-			checksumIndex = net_message.readcount;
-			checksum = MSG_ReadByte (&net_message);
-			lastframe = MSG_ReadLong (&net_message);
+
+			if move_issued:
+				return		# someone is trying to cheat...
+
+			move_issued = True
+			checksumIndex = net_chan.net_message.readcount
+			checksum = common.MSG_ReadByte (net_chan.net_message)
+			lastframe = common.MSG_ReadLong (net_chan.net_message)
+			"""
 			if (lastframe != cl->lastframe) {
 				cl->lastframe = lastframe;
 				if (cl->lastframe > 0) {
@@ -669,7 +672,7 @@ def SV_ExecuteClientMessage (cl): #client_t *
 			break;
 			"""
 
-		elif c == qcommon.clc_ops_e.clc_stringcmd.value:	
+		elif c == qcommon.clc_ops_e.clc_stringcmd:	
 
 			s = common.MSG_ReadString (net_chan.net_message)
 
