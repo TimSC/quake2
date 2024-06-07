@@ -424,28 +424,29 @@ def SV_ShowServerinfo_f ():
 	Info_Print (Cvar_Serverinfo())
 
 
+
+def SV_Nextserver ():
+
+	print ("SV_Nextserver")
+	#char	*v;
+
+	#ZOID, ss_pic can be nextserver'd in coop mode
+	if sv_init.sv.state == sv_init.server_state_t.ss_game or (sv_init.sv.state == sv_init.server_state_t.ss_pic and not cvar.Cvar_VariableValue("coop")):
+		return		# can't nextserver while playing a normal game
+
+	sv_init.svs.spawncount+=1	# make sure another doesn't sneak in
+	v = cvar.Cvar_VariableString ("nextserver")
+	if len(v) == 0:
+		cmd.Cbuf_AddText ("killserver\n")
+	else:
+	
+		cmd.Cbuf_AddText (v)
+		cmd.Cbuf_AddText ("\n")
+	
+	cvar.Cvar_Set ("nextserver","")
+
+
 """
-void SV_Nextserver (void)
-{
-	char	*v;
-
-	//ZOID, ss_pic can be nextserver'd in coop mode
-	if (sv.state == ss_game || (sv.state == ss_pic && !Cvar_VariableValue("coop")))
-		return;		// can't nextserver while playing a normal game
-
-	svs.spawncount++;	// make sure another doesn't sneak in
-	v = Cvar_VariableString ("nextserver");
-	if (!v[0])
-		Cbuf_AddText ("killserver\n");
-	else
-	{
-		Cbuf_AddText (v);
-		Cbuf_AddText ("\n");
-	}
-	Cvar_Set ("nextserver","");
-}
-
-/*
 ==================
 SV_Nextserver_f
 
@@ -455,18 +456,15 @@ to the next server,
 """
 def SV_Nextserver_f ():
 	
-	print ("SV_Nextserver_f")
-	"""
-	if ( atoi(Cmd_Argv(1)) != svs.spawncount ) {
-		common.Com_DPrintf ("Nextserver() from wrong level, from %s\n", sv_main.sv_client->name);
-		return;		// leftover from last server
-	}
+	if int(cmd.Cmd_Argv(1)) != sv_init.svs.spawncount :
+		common.Com_DPrintf ("Nextserver() from wrong level, from {}\n".format(sv_main.sv_client.name))
+		return		# leftover from last server
+	
+	common.Com_DPrintf ("Nextserver() from {}\n".format(sv_main.sv_client.name))
 
-	common.Com_DPrintf ("Nextserver() from %s\n", sv_main.sv_client->name);
+	SV_Nextserver ()
 
-	SV_Nextserver ();
-
-
+"""
 typedef struct
 {
 	char	*name;
