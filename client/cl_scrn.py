@@ -38,10 +38,10 @@ from game import q_shared
   */
 
 #include "client.h"
-
-float		scr_con_current;	// aproaches scr_conlines at scr_conspeed
-float		scr_conlines;		// 0.0 to 1.0 lines of console to display
 """
+scr_con_current = 0.0 #float, aproaches scr_conlines at scr_conspeed
+scr_conlines = 0.0 #float, 0.0 to 1.0 lines of console to display
+
 scr_initialized = False # qboolean, ready to draw
 scr_draw_loading = 0 #int
 
@@ -321,9 +321,10 @@ SCR_CalcVrect
 
 Sets scr_vrect, the coordinates of the rendered window
 =================
-*/
-static void SCR_CalcVrect (void)
-{
+"""
+def SCR_CalcVrect ():
+	pass
+	"""
 	int		size;
 
 	// bound viewsize
@@ -510,31 +511,29 @@ Scroll it up or down
 ==================
 """
 def SCR_RunConsole ():
-	pass
-	"""
-// decide on the height of the console
-	if (cl_main.cls.key_dest == key_console)
-		scr_conlines = 0.5;		// half screen
-	else
-		scr_conlines = 0;				// none visible
+	global scr_conlines, scr_con_current
+
+	# decide on the height of the console
+	if cl_main.cls.key_dest == client.keydest_t.key_console:
+		scr_conlines = 0.5		# half screen
+	else:
+		scr_conlines = 0				# none visible
 	
-	if (scr_conlines < scr_con_current)
-	{
-		scr_con_current -= scr_conspeed->value*cl_main.cls.frametime;
-		if (scr_conlines > scr_con_current)
-			scr_con_current = scr_conlines;
+	if scr_conlines < scr_con_current:
+	
+		scr_con_current -= scr_conspeed.value*cl_main.cls.frametime
+		if scr_conlines > scr_con_current:
+			scr_con_current = scr_conlines
 
-	}
-	else if (scr_conlines > scr_con_current)
-	{
-		scr_con_current += scr_conspeed->value*cl_main.cls.frametime;
-		if (scr_conlines < scr_con_current)
-			scr_con_current = scr_conlines;
-	}
+	
+	elif scr_conlines > scr_con_current:
+	
+		scr_con_current += scr_conspeed.value*cl_main.cls.frametime
+		if scr_conlines < scr_con_current:
+			scr_con_current = scr_conlines
+	
 
-}
-
-/*
+"""
 ==================
 SCR_DrawConsole
 ==================
@@ -712,23 +711,28 @@ SCR_TileClear
 
 Clear any parts of the tiled background that were drawn on last frame
 ==============
-*/
-void SCR_TileClear (void)
-{
+"""
+def SCR_TileClear ():
+
+	"""
 	int		i;
 	int		top, bottom, left, right;
 	dirty_t	clear;
+	"""
 
-	if (scr_drawall->value)
-		SCR_DirtyScreen ();	// for power vr or broken page flippers...
+	global scr_drawall, scr_con_current
 
-	if (scr_con_current == 1.0)
-		return;		// full screen console
-	if (scr_viewsize->value == 100)
-		return;		// full screen rendering
-	if (cl_main.cl.cinematictime > 0)
-		return;		// full screen cinematic
+	if scr_drawall.value:
+		SCR_DirtyScreen ()	# for power vr or broken page flippers...
 
+	if scr_con_current == 1.0:
+		return		# full screen console
+	if scr_viewsize.value == 100:
+		return		# full screen rendering
+	if cl_main.cl.cinematictime > 0:
+		return		# full screen cinematic
+
+	"""
 	// erase rect will be the union of the past three frames
 	// so tripple buffering works properly
 	clear = scr_dirty;
@@ -1393,13 +1397,13 @@ def SCR_UpdateScreen ():
 				vid_so.re.CinematicSetPalette(None)
 				cl_main.cl.cinematicpalette_active = False
 			
-			"""
+
 			# do 3D refresh drawing, and then update the screen
 			SCR_CalcVrect ()
 
 			# clear any dirty part of the background
 			SCR_TileClear ()
-
+			"""
 			V_RenderView ( separation[i] )
 
 			SCR_DrawStats ()

@@ -922,7 +922,7 @@ def Key_Event (key, down, timestamp): #int, qboolean, unsigned
 		shift_down = down
 
 	# console key is hardcoded, so the user can never unbind it
-	if key == '`' or key == '~':
+	if key == ord('`') or key == ord('~'):
 	
 		if not down:
 			return

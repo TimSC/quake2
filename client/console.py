@@ -102,19 +102,16 @@ Con_ToggleConsole_f
 def Con_ToggleConsole_f ():
 
 	cl_scrn.SCR_EndLoadingPlaque ()	# get rid of loading plaque
-	"""
-	if (cl.attractloop)
-	{
-		Cbuf_AddText ("killserver\n");
-		return;
-	}
-
-	if (cl_main.cls.state == ca_disconnected)
-	{	// start the demo loop again
-		Cbuf_AddText ("d1\n");
-		return;
-	}
-	"""
+	
+	if cl_main.cl.attractloop:
+		cmd.Cbuf_AddText ("killserver\n")
+		return
+	
+	if cl_main.cls.state == client.connstate_t.ca_disconnected:
+		# start the demo loop again
+		cmd.Cbuf_AddText ("d1\n")
+		return
+	
 	Key_ClearTyping ()
 	Con_ClearNotify ()
 
