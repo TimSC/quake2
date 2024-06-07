@@ -427,7 +427,6 @@ def SV_ShowServerinfo_f ():
 
 def SV_Nextserver ():
 
-	print ("SV_Nextserver")
 	#char	*v;
 
 	#ZOID, ss_pic can be nextserver'd in coop mode
@@ -439,7 +438,6 @@ def SV_Nextserver ():
 	if len(v) == 0:
 		cmd.Cbuf_AddText ("killserver\n")
 	else:
-	
 		cmd.Cbuf_AddText (v)
 		cmd.Cbuf_AddText ("\n")
 	
@@ -674,6 +672,7 @@ def SV_ExecuteClientMessage (cl): #client_t *
 
 			s = common.MSG_ReadString (net_chan.net_message)
 
+			print ("c", c, s)
 			# malicious users may try using too many string commands
 			stringCmdCount += 1
 			if stringCmdCount < MAX_STRINGCMDS:

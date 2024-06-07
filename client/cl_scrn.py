@@ -18,8 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, qcommon, common
-from client import console, cl_main, client, menu, cl_cin
-from linux import q_shlinux, vid_so
+from client import console, cl_main, client, menu, cl_cin, snd_dma
+from linux import q_shlinux, vid_so, cd_linux
 from game import q_shared
 """
 // cl_scrn.c -- master for refresh, status bar, console, chat, notify, etc
@@ -580,19 +580,18 @@ def SCR_BeginLoadingPlaque ():
 
 	global scr_draw_loading
 
-	"""
-	S_StopAllSounds ();
-	cl_main.cl.sound_prepped = false;		// don't play ambients
-	CDAudio_Stop ();
-	if (cl_main.cls.disable_screen)
-		return;
-	if (developer->value)
-		return;
-	if (cl_main.cls.state == ca_disconnected)
-		return;	// if at console, don't bring up the plaque
-	if (cl_main.cls.key_dest == key_console)
-		return;
-	"""
+	snd_dma.S_StopAllSounds ()
+	cl_main.cl.sound_prepped = False		# don't play ambients
+	cd_linux.CDAudio_Stop ()
+	if cl_main.cls.disable_screen:
+		return
+	if common.developer.value:
+		return
+	if cl_main.cls.state == client.connstate_t.ca_disconnected:
+		return	# if at console, don't bring up the plaque
+	if cl_main.cls.key_dest == client.keydest_t.key_console:
+		return
+
 	if cl_main.cl.cinematictime > 0:
 		scr_draw_loading = 2	# clear to black first
 	else:
@@ -1292,7 +1291,7 @@ text to the screen.
 """
 def SCR_UpdateScreen ():
 
-	global scr_initialized
+	global scr_initialized, scr_draw_loading
 
 	#int numframes;
 	#int i;
@@ -1340,18 +1339,15 @@ def SCR_UpdateScreen ():
 		vid_so.re.BeginFrame( separation[i] )
 		
 		if scr_draw_loading == 2:
-			pass
-			"""
 			#  loading plaque over black screen
-			int		w, h;
+			#int		w, h;
 
-			vid_so.re.CinematicSetPalette(NULL);
-			scr_draw_loading = false;
-			vid_so.re.DrawGetPicSize (&w, &h, "loading");
-			vid_so.re.DrawPic ((vid_so.viddef.width-w)/2, (vid_so.viddef.height-h)/2, "loading");
+			vid_so.re.CinematicSetPalette(None)
+			scr_draw_loading = 0
+			w, h = vid_so.re.DrawGetPicSize ("loading")
+			vid_so.re.DrawPic ((vid_so.viddef.width-w)//2, (vid_so.viddef.height-h)//2, "loading")
 			##vid_so.re.EndFrame();
 			##return;
-		"""
 
 		# if a cinematic is supposed to be running, handle menus
 		# and console specially
@@ -1359,30 +1355,27 @@ def SCR_UpdateScreen ():
 		
 			
 			if cl_main.cls.key_dest == client.keydest_t.key_menu:
-				pass
-				"""
-				if (cl_main.cl.cinematicpalette_active)
-				{
-					vid_so.re.CinematicSetPalette(NULL)
-					cl_main.cl.cinematicpalette_active = false
-				}
-				M_Draw ()
+
+				if cl_main.cl.cinematicpalette_active:
+				
+					vid_so.re.CinematicSetPalette(None)
+					cl_main.cl.cinematicpalette_active = False
+				
+				menu.M_Draw ()
 				##vid_so.re.EndFrame()
 				##return
-				"""
 
 			elif cl_main.cls.key_dest == client.keydest_t.key_console:
-				pass
-				"""
-				if (cl_main.cl.cinematicpalette_active)
-				{
-					vid_so.re.CinematicSetPalette(NULL)
-					cl_main.cl.cinematicpalette_active = false
-				}
+
+				if cl_main.cl.cinematicpalette_active:
+				
+					vid_so.re.CinematicSetPalette(None)
+					cl_main.cl.cinematicpalette_active = False
+				
 				SCR_DrawConsole ()
 				##vid_so.re.EndFrame()
 				##return
-				"""
+
 			else:
 			
 				cl_cin.SCR_DrawCinematic()
@@ -1393,14 +1386,14 @@ def SCR_UpdateScreen ():
 		
 		else:
 		
-			"""
-			# make sure the game palette is active
-			if (cl_main.cl.cinematicpalette_active)
-			{
-				vid_so.re.CinematicSetPalette(NULL)
-				cl_main.cl.cinematicpalette_active = false
-			}
 
+			# make sure the game palette is active
+			if cl_main.cl.cinematicpalette_active:
+			
+				vid_so.re.CinematicSetPalette(None)
+				cl_main.cl.cinematicpalette_active = False
+			
+			"""
 			# do 3D refresh drawing, and then update the screen
 			SCR_CalcVrect ()
 

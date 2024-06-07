@@ -590,6 +590,7 @@ def SV_Map ( attractloop, levelstring, loadgame): #qboolean, char *, qboolean
 		SV_InitGame ()	# the game is just starting
 
 	level = levelstring
+	print ("SV_Map", level)
 
 	# if there is a + in the map, set nextserver to the remainder
 	ch = level.find("+")

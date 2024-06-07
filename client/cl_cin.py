@@ -24,7 +24,7 @@ import cl_cin_extras
 from client import cl_main, cl_scrn, client, snd_dma
 from qcommon import files, cvar, common, qcommon
 from game import q_shared
-from linux import q_shlinux, vid_so
+from linux import q_shlinux, vid_so, cd_linux
 """
 #include "client.h"
 
@@ -508,7 +508,7 @@ def SCR_PlayCinematic (arg): # char *
 	int		old_khz;
 	"""
 	# make sure CD isn't playing music
-	#CDAudio_Stop()
+	cd_linux.CDAudio_Stop()
 
 	cl_main.cl.cinematicframe = 0
 	#dot = strstr (arg, ".")

@@ -828,15 +828,17 @@ def S_StopAllSounds():
 	"""
 
 	# clear all the channels
+	"""
 	for ch_idx in range(snd_loc.MAX_CHANNELS):
 	
 		ch = channels[ch_idx]
 		if ch.chan is None: continue
 		ch.chan.stop()
-	
+	"""	
+
 	#memset(channels, 0, sizeof(channels));
 
-	S_ClearBuffer ();
+	S_ClearBuffer ()
 
 """
 ==================

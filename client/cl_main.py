@@ -556,8 +556,8 @@ CL_ClearState
 """
 def CL_ClearState ():
 
+	snd_dma.S_StopAllSounds ()
 	"""
-	S_StopAllSounds ();
 	CL_ClearEffects ();
 	CL_ClearTEnts ();
 	"""

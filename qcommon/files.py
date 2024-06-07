@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import os
 from qcommon import cmd, common, qcommon, cvar, qfiles
 from game import q_shared
-from linux import q_shlinux
+from linux import q_shlinux, cd_linux
 """
 #include "qcommon.h"
 
@@ -384,7 +384,7 @@ def FS_Read (length, f): #int, FILE * (out void *)
 				if tries==0:
 				
 					tries = 1
-					#CDAudio_Stop()
+					cd_linux.CDAudio_Stop()
 				
 				else:
 					common.Com_Error (q_shared.ERR_FATAL, "FS_Read: 0 bytes read");
