@@ -78,10 +78,10 @@ class server_t(object):
 		self.demofile = None # FILE		*;
 		self.timedemo = False # qboolean	;		// don't time sync
 
-"""
-#define EDICT_NUM(n) ((edict_t *)((byte *)ge->edicts + ge->edict_size*(n)))
+def EDICT_NUM(n):
+	return ge.edicts(n)
 #define NUM_FOR_EDICT(e) ( ((byte *)(e)-(byte *)ge->edicts ) / ge->edict_size)
-"""
+
 class client_state_t(Enum):
 
 	cs_free = 0			# can be reused for a new connection
@@ -197,7 +197,7 @@ class server_static_t(object):
 
 		# serverrecord values
 		self.demofile = None # FILE		*
-		self.demo_multicast = None # sizebuf_t
+		self.demo_multicast = qcommon.sizebuf_t() # sizebuf_t
 		self.demo_multicast_buf = None # byte		[MAX_MSGLEN]
 
 

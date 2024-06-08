@@ -442,9 +442,11 @@ A client issued an rcon command.
 Shift down the remaining args
 Redirect all printfs
 ===============
-*/
-void SVC_RemoteCommand (void)
-{
+"""
+def SVC_RemoteCommand ():
+
+	pass
+	"""
 	int		i;
 	char	remaining[1024];
 
@@ -582,9 +584,11 @@ SV_GiveMsec
 Every few frames, gives all clients an allotment of milliseconds
 for their command moves.  If they exceed it, assume cheating.
 ===================
-*/
-void SV_GiveMsec (void)
-{
+"""
+def SV_GiveMsec ():
+
+	pass
+	"""
 	int			i;
 	client_t	*cl;
 
@@ -721,9 +725,11 @@ SV_PrepWorldFrame
 This has to be done before the world logic, because
 player processing happens outside RunWorldFrame
 ================
-*/
-void SV_PrepWorldFrame (void)
-{
+"""
+def SV_PrepWorldFrame ():
+
+	pass
+	"""
 	edict_t	*ent;
 	int		i;
 
@@ -741,9 +747,11 @@ void SV_PrepWorldFrame (void)
 =================
 SV_RunGameFrame
 =================
-*/
-void SV_RunGameFrame (void)
-{
+"""
+def SV_RunGameFrame ():
+	
+	pass
+	"""
 	if (host_speeds->value)
 		time_before_game = Sys_Milliseconds ();
 
@@ -799,10 +807,10 @@ def SV_Frame (msec): #int
 	# get packets from clients
 	SV_ReadPackets ()
 	"""
-	// move autonomous things around if enough time has passed
+	# move autonomous things around if enough time has passed
 	if (!sv_timedemo->value && sv_init.svs.realtime < sv_init.sv.time)
 	{
-		// never let the time get too far off
+		# never let the time get too far off
 		if (sv_init.sv.time - sv_init.svs.realtime > 100)
 		{
 			if (sv_showclamp->value)
@@ -813,28 +821,28 @@ def SV_Frame (msec): #int
 		return;
 	}
 
-	// update ping based on the last known frame from all clients
+	# update ping based on the last known frame from all clients
 	SV_CalcPings ();
-
-	// give the clients some timeslices
+	"""
+	# give the clients some timeslices
 	SV_GiveMsec ();
 
-	// let everything in the world think and move
+	# let everything in the world think and move
 	SV_RunGameFrame ();
-	"""
+
 	# send messages back to the clients that had packets read this frame
 	sv_send.SV_SendClientMessages ()
 	"""
-	// save the entire world state if recording a serverdemo
+	# save the entire world state if recording a serverdemo
 	SV_RecordDemoMessage ();
 
-	// send a heartbeat to the master if needed
+	# send a heartbeat to the master if needed
 	Master_Heartbeat ();
+	"""
+	# clear teleport flags, etc for next frame
+	SV_PrepWorldFrame ()
 
-	// clear teleport flags, etc for next frame
-	SV_PrepWorldFrame ();
-
-}
+"""
 
 //============================================================================
 

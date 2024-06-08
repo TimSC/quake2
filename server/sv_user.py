@@ -191,62 +191,58 @@ SV_Baselines_f
 """
 def SV_Baselines_f ():
 
-	print ("SV_Baselines_f")
-	pass
 	"""
 	int		start;
 	entity_state_t	nullstate;
 	entity_state_t	*base;
+	"""
 
-	common.Com_DPrintf ("Baselines() from %s\n", sv_main.sv_client.name);
+	common.Com_DPrintf ("Baselines() from {}\n".format(sv_main.sv_client.name))
 
-	if (sv_main.sv_client.state != sv_init.client_state_t.cs_connected)
-	{
-		common.Com_Printf ("baselines not valid -- already spawned\n");
-		return;
-	}
+	if sv_main.sv_client.state != sv_init.client_state_t.cs_connected:
 	
-	// handle the case of a level changing while a client was connecting
-	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
-	{
-		common.Com_Printf ("SV_Baselines_f from different level\n");
-		SV_New_f ();
-		return;
-	}
+		common.Com_Printf ("baselines not valid -- already spawned\n")
+		return
 	
-	start = atoi(Cmd_Argv(2));
+	
+	# handle the case of a level changing while a client was connecting
+	if int(Cmd_Argv(1)) != svs.spawncount:
+	
+		common.Com_Printf ("SV_Baselines_f from different level\n")
+		SV_New_f ()
+		return
+	
+	start = int(Cmd_Argv(2))
 
-	memset (&nullstate, 0, sizeof(nullstate));
+	nullstate = entity_state_t()
 
-	// write a packet full of data
+	# write a packet full of data
 
 	while ( sv_main.sv_client.netchan.message.cursize <  MAX_MSGLEN/2
-		&& start < MAX_EDICTS)
-	{
-		base = &sv.baselines[start];
-		if (base->modelindex || base->sound || base->effects)
-		{
-			common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_spawnbaseline);
-			MSG_WriteDeltaEntity (&nullstate, base, &sv_main.sv_client.netchan.message, true, true);
-		}
-		start++;
-	}
+		and start < MAX_EDICTS):
+	
+		base = sv.baselines[start]
+		if base.modelindex or base.sound or base.effects:
+		
+			common.MSG_WriteByte (sv_main.sv_client.netchan.message, svc_spawnbaseline)
+			MSG_WriteDeltaEntity (nullstate, base, sv_main.sv_client.netchan.message, true, true)
+		
+		start+=1
+	
+	# send next command
 
-	// send next command
+	if start == MAX_EDICTS:
+	
+		common.MSG_WriteByte (sv_main.sv_client.netchan.message, svc_stufftext)
+		MSG_WriteString (sv_main.sv_client.netchan.message, "precache {}\n".format( svs.spawncount) )
+	
+	else:
+	
+		common.MSG_WriteByte (sv_main.sv_client.netchan.message, svc_stufftext)
+		MSG_WriteString (sv_main.sv_client.netchan.message, "cmd baselines {} {}\n".format(svs.spawncount, start) )
+	
 
-	if (start == MAX_EDICTS)
-	{
-		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client.netchan.message, va("precache %i\n", svs.spawncount) );
-	}
-	else
-	{
-		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client.netchan.message, va("cmd baselines %i %i\n",svs.spawncount, start) );
-	}
-}
-
-/*
+"""
 ==================
 SV_Begin_f
 ==================
@@ -254,25 +250,24 @@ SV_Begin_f
 def SV_Begin_f ():
 
 	print ("SV_Begin_f")
-	"""
-	common.Com_DPrintf ("Begin() from %s\n", sv_main.sv_client.name);
-
-	// handle the case of a level changing while a client was connecting
-	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
-	{
-		common.Com_Printf ("SV_Begin_f from different level\n");
-		SV_New_f ();
-		return;
-	}
-
-	sv_main.sv_client.state = cs_spawned;
 	
-	// call the game begin function
-	ge->ClientBegin (sv_player);
+	common.Com_DPrintf ("Begin() from {}\n".format(sv_main.sv_client.name))
 
-	Cbuf_InsertFromDefer ();
-}
+	# handle the case of a level changing while a client was connecting
+	if int(Cmd_Argv(1)) != svs.spawncount:
+	
+		common.Com_Printf ("SV_Begin_f from different level\n")
+		SV_New_f ()
+		return
+	
+	sv_main.sv_client.state = cs_spawned
+	
+	# call the game begin function
+	ge.ClientBegin (sv_player)
 
+	cmd.Cbuf_InsertFromDefer ()
+
+"""
 //=============================================================================
 
 /*

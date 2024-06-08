@@ -139,8 +139,9 @@ def SV_BroadcastCommand (msg): #char *
 	if not sv_init.sv.state:
 		return
 
-	sv_init.sv.multicast = struct.pack("B", qcommon.svc_ops_e.svc_stufftext.value)
-	sv_init.sv.multicast += msg.encode('utf-8')
+	sv_init.sv.multicast = qcommon.sizebuf_t()
+	sv_init.sv.multicast.data = struct.pack("B", qcommon.svc_ops_e.svc_stufftext.value)
+	sv_init.sv.multicast.data += msg.encode('utf-8')
 	SV_Multicast (None, q_shared.multicast_t.MULTICAST_ALL_R)
 
 
@@ -179,7 +180,7 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 	
 	# if doing a serverrecord, store everything
 	if sv_init.svs.demofile:
-		sv_init.svs.demo_multicast = sv_init.sv.multicast
+		sv_init.svs.demo_multicast.data = sv_init.sv.multicast.data
 	
 	if to == q_shared.multicast_t.MULTICAST_ALL_R:
 		reliable = True	# intentional fallthrough
@@ -228,11 +229,11 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 
 
 		if reliable:
-			client.netchan.message = sv_init.sv.multicast
+			client.netchan.message.data = sv_init.sv.multicast.data
 		else:
-			client.datagram = sv_init.sv.multicast
+			client.datagram.data = sv_init.sv.multicast.data
 	
-	sv_init.sv.multicast = None
+	sv_init.sv.multicast = qcommon.sizebuf_t()
 
 
 

@@ -882,62 +882,58 @@ def CL_ConnectionlessPacket ():
 		cls.state = client.connstate_t.ca_connected
 		return
 	
-	print ("c", c)
-	"""
 	# server responding to a status broadcast
-	if (!strcmp(c, "info"))
-	{
-		CL_ParseStatusMessage ();
-		return;
-	}
-
+	elif c == "info":
+	
+		CL_ParseStatusMessage ()
+		return
+	
 	# remote command from gui front end
-	if (!strcmp(c, "cmd"))
-	{
-		if (!NET_IsLocalAddress(net_chan.net_from))
-		{
-			Com_Printf ("Command packet from remote host.  Ignored.\n");
-			return;
-		}
-		Sys_AppActivate ();
-		s = MSG_ReadString (&net_message);
-		Cbuf_AddText (s);
-		Cbuf_AddText ("\n");
-		return;
-	}
+	elif c == "cmd":
+	
+		if not NET_IsLocalAddress(net_chan.net_from):
+		
+			Com_Printf ("Command packet from remote host.  Ignored.\n")
+			return
+		
+		Sys_AppActivate ()
+		s = MSG_ReadString (net_message)
+		Cbuf_AddText (s)
+		Cbuf_AddText ("\n")
+		return
+	
 	# print command from somewhere
-	if (!strcmp(c, "print"))
-	{
-		s = MSG_ReadString (&net_message);
-		Com_Printf ("%s", s);
-		return;
-	}
+	elif c == "print":
+	
+		s = MSG_ReadString (net_message)
+		common.Com_Printf ("%s", s)
+		return
+	
 
 	# ping from somewhere
-	if (!strcmp(c, "ping"))
-	{
-		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "ack");
-		return;
-	}
+	elif c == "ping":
+	
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "ack")
+		return
+	
 
 	# challenge from the server we are connecting to
-	if (!strcmp(c, "challenge"))
-	{
-		cls.challenge = atoi(Cmd_Argv(1));
-		CL_SendConnectPacket ();
-		return;
-	}
+	elif c == "challenge":
+	
+		cls.challenge = atoi(Cmd_Argv(1))
+		CL_SendConnectPacket ()
+		return
+	
 
 	# echo request from server
-	if (!strcmp(c, "echo"))
-	{
-		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "%s", Cmd_Argv(1) );
-		return;
-	}
+	elif c == "echo":
+	
+		Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, net_chan.net_from, "%s", Cmd_Argv(1) )
+		return
+	
 
 	common.Com_Printf ("Unknown command.\n")
 
-	"""
 
 """
 =================
@@ -1060,14 +1056,14 @@ def CL_FixUpGender():
 ==============
 CL_Userinfo_f
 ==============
-*/
-void CL_Userinfo_f (void)
-{
-	Com_Printf ("User info settings:\n");
-	Info_Print (Cvar_Userinfo());
-}
+"""
+def CL_Userinfo_f ():
 
-/*
+	common.Com_Printf ("User info settings:\n")
+	Info_Print (Cvar_Userinfo())
+
+
+"""
 =================
 CL_Snd_Restart_f
 
@@ -1490,10 +1486,10 @@ def CL_InitLocal ():
 	"""
 	Cmd_AddCommand ("pingservers", CL_PingServers_f);
 	Cmd_AddCommand ("skins", CL_Skins_f);
-
-	Cmd_AddCommand ("userinfo", CL_Userinfo_f);
-	Cmd_AddCommand ("snd_restart", CL_Snd_Restart_f);
 	"""
+	cmd.Cmd_AddCommand ("userinfo", CL_Userinfo_f);
+	cmd.Cmd_AddCommand ("snd_restart", CL_Snd_Restart_f);
+
 	cmd.Cmd_AddCommand ("changing", CL_Changing_f)
 	cmd.Cmd_AddCommand ("disconnect", CL_Disconnect_f)
 	"""
