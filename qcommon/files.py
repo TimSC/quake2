@@ -421,7 +421,7 @@ def FS_LoadFile (path): #char * (returns int)
 	if handle is None:
 		return -1, None
 
-	return length, handle.read(length);
+	return length, handle.read(length)
 
 """
 =============

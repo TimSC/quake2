@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from game import q_shared
+from qcommon import qfiles, files, common
 """
 // cmodel.c -- model loading
 
@@ -107,9 +108,12 @@ int			numclusters = 1;
 mapsurface_t	nullsurface;
 
 int			floodvalid;
+"""
+portalopen = [] #qboolean[MAX_MAP_AREAPORTALS];
+for i in range(qfiles.MAX_MAP_AREAPORTALS):
+	portalopen.append(False)
 
-qboolean	portalopen[MAX_MAP_AREAPORTALS];
-
+"""
 
 cvar_t		*map_noareas;
 
@@ -119,7 +123,9 @@ void	FloodAreaConnections (void);
 
 int		c_pointcontents;
 int		c_traces, c_brush_traces;
-
+"""
+last_checksum = None
+"""
 
 /*
 ===============================================================================
@@ -144,13 +150,13 @@ void CMod_LoadSubmodels (lump_t *l)
 
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
-		Com_Error (ERR_DROP, "Map with no models");
+		Com_Error (q_shared.ERR_DROP, "Map with no models");
 	if (count > MAX_MAP_MODELS)
-		Com_Error (ERR_DROP, "Map has too many models");
+		Com_Error (q_shared.ERR_DROP, "Map has too many models");
 
 	numcmodels = count;
 
@@ -182,12 +188,12 @@ void CMod_LoadSurfaces (lump_t *l)
 
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 	if (count < 1)
-		Com_Error (ERR_DROP, "Map with no surfaces");
+		Com_Error (q_shared.ERR_DROP, "Map with no surfaces");
 	if (count > MAX_MAP_TEXINFO)
-		Com_Error (ERR_DROP, "Map has too many surfaces");
+		Com_Error (q_shared.ERR_DROP, "Map has too many surfaces");
 
 	numtexinfo = count;
 	out = map_surfaces;
@@ -217,13 +223,13 @@ void CMod_LoadNodes (lump_t *l)
 	
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
-		Com_Error (ERR_DROP, "Map has no nodes");
+		Com_Error (q_shared.ERR_DROP, "Map has no nodes");
 	if (count > MAX_MAP_NODES)
-		Com_Error (ERR_DROP, "Map has too many nodes");
+		Com_Error (q_shared.ERR_DROP, "Map has too many nodes");
 
 	out = map_nodes;
 
@@ -255,11 +261,11 @@ void CMod_LoadBrushes (lump_t *l)
 	
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count > MAX_MAP_BRUSHES)
-		Com_Error (ERR_DROP, "Map has too many brushes");
+		Com_Error (q_shared.ERR_DROP, "Map has too many brushes");
 
 	out = map_brushes;
 
@@ -288,14 +294,14 @@ void CMod_LoadLeafs (lump_t *l)
 	
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
-		Com_Error (ERR_DROP, "Map with no leafs");
+		Com_Error (q_shared.ERR_DROP, "Map with no leafs");
 	// need to save space for box planes
 	if (count > MAX_MAP_PLANES)
-		Com_Error (ERR_DROP, "Map has too many planes");
+		Com_Error (q_shared.ERR_DROP, "Map has too many planes");
 
 	out = map_leafs;	
 	numleafs = count;
@@ -314,7 +320,7 @@ void CMod_LoadLeafs (lump_t *l)
 	}
 
 	if (map_leafs[0].contents != CONTENTS_SOLID)
-		Com_Error (ERR_DROP, "Map leaf 0 is not CONTENTS_SOLID");
+		Com_Error (q_shared.ERR_DROP, "Map leaf 0 is not CONTENTS_SOLID");
 	solidleaf = 0;
 	emptyleaf = -1;
 	for (i=1 ; i<numleafs ; i++)
@@ -326,7 +332,7 @@ void CMod_LoadLeafs (lump_t *l)
 		}
 	}
 	if (emptyleaf == -1)
-		Com_Error (ERR_DROP, "Map does not have an empty leaf");
+		Com_Error (q_shared.ERR_DROP, "Map does not have an empty leaf");
 }
 
 /*
@@ -344,14 +350,14 @@ void CMod_LoadPlanes (lump_t *l)
 	
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
-		Com_Error (ERR_DROP, "Map with no planes");
+		Com_Error (q_shared.ERR_DROP, "Map with no planes");
 	// need to save space for box planes
 	if (count > MAX_MAP_PLANES)
-		Com_Error (ERR_DROP, "Map has too many planes");
+		Com_Error (q_shared.ERR_DROP, "Map has too many planes");
 
 	out = map_planes;	
 	numplanes = count;
@@ -386,14 +392,14 @@ void CMod_LoadLeafBrushes (lump_t *l)
 	
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
-		Com_Error (ERR_DROP, "Map with no planes");
+		Com_Error (q_shared.ERR_DROP, "Map with no planes");
 	// need to save space for box planes
 	if (count > MAX_MAP_LEAFBRUSHES)
-		Com_Error (ERR_DROP, "Map has too many leafbrushes");
+		Com_Error (q_shared.ERR_DROP, "Map has too many leafbrushes");
 
 	out = map_leafbrushes;
 	numleafbrushes = count;
@@ -417,12 +423,12 @@ void CMod_LoadBrushSides (lump_t *l)
 
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	// need to save space for box planes
 	if (count > MAX_MAP_BRUSHSIDES)
-		Com_Error (ERR_DROP, "Map has too many planes");
+		Com_Error (q_shared.ERR_DROP, "Map has too many planes");
 
 	out = map_brushsides;	
 	numbrushsides = count;
@@ -433,7 +439,7 @@ void CMod_LoadBrushSides (lump_t *l)
 		out->plane = &map_planes[num];
 		j = LittleShort (in->texinfo);
 		if (j >= numtexinfo)
-			Com_Error (ERR_DROP, "Bad brushside texinfo");
+			Com_Error (q_shared.ERR_DROP, "Bad brushside texinfo");
 		out->surface = &map_surfaces[j];
 	}
 }
@@ -452,11 +458,11 @@ void CMod_LoadAreas (lump_t *l)
 
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count > MAX_MAP_AREAS)
-		Com_Error (ERR_DROP, "Map has too many areas");
+		Com_Error (q_shared.ERR_DROP, "Map has too many areas");
 
 	out = map_areas;
 	numareas = count;
@@ -484,11 +490,11 @@ void CMod_LoadAreaPortals (lump_t *l)
 
 	in = (void *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count > MAX_MAP_AREAS)
-		Com_Error (ERR_DROP, "Map has too many areas");
+		Com_Error (q_shared.ERR_DROP, "Map has too many areas");
 
 	out = map_areaportals;
 	numareaportals = count;
@@ -511,7 +517,7 @@ void CMod_LoadVisibility (lump_t *l)
 
 	numvisibility = l->filelen;
 	if (l->filelen > MAX_MAP_VISIBILITY)
-		Com_Error (ERR_DROP, "Map has too large visibility lump");
+		Com_Error (q_shared.ERR_DROP, "Map has too large visibility lump");
 
 	memcpy (map_visibility, cmod_base + l->fileofs, l->filelen);
 
@@ -533,7 +539,7 @@ void CMod_LoadEntityString (lump_t *l)
 {
 	numentitychars = l->filelen;
 	if (l->filelen > MAX_MAP_ENTSTRING)
-		Com_Error (ERR_DROP, "Map has too large entity lump");
+		Com_Error (q_shared.ERR_DROP, "Map has too large entity lump");
 
 	memcpy (map_entitystring, cmod_base + l->fileofs, l->filelen);
 }
@@ -549,6 +555,8 @@ Loads in the map and all submodels
 """
 def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsigned *)
 
+	global last_checksum
+
 	print ("CM_LoadMap", name, clientload)
 	return q_shared.cmodel_t(), 0
 	"""
@@ -557,20 +565,23 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 	dheader_t		header;
 	int				length;
 	static unsigned	last_checksum;
+	"""
+	checksum = 0 #unsigned (output)
 
-	map_noareas = Cvar_Get ("map_noareas", "0", 0);
+	map_noareas = Cvar_Get ("map_noareas", "0", 0)
 
-	if (  !strcmp (map_name, name) && (clientload || !Cvar_VariableValue ("flushmap")) )
-	{
-		*checksum = last_checksum;
-		if (!clientload)
-		{
-			memset (portalopen, 0, sizeof(portalopen));
-			FloodAreaConnections ();
-		}
-		return &map_cmodels[0];		// still have the right version
-	}
-
+	if map_name == name or (clientload or Cvar_VariableValue ("flushmap")):
+	
+		checksum = last_checksum
+		if not clientload:
+		
+			for i in range(len(portalopen)):
+				portalopen[i] = False
+			FloodAreaConnections ()
+		
+		return map_cmodels[0], checksum # still have the right version
+	
+	"""
 	// free old stuff
 	numplanes = 0;
 	numnodes = 0;
@@ -580,32 +591,33 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 	numentitychars = 0;
 	map_entitystring[0] = 0;
 	map_name[0] = 0;
-
-	if (!name || !name[0])
-	{
+	"""
+	if name is None or len(name) == 0:
+		pass
+		"""
 		numleafs = 1;
 		numclusters = 1;
 		numareas = 1;
-		*checksum = 0;
-		return &map_cmodels[0];			// cinematic servers won't have anything at all
-	}
+		"""
+		checksum = 0
+		return map_cmodels[0], checksum # cinematic servers won't have anything at all
 
-	//
-	// load the file
-	//
-	length = FS_LoadFile (name, (void **)&buf);
-	if (!buf)
-		Com_Error (ERR_DROP, "Couldn't load %s", name);
+	#
+	# load the file
+	#
+	length, buf = files.FS_LoadFile (name)
+	if buf is None:
+		common.Com_Error (q_shared.ERR_DROP, "Couldn't load {}".format(name))
 
-	last_checksum = LittleLong (Com_BlockChecksum (buf, length));
-	*checksum = last_checksum;
-
+	last_checksum = q_shared.LittleLong (Com_BlockChecksum (buf, length))
+	checksum = last_checksum
+	"""
 	header = *(dheader_t *)buf;
 	for (i=0 ; i<sizeof(dheader_t)/4 ; i++)
 		((int *)&header)[i] = LittleLong ( ((int *)&header)[i]);
 
 	if (header.version != BSPVERSION)
-		Com_Error (ERR_DROP, "CMod_LoadBrushModel: %s has wrong version number (%i should be %i)"
+		Com_Error (q_shared.ERR_DROP, "CMod_LoadBrushModel: %s has wrong version number (%i should be %i)"
 		, name, header.version, BSPVERSION);
 
 	cmod_base = (byte *)buf;
@@ -633,8 +645,8 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 
 	strcpy (map_name, name);
 
-	return &map_cmodels[0];
-}
+	return map_cmodels[0], checksum
+
 
 /*
 ==================
@@ -646,10 +658,10 @@ cmodel_t	*CM_InlineModel (char *name)
 	int		num;
 
 	if (!name || name[0] != '*')
-		Com_Error (ERR_DROP, "CM_InlineModel: bad name");
+		Com_Error (q_shared.ERR_DROP, "CM_InlineModel: bad name");
 	num = atoi (name+1);
 	if (num < 1 || num >= numcmodels)
-		Com_Error (ERR_DROP, "CM_InlineModel: bad number");
+		Com_Error (q_shared.ERR_DROP, "CM_InlineModel: bad number");
 
 	return &map_cmodels[num];
 }
@@ -672,21 +684,21 @@ char	*CM_EntityString (void)
 int		CM_LeafContents (int leafnum)
 {
 	if (leafnum < 0 || leafnum >= numleafs)
-		Com_Error (ERR_DROP, "CM_LeafContents: bad number");
+		Com_Error (q_shared.ERR_DROP, "CM_LeafContents: bad number");
 	return map_leafs[leafnum].contents;
 }
 
 int		CM_LeafCluster (int leafnum)
 {
 	if (leafnum < 0 || leafnum >= numleafs)
-		Com_Error (ERR_DROP, "CM_LeafCluster: bad number");
+		Com_Error (q_shared.ERR_DROP, "CM_LeafCluster: bad number");
 	return map_leafs[leafnum].cluster;
 }
 
 int		CM_LeafArea (int leafnum)
 {
 	if (leafnum < 0 || leafnum >= numleafs)
-		Com_Error (ERR_DROP, "CM_LeafArea: bad number");
+		Com_Error (q_shared.ERR_DROP, "CM_LeafArea: bad number");
 	return map_leafs[leafnum].area;
 }
 
@@ -721,7 +733,7 @@ void CM_InitBoxHull (void)
 		|| numleafbrushes+1 > MAX_MAP_LEAFBRUSHES
 		|| numbrushsides+6 > MAX_MAP_BRUSHSIDES
 		|| numplanes+12 > MAX_MAP_PLANES)
-		Com_Error (ERR_DROP, "Not enough room for box tree");
+		Com_Error (q_shared.ERR_DROP, "Not enough room for box tree");
 
 	box_brush = &map_brushes[numbrushes];
 	box_brush->numsides = 6;
@@ -1613,7 +1625,7 @@ void FloodArea_r (carea_t *area, int floodnum)
 	{
 		if (area->floodnum == floodnum)
 			return;
-		Com_Error (ERR_DROP, "FloodArea_r: reflooded");
+		Com_Error (q_shared.ERR_DROP, "FloodArea_r: reflooded");
 	}
 
 	area->floodnum = floodnum;
@@ -1632,9 +1644,11 @@ FloodAreaConnections
 
 
 ====================
-*/
-void	FloodAreaConnections (void)
-{
+"""
+def	FloodAreaConnections ():
+
+	pass
+	"""
 	int		i;
 	carea_t	*area;
 	int		floodnum;
@@ -1652,13 +1666,13 @@ void	FloodAreaConnections (void)
 		floodnum++;
 		FloodArea_r (area, floodnum);
 	}
+	"""
 
-}
-
+"""
 void	CM_SetAreaPortalState (int portalnum, qboolean open)
 {
 	if (portalnum > numareaportals)
-		Com_Error (ERR_DROP, "areaportal > numareaportals");
+		Com_Error (q_shared.ERR_DROP, "areaportal > numareaportals");
 
 	portalopen[portalnum] = open;
 	FloodAreaConnections ();
@@ -1670,7 +1684,7 @@ qboolean	CM_AreasConnected (int area1, int area2)
 		return true;
 
 	if (area1 > numareas || area2 > numareas)
-		Com_Error (ERR_DROP, "area > numareas");
+		Com_Error (q_shared.ERR_DROP, "area > numareas");
 
 	if (map_areas[area1].floodnum == map_areas[area2].floodnum)
 		return true;
