@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from game import q_shared
 """
 // cmodel.c -- model loading
 
@@ -548,8 +549,8 @@ Loads in the map and all submodels
 """
 def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsigned *)
 
-	print ("CM_LoadMap", name)
-	return None, 0
+	print ("CM_LoadMap", name, clientload)
+	return q_shared.cmodel_t(), 0
 	"""
 	unsigned		*buf;
 	int				i;

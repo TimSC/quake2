@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
-
+"""
+"""
 #include "qcommon.h"
 
 
@@ -48,18 +48,18 @@ typedef struct
 pmove_t		*pm;
 pml_t		pml;
 
-
-// movement parameters
-float	pm_stopspeed = 100;
-float	pm_maxspeed = 300;
-float	pm_duckspeed = 100;
-float	pm_accelerate = 10;
-float	pm_airaccelerate = 0;
-float	pm_wateraccelerate = 10;
-float	pm_friction = 6;
-float	pm_waterfriction = 1;
-float	pm_waterspeed = 400;
-
+"""
+# movement parameters
+pm_stopspeed: float = 100.0
+pm_maxspeed: float = 300.0
+pm_duckspeed: float = 100.0
+pm_accelerate: float = 10.0
+pm_airaccelerate: float = 0.0
+pm_wateraccelerate: float = 10.0
+pm_friction: float = 6.0
+pm_waterfriction: float = 1.0
+pm_waterspeed: float = 400.0
+"""
 /*
 
   walking up a step should kill some velocity
@@ -1357,4 +1357,4 @@ void Pmove (pmove_t *pmove)
 
 	PM_SnapPosition ();
 }
-
+"""

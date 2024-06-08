@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import struct
 from enum import Enum
+import numpy as np
 """
 // q_shared.h -- included first by ALL program modules
 
@@ -124,11 +125,11 @@ MATHLIB
 
 ==============================================================
 */
-
-typedef float vec_t;
-typedef vec_t vec3_t[3];
-typedef vec_t vec5_t[5];
-
+"""
+vec_t = np.float32 #typedef float vec_t;
+vec3_t = np.ndarray # typedef vec_t vec3_t[3];
+vec5_t = np.ndarray # typedef vec_t [5];
+"""
 typedef	int	fixed4_t;
 typedef	int	fixed8_t;
 typedef	int	fixed16_t;
@@ -426,14 +427,16 @@ typedef struct cplane_s
 #define CPLANE_SIGNBITS			17
 #define CPLANE_PAD0				18
 #define CPLANE_PAD1				19
+"""
+class cmodel_t(object):
 
-typedef struct cmodel_s
-{
-	vec3_t		mins, maxs;
-	vec3_t		origin;		// for sounds or lights
-	int			headnode;
-} cmodel_t;
+	def __init__(self):
 
+		self.mins, self.maxs = None, None #vec3_t		
+		self.origin = None #vec3_t, for sounds or lights
+		self.headnode = None # int			
+
+"""
 typedef struct csurface_s
 {
 	char		name[16];
@@ -520,8 +523,8 @@ class usercmd_t(object):
 		self.buttons = 0 #byte	
 		self.angles = 0, 0, 0 #short	[3]
 		self.forwardmove, self.sidemove, self.upmove = 0, 0, 0 #short	
-		self.impulse = 0 #byte			// remove?
-		self.lightlevel = 0 #byte			// light level the player is standing on
+		self.impulse = 0 #byte, remove?
+		self.lightlevel = 0 #byte, light level the player is standing on
 
 """
 

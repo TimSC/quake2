@@ -19,9 +19,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import random
 from enum import Enum
-from server import sv_main, sv_send, sv_game
+from server import sv_main, sv_send, sv_game, sv_world
 from client import cl_main, cl_scrn
-from qcommon import cvar, common, cmd, qcommon, cmodel
+from qcommon import cvar, common, cmd, qcommon, cmodel, pmove
 from game import q_shared
 from linux import net_udp
 """
@@ -58,7 +58,9 @@ class server_t(object):
 		self.framenum = 0 # int			;
 
 		self.name = None # char		[MAX_QPATH];			// map name, or cinematic name
-		self.models = [] # struct cmodel_s		*[MAX_MODELS];
+		self.models = [] # struct cmodel_s		*[q_shared.MAX_MODELS];
+		for i in range(q_shared.MAX_MODELS):
+			self.models.append(q_shared.cmodel_t())
 
 		self.configstrings = [] # char		[MAX_CONFIGSTRINGS][MAX_QPATH];
 		for i in range(q_shared.MAX_CONFIGSTRINGS):
@@ -128,10 +130,10 @@ class client_t(object):
 		
 		self.name = None #char[32];			// extracted from userinfo, high bits masked
 		self.messagelevel = None #int;		// for filtering printed messages
-		"""
-		// The datagram is written to by sound calls, prints, temp ents, etc.
-		// It can be harmlessly overflowed.
-		"""
+		
+		# The datagram is written to by sound calls, prints, temp ents, etc.
+		# It can be harmlessly overflowed.
+		
 		self.datagram = qcommon.sizebuf_t()
 		"""
 		byte			datagram_buf[MAX_MSGLEN];
@@ -265,9 +267,11 @@ Entity baselines are used to compress the update messages
 to the clients -- only the fields that differ from the
 baseline will be transmitted
 ================
-*/
-void SV_CreateBaseline (void)
-{
+"""
+def SV_CreateBaseline ():
+
+	pass
+	"""
 	edict_t			*svent;
 	int				entnum;	
 
@@ -293,9 +297,11 @@ void SV_CreateBaseline (void)
 =================
 SV_CheckForSavegame
 =================
-*/
-void SV_CheckForSavegame (void)
-{
+"""
+def SV_CheckForSavegame ():
+
+	pass
+	"""
 	char		name[MAX_OSPATH];
 	FILE		*f;
 	int			i;
@@ -373,20 +379,19 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 	sv.loadgame = loadgame
 	sv.attractloop = attractloop
 
-	"""
-	// save name for levels that don't set message
-	strcpy (sv.configstrings[q_shared.CS_NAME], server);
-	if (Cvar_VariableValue ("deathmatch"))
-	{
-		sprintf(sv.configstrings[CS_AIRACCEL], "%g", sv_airaccelerate->value);
-		pm_airaccelerate = sv_airaccelerate->value;
-	}
-	else
-	{
-		strcpy(sv.configstrings[CS_AIRACCEL], "0");
-		pm_airaccelerate = 0;
-	}
-	"""
+	
+	# save name for levels that don't set message
+	sv.configstrings[q_shared.CS_NAME] = server
+	if cvar.Cvar_VariableValue ("deathmatch"):
+	
+		sv.configstrings[q_shared.CS_AIRACCEL] = str(int(sv_main.sv_airaccelerate.value))
+		pmove.pm_airaccelerate = sv_main.sv_airaccelerate.value
+	
+	else:
+	
+		sv.configstrings[q_shared.CS_AIRACCEL] = "0"
+		pmove.pm_airaccelerate = 0
+	
 	common.SZ_Init (sv.multicast, qcommon.MAX_MSGLEN)
 
 	sv.name = server
@@ -416,12 +421,12 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 		sv.models[1], checksum = cmodel.CM_LoadMap (sv.configstrings[q_shared.CS_MODELS+1], False)
 	
 	sv.configstrings[q_shared.CS_MAPCHECKSUM] = "{:d}".format(checksum)
+
+	#
+	# clear physics interaction links
+	#
+	sv_world.SV_ClearWorld ()
 	"""
-	//
-	// clear physics interaction links
-	//
-	SV_ClearWorld ();
-	
 	for (i=1 ; i< CM_NumInlineModels() ; i++)
 	{
 		Com_sprintf (sv.configstrings[CS_MODELS+1+i], sizeof(sv.configstrings[CS_MODELS+1+i]),
@@ -448,13 +453,13 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 	# all precaches are complete
 	sv.state = serverstate
 	common.Com_SetServerState (sv.state)
-	"""
+	
 	# create a baseline for more efficient communications
 	SV_CreateBaseline ()
 
 	# check for a savegame
 	SV_CheckForSavegame ()
-	"""
+	
 	# set serverinfo variable
 	cvar.Cvar_FullSet ("mapname", sv.name, q_shared.CVAR_SERVERINFO | q_shared.CVAR_NOSET)
 
