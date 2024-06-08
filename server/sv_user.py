@@ -45,7 +45,7 @@ SV_BeginDemoServer
 """
 
 def SV_BeginDemoserver ():
-
+	print ("SV_BeginDemoserver")
 	#char		name[MAX_OSPATH];
 
 	q_shared.Com_sprintf (name, MAX_OSPATH, "demos/{}".format(sv.name))
@@ -80,6 +80,7 @@ def SV_New_f (): #void
 	
 
 	# demo servers just dump the file message
+	print ("SV_New_f", sv_init.sv.state)
 	if sv_init.sv.state == sv_init.server_state_t.ss_demo:
 	
 		SV_BeginDemoserver ()
@@ -118,12 +119,12 @@ def SV_New_f (): #void
 		# set up the entity for the client
 		ent = EDICT_NUM(playernum+1);
 		ent->s.number = playernum+1;
-		sv_main.sv_client->edict = ent;
-		memset (&sv_main.sv_client->lastcmd, 0, sizeof(sv_main.sv_client->lastcmd));
+		sv_main.sv_client.edict = ent;
+		memset (&sv_main.sv_client.lastcmd, 0, sizeof(sv_main.sv_client.lastcmd));
 
 		# begin fetching configstrings
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client->netchan.message, va("cmd configstrings %i 0\n",svs.spawncount) );
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_stufftext);
+		MSG_WriteString (&sv_main.sv_client.netchan.message, va("cmd configstrings %i 0\n",svs.spawncount) );
 	
 		"""
 
@@ -136,57 +137,54 @@ SV_Configstrings_f
 def SV_Configstrings_f ():
 
 	print ("SV_Configstrings_f")
-	pass
-	"""
-	int			start;
 
-	common.Com_DPrintf ("Configstrings() from %s\n", sv_main.sv_client->name);
+	#int			start;
 
-	if (sv_main.sv_client->state != sv_init.client_state_t.cs_connected)
-	{
-		common.Com_Printf ("configstrings not valid -- already spawned\n");
-		return;
-	}
+	common.Com_DPrintf ("Configstrings() from %s\n", sv_main.sv_client.name)
 
-	// handle the case of a level changing while a client was connecting
-	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
-	{
-		common.Com_Printf ("SV_Configstrings_f from different level\n");
-		SV_New_f ();
-		return;
-	}
+	if sv_main.sv_client.state != sv_init.client_state_t.cs_connected:
 	
-	start = atoi(Cmd_Argv(2));
+		common.Com_Printf ("configstrings not valid -- already spawned\n")
+		return
+	
+	# handle the case of a level changing while a client was connecting
+	if int(cmd.Cmd_Argv(1)) != svs.spawncount:
+	
+		common.Com_Printf ("SV_Configstrings_f from different level\n")
+		SV_New_f ()
+		return
+	
+	start = int(cmd.Cmd_Argv(2))
 
-	// write a packet full of data
+	# write a packet full of data
 
-	while ( sv_main.sv_client->netchan.message.cursize < MAX_MSGLEN/2 
-		&& start < MAX_CONFIGSTRINGS)
-	{
-		if (sv.configstrings[start][0])
-		{
-			MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_configstring);
-			MSG_WriteShort (&sv_main.sv_client->netchan.message, start);
-			MSG_WriteString (&sv_main.sv_client->netchan.message, sv.configstrings[start]);
-		}
-		start++;
-	}
+	while  sv_main.sv_client.netchan.message.cursize < qcommon.MAX_MSGLEN//2 \
+		and start < MAX_MSGLENMAX_CONFIGSTRINGS:
+	
+		if sv.configstrings[start][0]:
+		
+			common.MSG_WriteByte (sv_main.sv_client.netchan.message, svc_configstring)
+			MSG_WriteShort (sv_main.sv_client.netchan.message, start)
+			MSG_WriteString (sv_main.sv_client.netchan.message, sv.configstrings[start])
+		
+		start+=1
+	
 
-	// send next command
+	# send next command
 
-	if (start == MAX_CONFIGSTRINGS)
-	{
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client->netchan.message, va("cmd baselines %i 0\n",svs.spawncount) );
-	}
-	else
-	{
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client->netchan.message, va("cmd configstrings %i %i\n",svs.spawncount, start) );
-	}
-}
+	if start == MAX_CONFIGSTRINGS:
+	
+		common.MSG_WriteByte (sv_main.sv_client.netchan.message, svc_stufftext)
+		MSG_WriteString (sv_main.sv_client.netchan.message, "cmd baselines {} 0\n".format(svs.spawncount) )
+	
+	else:
+	
+		common.MSG_WriteByte (sv_main.sv_client.netchan.message, svc_stufftext)
+		MSG_WriteString (sv_main.sv_client.netchan.message, "cmd configstrings {} {}\n".format(svs.spawncount, start) )
+	
 
-/*
+
+"""
 ==================
 SV_Baselines_f
 ==================
@@ -200,9 +198,9 @@ def SV_Baselines_f ():
 	entity_state_t	nullstate;
 	entity_state_t	*base;
 
-	common.Com_DPrintf ("Baselines() from %s\n", sv_main.sv_client->name);
+	common.Com_DPrintf ("Baselines() from %s\n", sv_main.sv_client.name);
 
-	if (sv_main.sv_client->state != sv_init.client_state_t.cs_connected)
+	if (sv_main.sv_client.state != sv_init.client_state_t.cs_connected)
 	{
 		common.Com_Printf ("baselines not valid -- already spawned\n");
 		return;
@@ -222,14 +220,14 @@ def SV_Baselines_f ():
 
 	// write a packet full of data
 
-	while ( sv_main.sv_client->netchan.message.cursize <  MAX_MSGLEN/2
+	while ( sv_main.sv_client.netchan.message.cursize <  MAX_MSGLEN/2
 		&& start < MAX_EDICTS)
 	{
 		base = &sv.baselines[start];
 		if (base->modelindex || base->sound || base->effects)
 		{
-			MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_spawnbaseline);
-			MSG_WriteDeltaEntity (&nullstate, base, &sv_main.sv_client->netchan.message, true, true);
+			common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_spawnbaseline);
+			MSG_WriteDeltaEntity (&nullstate, base, &sv_main.sv_client.netchan.message, true, true);
 		}
 		start++;
 	}
@@ -238,13 +236,13 @@ def SV_Baselines_f ():
 
 	if (start == MAX_EDICTS)
 	{
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client->netchan.message, va("precache %i\n", svs.spawncount) );
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_stufftext);
+		MSG_WriteString (&sv_main.sv_client.netchan.message, va("precache %i\n", svs.spawncount) );
 	}
 	else
 	{
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_stufftext);
-		MSG_WriteString (&sv_main.sv_client->netchan.message, va("cmd baselines %i %i\n",svs.spawncount, start) );
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_stufftext);
+		MSG_WriteString (&sv_main.sv_client.netchan.message, va("cmd baselines %i %i\n",svs.spawncount, start) );
 	}
 }
 
@@ -257,7 +255,7 @@ def SV_Begin_f ():
 
 	print ("SV_Begin_f")
 	"""
-	common.Com_DPrintf ("Begin() from %s\n", sv_main.sv_client->name);
+	common.Com_DPrintf ("Begin() from %s\n", sv_main.sv_client.name);
 
 	// handle the case of a level changing while a client was connecting
 	if ( atoi(Cmd_Argv(1)) != svs.spawncount )
@@ -267,7 +265,7 @@ def SV_Begin_f ():
 		return;
 	}
 
-	sv_main.sv_client->state = cs_spawned;
+	sv_main.sv_client.state = cs_spawned;
 	
 	// call the game begin function
 	ge->ClientBegin (sv_player);
@@ -289,30 +287,30 @@ def SV_NextDownload_f ():
 	int		percent;
 	int		size;
 
-	if (!sv_main.sv_client->download)
+	if (!sv_main.sv_client.download)
 		return;
 
-	r = sv_main.sv_client->downloadsize - sv_main.sv_client->downloadcount;
+	r = sv_main.sv_client.downloadsize - sv_main.sv_client.downloadcount;
 	if (r > 1024)
 		r = 1024;
 
-	MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_download);
-	MSG_WriteShort (&sv_main.sv_client->netchan.message, r);
+	common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_download);
+	MSG_WriteShort (&sv_main.sv_client.netchan.message, r);
 
-	sv_main.sv_client->downloadcount += r;
-	size = sv_main.sv_client->downloadsize;
+	sv_main.sv_client.downloadcount += r;
+	size = sv_main.sv_client.downloadsize;
 	if (!size)
 		size = 1;
-	percent = sv_main.sv_client->downloadcount*100/size;
-	MSG_WriteByte (&sv_main.sv_client->netchan.message, percent);
-	SZ_Write (&sv_main.sv_client->netchan.message,
-		sv_main.sv_client->download + sv_main.sv_client->downloadcount - r, r);
+	percent = sv_main.sv_client.downloadcount*100/size;
+	common.MSG_WriteByte (&sv_main.sv_client.netchan.message, percent);
+	SZ_Write (&sv_main.sv_client.netchan.message,
+		sv_main.sv_client.download + sv_main.sv_client.downloadcount - r, r);
 
-	if (sv_main.sv_client->downloadcount != sv_main.sv_client->downloadsize)
+	if (sv_main.sv_client.downloadcount != sv_main.sv_client.downloadsize)
 		return;
 
-	FS_FreeFile (sv_main.sv_client->download);
-	sv_main.sv_client->download = NULL;
+	FS_FreeFile (sv_main.sv_client.download);
+	sv_main.sv_client.download = NULL;
 }
 
 
@@ -356,41 +354,41 @@ def SV_BeginDownload_f():
 		// MUST be in a subdirectory	
 		|| !strstr (name, "/") )	
 	{	// don't allow anything with .. path
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_download);
-		MSG_WriteShort (&sv_main.sv_client->netchan.message, -1);
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, 0);
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_download);
+		MSG_WriteShort (&sv_main.sv_client.netchan.message, -1);
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, 0);
 		return;
 	}
 
 
-	if (sv_main.sv_client->download)
-		FS_FreeFile (sv_main.sv_client->download);
+	if (sv_main.sv_client.download)
+		FS_FreeFile (sv_main.sv_client.download);
 
-	sv_main.sv_client->downloadsize = FS_LoadFile (name, (void **)&sv_main.sv_client->download);
-	sv_main.sv_client->downloadcount = offset;
+	sv_main.sv_client.downloadsize = FS_LoadFile (name, (void **)&sv_main.sv_client.download);
+	sv_main.sv_client.downloadcount = offset;
 
-	if (offset > sv_main.sv_client->downloadsize)
-		sv_main.sv_client->downloadcount = sv_main.sv_client->downloadsize;
+	if (offset > sv_main.sv_client.downloadsize)
+		sv_main.sv_client.downloadcount = sv_main.sv_client.downloadsize;
 
-	if (!sv_main.sv_client->download
+	if (!sv_main.sv_client.download
 		// special check for maps, if it came from a pak file, don't allow
 		// download  ZOID
 		|| (strncmp(name, "maps/", 5) == 0 && file_from_pak))
 	{
-		common.Com_DPrintf ("Couldn't download %s to %s\n", name, sv_main.sv_client->name);
-		if (sv_main.sv_client->download) {
-			FS_FreeFile (sv_main.sv_client->download);
-			sv_main.sv_client->download = NULL;
+		common.Com_DPrintf ("Couldn't download %s to %s\n", name, sv_main.sv_client.name);
+		if (sv_main.sv_client.download) {
+			FS_FreeFile (sv_main.sv_client.download);
+			sv_main.sv_client.download = NULL;
 		}
 
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, svc_download);
-		MSG_WriteShort (&sv_main.sv_client->netchan.message, -1);
-		MSG_WriteByte (&sv_main.sv_client->netchan.message, 0);
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, svc_download);
+		MSG_WriteShort (&sv_main.sv_client.netchan.message, -1);
+		common.MSG_WriteByte (&sv_main.sv_client.netchan.message, 0);
 		return;
 	}
 
 	SV_NextDownload_f ();
-	common.Com_DPrintf ("Downloading %s to %s\n", name, sv_main.sv_client->name);
+	common.Com_DPrintf ("Downloading %s to %s\n", name, sv_main.sv_client.name);
 }
 
 

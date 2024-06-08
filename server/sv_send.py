@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import struct
 from server import sv_init
-from qcommon import qcommon, net_chan
+from qcommon import qcommon, net_chan, cmodel
 from game import q_shared
 """
 // sv_main.c -- server main program
@@ -67,7 +67,7 @@ SV_ClientPrintf
 Sends text across to be displayed if the level passes
 =================
 */
-void SV_ClientPrintf (client_t *cl, int level, char *fmt, ...)
+void SV_ClientPrintf (sv_init.client_t *cl, int level, char *fmt, ...)
 {
 	va_list		argptr;
 	char		string[1024];
@@ -95,7 +95,7 @@ void SV_BroadcastPrintf (int level, char *fmt, ...)
 {
 	va_list		argptr;
 	char		string[2048];
-	client_t	*cl;
+	sv_init.client_t	*cl;
 	int			i;
 
 	va_start (argptr,fmt);
@@ -158,7 +158,7 @@ MULTICAST_PHS	send to clients potentially hearable from org
 """
 def SV_Multicast (origin, to): #vec3_t, multicast_t
 
-	#client_t	*client;
+	#sv_init.client_t	*client;
 	#byte		*mask;
 	#int			leafnum, cluster;
 	#int			j;
@@ -168,52 +168,45 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 	reliable = False
 	mask = None
 
-	"""
-	if (to != MULTICAST_ALL_R && to != MULTICAST_ALL)
-	{
-		leafnum = CM_PointLeafnum (origin);
-		area1 = CM_LeafArea (leafnum);
-	}
-	else
-	{
-		leafnum = 0;	// just to avoid compiler warnings
-		area1 = 0;
-	}
-
-	// if doing a serverrecord, store everything
-	if (sv_init.svs.demofile)
-		SZ_Write (&sv_init.svs.demo_multicast, sv_init.sv.multicast.data, sv_init.sv.multicast.cursize);
+	if to != q_shared.multicast_t.MULTICAST_ALL_R and to != q_shared.multicast_t.MULTICAST_ALL:
 	
-	switch (to)
-	{
-	case MULTICAST_ALL_R:
-		reliable = true;	// intentional fallthrough
-	case MULTICAST_ALL:
-		leafnum = 0;
-		mask = NULL;
-		break;
+		leafnum = cmodel.CM_PointLeafnum (origin)
+		area1 = cmodel.CM_LeafArea (leafnum)
+	
+	else:
+		leafnum = 0	# just to avoid compiler warnings
+		area1 = 0
+	
+	# if doing a serverrecord, store everything
+	if sv_init.svs.demofile:
+		sv_init.svs.demo_multicast = sv_init.sv.multicast
+	
+	if to == q_shared.multicast_t.MULTICAST_ALL_R:
+		reliable = True	# intentional fallthrough
+	if to == q_shared.multicast_t.MULTICAST_ALL_R or to == q_shared.multicast_t.MULTICAST_ALL:
+		leafnum = 0
+		mask = None
 
-	case MULTICAST_PHS_R:
-		reliable = true;	// intentional fallthrough
-	case MULTICAST_PHS:
-		leafnum = CM_PointLeafnum (origin);
-		cluster = CM_LeafCluster (leafnum);
-		mask = CM_ClusterPHS (cluster);
-		break;
+	if to == q_shared.multicast_t.MULTICAST_PHS_R:
+		reliable = True	# intentional fallthrough
+	if to == q_shared.multicast_t.MULTICAST_PHS_R or to == q_shared.multicast_t.MULTICAST_PHS:
+		leafnum = cmodel.CM_PointLeafnum (origin)
+		cluster = cmodel.CM_LeafCluster (leafnum)
+		mask = cmodel.CM_ClusterPHS (cluster)
 
-	case MULTICAST_PVS_R:
-		reliable = true;	// intentional fallthrough
-	case MULTICAST_PVS:
-		leafnum = CM_PointLeafnum (origin);
-		cluster = CM_LeafCluster (leafnum);
-		mask = CM_ClusterPVS (cluster);
-		break;
+	if to == q_shared.multicast_t.MULTICAST_PVS_R:
+		reliable = True	# intentional fallthrough
+	if to == q_shared.multicast_t.MULTICAST_PVS_R or to == q_shared.multicast_t.MULTICAST_PVS:
+		leafnum = cmodel.CM_PointLeafnum (origin)
+		cluster = cmodel.CM_LeafCluster (leafnum)
+		mask = cmodel.CM_ClusterPVS (cluster)
 
-	default:
-		mask = NULL;
-		Com_Error (ERR_FATAL, "SV_Multicast: bad to:%i", to);
-	}
-	"""
+	if to != q_shared.multicast_t.MULTICAST_ALL_R and to != q_shared.multicast_t.MULTICAST_ALL and \
+		to != q_shared.multicast_t.MULTICAST_PHS_R and to != q_shared.multicast_t.MULTICAST_PHS and \
+		to != q_shared.multicast_t.MULTICAST_PVS_R and to != q_shared.multicast_t.MULTICAST_PVS:
+
+		mask = None
+		common.Com_Error (ERR_FATAL, "SV_Multicast: bad to:{}".format(to))
 
 	# send the data to all relevent clients
 	for client in sv_init.svs.clients:
@@ -225,21 +218,19 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 
 		if mask is not None:
 	
-			pass
-			"""	
-			leafnum = CM_PointLeafnum (client->edict->s.origin);
-			cluster = CM_LeafCluster (leafnum);
-			area2 = CM_LeafArea (leafnum);
-			if (!CM_AreasConnected (area1, area2))
-				continue;
-			if ( mask && (!(mask[cluster>>3] & (1<<(cluster&7)) ) ) )
-				continue;
-			"""
+			leafnum = cmodel.CM_PointLeafnum (client.edict.s.origin)
+			cluster = cmodel.CM_LeafCluster (leafnum)
+			area2 = cmodel.CM_LeafArea (leafnum)
+			if not cmodel.CM_AreasConnected (area1, area2):
+				continue
+			if ( mask is not None and (not(mask[cluster>>3] & (1<<(cluster&7)) ) ) ):
+				continue
+
 
 		if reliable:
-			client.netchan.message.data = sv_init.sv.multicast.data
+			client.netchan.message = sv_init.sv.multicast
 		else:
-			client.datagram.data = sv_init.sv.multicast.data
+			client.datagram = sv_init.sv.multicast
 	
 	sv_init.sv.multicast = None
 
@@ -393,10 +384,12 @@ FRAME UPDATES
 =======================
 SV_SendClientDatagram
 =======================
-*/
-qboolean SV_SendClientDatagram (client_t *client)
-{
-	byte		msg_buf[MAX_MSGLEN];
+"""
+def SV_SendClientDatagram (client)-> bool: #sv_init.client_t
+
+	print ("SV_SendClientDatagram")
+	"""
+	byte		msg_buf[qcommon.MAX_MSGLEN];
 	sizebuf_t	msg;
 
 	SV_BuildClientFrame (client);
@@ -438,28 +431,28 @@ qboolean SV_SendClientDatagram (client_t *client)
 ==================
 SV_DemoCompleted
 ==================
-*/
-void SV_DemoCompleted (void)
-{
-	if (sv_init.sv.demofile)
-	{
-		fclose (sv_init.sv.demofile);
-		sv_init.sv.demofile = NULL;
-	}
-	SV_Nextserver ();
-}
+"""
+def SV_DemoCompleted ():
 
+	if sv_init.sv.demofile:
+	
+		sv_init.sv.demofile.close()
+		sv_init.sv.demofile = None
+	
+	SV_Nextserver ()
 
-/*
+"""
 =======================
 SV_RateDrop
 
 Returns true if the client is over its current
 bandwidth estimation and should not be sent another packet
 =======================
-*/
-qboolean SV_RateDrop (client_t *c)
-{
+"""
+def SV_RateDrop (c)->bool:#sv_init.client_t*
+
+	return False
+	"""
 	int		total;
 	int		i;
 
@@ -492,9 +485,9 @@ SV_SendClientMessages
 def SV_SendClientMessages ():
 
 	#int			i;
-	#client_t	*c;
+	#sv_init.client_t	*c;
 	#int			r;
-	msgbuf = b"" # byte[MAX_MSGLEN]
+	msgbuf = b"" # byte[qcommon.MAX_MSGLEN]
 	msglen = 0 # int
 
 	# read the next demo message if needed
@@ -503,31 +496,31 @@ def SV_SendClientMessages ():
 		if sv_paused.value != 0:
 			msglen = 0
 		else:
-			pass
-			"""
 			# get the next message
-			r = fread (&msglen, 4, 1, sv_init.sv.demofile);
-			if (r != 1)
-			{
-				SV_DemoCompleted ();
-				return;
-			}
-			msglen = LittleLong (msglen);
-			if (msglen == -1)
-			{
-				SV_DemoCompleted ();
-				return;
-			}
-			if (msglen > MAX_MSGLEN)
-				Com_Error (ERR_DROP, "SV_SendClientMessages: msglen > MAX_MSGLEN");
-			r = fread (msgbuf, msglen, 1, sv_init.sv.demofile);
-			if (r != 1)
-			{
-				SV_DemoCompleted ();
-				return;
-			}
+			try:
+				msglen = sv_init.sv.demofile.read(4)
+			except:
+				SV_DemoCompleted ()
+				return
+			
+			msglen = q_shared.LittleLong (msglen)
+			if msglen == -1:
+			
+				SV_DemoCompleted ()
+				return
+			
+			if msglen > qcommon.MAX_MSGLEN:
+				commonCom_Error (ERR_DROP, "SV_SendClientMessages: msglen > MAX_MSGLEN");
+
+			try:			
+				msgbuf = sv_init.sv.demofile.read(msglen)
+			except:
+			
+				SV_DemoCompleted ()
+				return
+			
 		
-			"""
+
 
 	# send a message to each connected client
 	for c in sv_init.svs.clients:
@@ -542,7 +535,7 @@ def SV_SendClientMessages ():
 			c.netchan.message.data = None
 			c.datagram = None
 			SV_BroadcastPrintf (PRINT_HIGH, "{} overflowed\n".format(c.name))
-			SV_DropClient (c)
+			sv_main.SV_DropClient (c)
 		
 		if (sv_init.sv.state == sv_init.server_state_t.ss_cinematic 
 			or sv_init.sv.state == sv_init.server_state_t.ss_demo 

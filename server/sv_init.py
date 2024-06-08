@@ -356,6 +356,7 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 
 	#int			i;
 	#unsigned	checksum;
+	print ("SV_SpawnServer", server, serverstate)
 
 	if attractloop:
 		cvar.Cvar_Set ("paused", "0")
@@ -410,12 +411,11 @@ def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #ch
 	sv.configstrings[q_shared.CS_NAME] = server
 	
 	if serverstate != server_state_t.ss_game:
-	
+
 		while len(sv.models) < 2: sv.models.append(None)
 		sv.models[1], checksum = cmodel.CM_LoadMap ("", False)	# no real map
 	
 	else:
-	
 		sv.configstrings[q_shared.CS_MODELS+1] = "maps/%s.bsp".format(server)
 		while len(sv.models) < 2: sv.models.append(None)
 		sv.models[1], checksum = cmodel.CM_LoadMap (sv.configstrings[q_shared.CS_MODELS+1], False)
