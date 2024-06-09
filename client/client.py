@@ -61,11 +61,11 @@ class centity_t(object):
 	def __init__(self):
 
 
-		"""
-		entity_state_t	baseline;		// delta from this if not from a previous frame
-		entity_state_t	current;
-		entity_state_t	prev;			// will always be valid, but might just be a copy of current
-		"""
+
+		self.baseline = q_shared.entity_state_t() # delta from this if not from a previous frame
+		self.current = q_shared.entity_state_t()
+		self.prev = q_shared.entity_state_t()			# will always be valid, but might just be a copy of current
+
 		self.serverframe: int = 0		# if not current, this ent isn't in the frame
 		"""
 		int			trailcount;			// for diminishing grenade trails
@@ -183,12 +183,15 @@ class client_state_t(object):
 		self.gamedir = None #char[MAX_QPATH];
 
 		self.playernum = 0 #int FIXME what should the default be?
-		"""
-		char		configstrings[MAX_CONFIGSTRINGS][MAX_QPATH];
 
-		//
-		// locally derived information from server state
-		//
+		self.configstrings = [] #char[MAX_CONFIGSTRINGS][MAX_QPATH]
+		for i in range(q_shared.MAX_CONFIGSTRINGS):
+			self.configstrings.append(None)
+
+		"""
+		#
+		# locally derived information from server state
+		#
 		struct model_s	*model_draw[MAX_MODELS];
 		struct cmodel_s	*model_clip[MAX_MODELS];
 

@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from qcommon import common, net_chan, qcommon
 """
 // cl_ents.c -- entity parsing and management
 
@@ -80,14 +81,14 @@ void CL_ParseProjectiles (void)
 	int lastempty = -1;
 	qboolean old = false;
 
-	c = MSG_ReadByte (&net_message);
+	c = MSG_ReadByte (&net_chan.net_message);
 	for (i=0 ; i<c ; i++)
 	{
-		bits[0] = MSG_ReadByte (&net_message);
-		bits[1] = MSG_ReadByte (&net_message);
-		bits[2] = MSG_ReadByte (&net_message);
-		bits[3] = MSG_ReadByte (&net_message);
-		bits[4] = MSG_ReadByte (&net_message);
+		bits[0] = MSG_ReadByte (&net_chan.net_message);
+		bits[1] = MSG_ReadByte (&net_chan.net_message);
+		bits[2] = MSG_ReadByte (&net_chan.net_message);
+		bits[3] = MSG_ReadByte (&net_chan.net_message);
+		bits[4] = MSG_ReadByte (&net_chan.net_message);
 		pr.origin[0] = ( ( bits[0] + ((bits[1]&15)<<8) ) <<1) - 4096;
 		pr.origin[1] = ( ( (bits[1]>>4) + (bits[2]<<4) ) <<1) - 4096;
 		pr.origin[2] = ( ( bits[3] + ((bits[4]&15)<<8) ) <<1) - 4096;
@@ -100,28 +101,28 @@ void CL_ParseProjectiles (void)
 
 		if (bits[4] & 128) {
 			old = true;
-			bits[0] = MSG_ReadByte (&net_message);
-			bits[1] = MSG_ReadByte (&net_message);
-			bits[2] = MSG_ReadByte (&net_message);
-			bits[3] = MSG_ReadByte (&net_message);
-			bits[4] = MSG_ReadByte (&net_message);
+			bits[0] = MSG_ReadByte (&net_chan.net_message);
+			bits[1] = MSG_ReadByte (&net_chan.net_message);
+			bits[2] = MSG_ReadByte (&net_chan.net_message);
+			bits[3] = MSG_ReadByte (&net_chan.net_message);
+			bits[4] = MSG_ReadByte (&net_chan.net_message);
 			pr.oldorigin[0] = ( ( bits[0] + ((bits[1]&15)<<8) ) <<1) - 4096;
 			pr.oldorigin[1] = ( ( (bits[1]>>4) + (bits[2]<<4) ) <<1) - 4096;
 			pr.oldorigin[2] = ( ( bits[3] + ((bits[4]&15)<<8) ) <<1) - 4096;
 		}
 
-		bits[0] = MSG_ReadByte (&net_message);
-		bits[1] = MSG_ReadByte (&net_message);
-		bits[2] = MSG_ReadByte (&net_message);
+		bits[0] = MSG_ReadByte (&net_chan.net_message);
+		bits[1] = MSG_ReadByte (&net_chan.net_message);
+		bits[2] = MSG_ReadByte (&net_chan.net_message);
 
 		pr.angles[0] = 360*bits[0]/256;
 		pr.angles[1] = 360*bits[1]/256;
 		pr.modelindex = bits[2];
 
-		b = MSG_ReadByte (&net_message);
+		b = MSG_ReadByte (&net_chan.net_message);
 		pr.num = (b & 0x7f);
 		if (b & 128) // extra entity number byte
-			pr.num |= (MSG_ReadByte (&net_message) << 7);
+			pr.num |= (MSG_ReadByte (&net_chan.net_message) << 7);
 
 		pr.present = true;
 
@@ -199,48 +200,49 @@ CL_ParseEntityBits
 Returns the entity number and the header bits
 =================
 """
-#int	bitcounts[32];	/// just for protocol profilingf
+bitcounts = [] #int[32], just for protocol profilingf
+for i in range(32):
+	bitcounts.append(0)
+
 def CL_ParseEntityBits (): # (unsigned *bits)
 
-	return None, None
 	"""
 	unsigned	b, total;
 	int			i;
 	int			number;
+	"""
 
-	total = MSG_ReadByte (&net_message);
-	if (total & U_MOREBITS1)
-	{
-		b = MSG_ReadByte (&net_message);
-		total |= b<<8;
-	}
-	if (total & U_MOREBITS2)
-	{
-		b = MSG_ReadByte (&net_message);
-		total |= b<<16;
-	}
-	if (total & U_MOREBITS3)
-	{
-		b = MSG_ReadByte (&net_message);
-		total |= b<<24;
-	}
+	total = common.MSG_ReadByte (net_chan.net_message)
+	if total & qcommon.U_MOREBITS1:
+	
+		b = common.MSG_ReadByte (net_chan.net_message)
+		total |= b<<8
+	
+	if total & qcommon.U_MOREBITS2:
+	
+		b = common.MSG_ReadByte (net_chan.net_message)
+		total |= b<<16
+	
+	if total & qcommon.U_MOREBITS3:
+	
+		b = common.MSG_ReadByte (net_chan.net_message)
+		total |= b<<24
+	
 
-	// count the bits for net profiling
-	for (i=0 ; i<32 ; i++)
-		if (total&(1<<i))
-			bitcounts[i]++;
+	# count the bits for net profiling
+	for i in range(32):
+		if total&(1<<i):
+			bitcounts[i]+=1
 
-	if (total & U_NUMBER16)
-		number = MSG_ReadShort (&net_message);
-	else
-		number = MSG_ReadByte (&net_message);
+	if total & qcommon.U_NUMBER16:
+		number = common.MSG_ReadShort (net_chan.net_message)
+	else:
+		number = common.MSG_ReadByte (net_chan.net_message)
 
-	*bits = total;
+	return number, total
 
-	return number;
-}
 
-/*
+"""
 ==================
 CL_ParseDelta
 
@@ -258,67 +260,67 @@ def CL_ParseDelta (fromEnt, toEnt, number, bits): #entity_state_t *from, entity_
 	to->number = number;
 
 	if (bits & U_MODEL)
-		to->modelindex = MSG_ReadByte (&net_message);
+		to->modelindex = MSG_ReadByte (&net_chan.net_message);
 	if (bits & U_MODEL2)
-		to->modelindex2 = MSG_ReadByte (&net_message);
+		to->modelindex2 = MSG_ReadByte (&net_chan.net_message);
 	if (bits & U_MODEL3)
-		to->modelindex3 = MSG_ReadByte (&net_message);
+		to->modelindex3 = MSG_ReadByte (&net_chan.net_message);
 	if (bits & U_MODEL4)
-		to->modelindex4 = MSG_ReadByte (&net_message);
+		to->modelindex4 = MSG_ReadByte (&net_chan.net_message);
 		
 	if (bits & U_FRAME8)
-		to->frame = MSG_ReadByte (&net_message);
+		to->frame = MSG_ReadByte (&net_chan.net_message);
 	if (bits & U_FRAME16)
-		to->frame = MSG_ReadShort (&net_message);
+		to->frame = MSG_ReadShort (&net_chan.net_message);
 
 	if ((bits & U_SKIN8) && (bits & U_SKIN16))		//used for laser colors
-		to->skinnum = MSG_ReadLong(&net_message);
+		to->skinnum = MSG_ReadLong(&net_chan.net_message);
 	else if (bits & U_SKIN8)
-		to->skinnum = MSG_ReadByte(&net_message);
+		to->skinnum = MSG_ReadByte(&net_chan.net_message);
 	else if (bits & U_SKIN16)
-		to->skinnum = MSG_ReadShort(&net_message);
+		to->skinnum = MSG_ReadShort(&net_chan.net_message);
 
 	if ( (bits & (U_EFFECTS8|U_EFFECTS16)) == (U_EFFECTS8|U_EFFECTS16) )
-		to->effects = MSG_ReadLong(&net_message);
+		to->effects = MSG_ReadLong(&net_chan.net_message);
 	else if (bits & U_EFFECTS8)
-		to->effects = MSG_ReadByte(&net_message);
+		to->effects = MSG_ReadByte(&net_chan.net_message);
 	else if (bits & U_EFFECTS16)
-		to->effects = MSG_ReadShort(&net_message);
+		to->effects = MSG_ReadShort(&net_chan.net_message);
 
 	if ( (bits & (U_RENDERFX8|U_RENDERFX16)) == (U_RENDERFX8|U_RENDERFX16) )
-		to->renderfx = MSG_ReadLong(&net_message);
+		to->renderfx = MSG_ReadLong(&net_chan.net_message);
 	else if (bits & U_RENDERFX8)
-		to->renderfx = MSG_ReadByte(&net_message);
+		to->renderfx = MSG_ReadByte(&net_chan.net_message);
 	else if (bits & U_RENDERFX16)
-		to->renderfx = MSG_ReadShort(&net_message);
+		to->renderfx = MSG_ReadShort(&net_chan.net_message);
 
 	if (bits & U_ORIGIN1)
-		to->origin[0] = MSG_ReadCoord (&net_message);
+		to->origin[0] = MSG_ReadCoord (&net_chan.net_message);
 	if (bits & U_ORIGIN2)
-		to->origin[1] = MSG_ReadCoord (&net_message);
+		to->origin[1] = MSG_ReadCoord (&net_chan.net_message);
 	if (bits & U_ORIGIN3)
-		to->origin[2] = MSG_ReadCoord (&net_message);
+		to->origin[2] = MSG_ReadCoord (&net_chan.net_message);
 		
 	if (bits & U_ANGLE1)
-		to->angles[0] = MSG_ReadAngle(&net_message);
+		to->angles[0] = MSG_ReadAngle(&net_chan.net_message);
 	if (bits & U_ANGLE2)
-		to->angles[1] = MSG_ReadAngle(&net_message);
+		to->angles[1] = MSG_ReadAngle(&net_chan.net_message);
 	if (bits & U_ANGLE3)
-		to->angles[2] = MSG_ReadAngle(&net_message);
+		to->angles[2] = MSG_ReadAngle(&net_chan.net_message);
 
 	if (bits & U_OLDORIGIN)
-		MSG_ReadPos (&net_message, to->old_origin);
+		MSG_ReadPos (&net_chan.net_message, to->old_origin);
 
 	if (bits & U_SOUND)
-		to->sound = MSG_ReadByte (&net_message);
+		to->sound = MSG_ReadByte (&net_chan.net_message);
 
 	if (bits & U_EVENT)
-		to->event = MSG_ReadByte (&net_message);
+		to->event = MSG_ReadByte (&net_chan.net_message);
 	else
 		to->event = 0;
 
 	if (bits & U_SOLID)
-		to->solid = MSG_ReadShort (&net_message);
+		to->solid = MSG_ReadShort (&net_chan.net_message);
 }
 
 /*
@@ -421,7 +423,7 @@ void CL_ParsePacketEntities (frame_t *oldframe, frame_t *newframe)
 		if (newnum >= q_shared.MAX_EDICTS)
 			Com_Error (ERR_DROP,"CL_ParsePacketEntities: bad number:%i", newnum);
 
-		if (net_message.readcount > net_message.cursize)
+		if (net_chan.net_message.readcount > net_chan.net_message.cursize)
 			Com_Error (ERR_DROP,"CL_ParsePacketEntities: end of message");
 
 		if (!newnum)
@@ -532,42 +534,42 @@ void CL_ParsePlayerstate (frame_t *oldframe, frame_t *newframe)
 	else
 		memset (state, 0, sizeof(*state));
 
-	flags = MSG_ReadShort (&net_message);
+	flags = MSG_ReadShort (&net_chan.net_message);
 
 	//
 	// parse the pmove_state_t
 	//
 	if (flags & PS_M_TYPE)
-		state->pmove.pm_type = MSG_ReadByte (&net_message);
+		state->pmove.pm_type = MSG_ReadByte (&net_chan.net_message);
 
 	if (flags & PS_M_ORIGIN)
 	{
-		state->pmove.origin[0] = MSG_ReadShort (&net_message);
-		state->pmove.origin[1] = MSG_ReadShort (&net_message);
-		state->pmove.origin[2] = MSG_ReadShort (&net_message);
+		state->pmove.origin[0] = MSG_ReadShort (&net_chan.net_message);
+		state->pmove.origin[1] = MSG_ReadShort (&net_chan.net_message);
+		state->pmove.origin[2] = MSG_ReadShort (&net_chan.net_message);
 	}
 
 	if (flags & PS_M_VELOCITY)
 	{
-		state->pmove.velocity[0] = MSG_ReadShort (&net_message);
-		state->pmove.velocity[1] = MSG_ReadShort (&net_message);
-		state->pmove.velocity[2] = MSG_ReadShort (&net_message);
+		state->pmove.velocity[0] = MSG_ReadShort (&net_chan.net_message);
+		state->pmove.velocity[1] = MSG_ReadShort (&net_chan.net_message);
+		state->pmove.velocity[2] = MSG_ReadShort (&net_chan.net_message);
 	}
 
 	if (flags & PS_M_TIME)
-		state->pmove.pm_time = MSG_ReadByte (&net_message);
+		state->pmove.pm_time = MSG_ReadByte (&net_chan.net_message);
 
 	if (flags & PS_M_FLAGS)
-		state->pmove.pm_flags = MSG_ReadByte (&net_message);
+		state->pmove.pm_flags = MSG_ReadByte (&net_chan.net_message);
 
 	if (flags & PS_M_GRAVITY)
-		state->pmove.gravity = MSG_ReadShort (&net_message);
+		state->pmove.gravity = MSG_ReadShort (&net_chan.net_message);
 
 	if (flags & PS_M_DELTA_ANGLES)
 	{
-		state->pmove.delta_angles[0] = MSG_ReadShort (&net_message);
-		state->pmove.delta_angles[1] = MSG_ReadShort (&net_message);
-		state->pmove.delta_angles[2] = MSG_ReadShort (&net_message);
+		state->pmove.delta_angles[0] = MSG_ReadShort (&net_chan.net_message);
+		state->pmove.delta_angles[1] = MSG_ReadShort (&net_chan.net_message);
+		state->pmove.delta_angles[2] = MSG_ReadShort (&net_chan.net_message);
 	}
 
 	if (cl.attractloop)
@@ -578,60 +580,60 @@ void CL_ParsePlayerstate (frame_t *oldframe, frame_t *newframe)
 	//
 	if (flags & PS_VIEWOFFSET)
 	{
-		state->viewoffset[0] = MSG_ReadChar (&net_message) * 0.25;
-		state->viewoffset[1] = MSG_ReadChar (&net_message) * 0.25;
-		state->viewoffset[2] = MSG_ReadChar (&net_message) * 0.25;
+		state->viewoffset[0] = MSG_ReadChar (&net_chan.net_message) * 0.25;
+		state->viewoffset[1] = MSG_ReadChar (&net_chan.net_message) * 0.25;
+		state->viewoffset[2] = MSG_ReadChar (&net_chan.net_message) * 0.25;
 	}
 
 	if (flags & PS_VIEWANGLES)
 	{
-		state->viewangles[0] = MSG_ReadAngle16 (&net_message);
-		state->viewangles[1] = MSG_ReadAngle16 (&net_message);
-		state->viewangles[2] = MSG_ReadAngle16 (&net_message);
+		state->viewangles[0] = MSG_ReadAngle16 (&net_chan.net_message);
+		state->viewangles[1] = MSG_ReadAngle16 (&net_chan.net_message);
+		state->viewangles[2] = MSG_ReadAngle16 (&net_chan.net_message);
 	}
 
 	if (flags & PS_KICKANGLES)
 	{
-		state->kick_angles[0] = MSG_ReadChar (&net_message) * 0.25;
-		state->kick_angles[1] = MSG_ReadChar (&net_message) * 0.25;
-		state->kick_angles[2] = MSG_ReadChar (&net_message) * 0.25;
+		state->kick_angles[0] = MSG_ReadChar (&net_chan.net_message) * 0.25;
+		state->kick_angles[1] = MSG_ReadChar (&net_chan.net_message) * 0.25;
+		state->kick_angles[2] = MSG_ReadChar (&net_chan.net_message) * 0.25;
 	}
 
 	if (flags & PS_WEAPONINDEX)
 	{
-		state->gunindex = MSG_ReadByte (&net_message);
+		state->gunindex = MSG_ReadByte (&net_chan.net_message);
 	}
 
 	if (flags & PS_WEAPONFRAME)
 	{
-		state->gunframe = MSG_ReadByte (&net_message);
-		state->gunoffset[0] = MSG_ReadChar (&net_message)*0.25;
-		state->gunoffset[1] = MSG_ReadChar (&net_message)*0.25;
-		state->gunoffset[2] = MSG_ReadChar (&net_message)*0.25;
-		state->gunangles[0] = MSG_ReadChar (&net_message)*0.25;
-		state->gunangles[1] = MSG_ReadChar (&net_message)*0.25;
-		state->gunangles[2] = MSG_ReadChar (&net_message)*0.25;
+		state->gunframe = MSG_ReadByte (&net_chan.net_message);
+		state->gunoffset[0] = MSG_ReadChar (&net_chan.net_message)*0.25;
+		state->gunoffset[1] = MSG_ReadChar (&net_chan.net_message)*0.25;
+		state->gunoffset[2] = MSG_ReadChar (&net_chan.net_message)*0.25;
+		state->gunangles[0] = MSG_ReadChar (&net_chan.net_message)*0.25;
+		state->gunangles[1] = MSG_ReadChar (&net_chan.net_message)*0.25;
+		state->gunangles[2] = MSG_ReadChar (&net_chan.net_message)*0.25;
 	}
 
 	if (flags & PS_BLEND)
 	{
-		state->blend[0] = MSG_ReadByte (&net_message)/255.0;
-		state->blend[1] = MSG_ReadByte (&net_message)/255.0;
-		state->blend[2] = MSG_ReadByte (&net_message)/255.0;
-		state->blend[3] = MSG_ReadByte (&net_message)/255.0;
+		state->blend[0] = MSG_ReadByte (&net_chan.net_message)/255.0;
+		state->blend[1] = MSG_ReadByte (&net_chan.net_message)/255.0;
+		state->blend[2] = MSG_ReadByte (&net_chan.net_message)/255.0;
+		state->blend[3] = MSG_ReadByte (&net_chan.net_message)/255.0;
 	}
 
 	if (flags & PS_FOV)
-		state->fov = MSG_ReadByte (&net_message);
+		state->fov = MSG_ReadByte (&net_chan.net_message);
 
 	if (flags & PS_RDFLAGS)
-		state->rdflags = MSG_ReadByte (&net_message);
+		state->rdflags = MSG_ReadByte (&net_chan.net_message);
 
 	// parse stats
-	statbits = MSG_ReadLong (&net_message);
+	statbits = MSG_ReadLong (&net_chan.net_message);
 	for (i=0 ; i<MAX_STATS ; i++)
 		if (statbits & (1<<i) )
-			state->stats[i] = MSG_ReadShort(&net_message);
+			state->stats[i] = MSG_ReadShort(&net_chan.net_message);
 }
 
 
@@ -677,13 +679,13 @@ void CL_ParseFrame (void)
 	CL_ClearProjectiles(); // clear projectiles for new frame
 #endif
 
-	cl.frame.serverframe = MSG_ReadLong (&net_message);
-	cl.frame.deltaframe = MSG_ReadLong (&net_message);
+	cl.frame.serverframe = MSG_ReadLong (&net_chan.net_message);
+	cl.frame.deltaframe = MSG_ReadLong (&net_chan.net_message);
 	cl.frame.servertime = cl.frame.serverframe*100;
 
 	// BIG HACK to let old demos continue to work
 	if (cls.serverProtocol != 26)
-		cl.surpressCount = MSG_ReadByte (&net_message);
+		cl.surpressCount = MSG_ReadByte (&net_chan.net_message);
 
 	if (cl_shownet->value == 3)
 		Com_Printf ("   frame:%i  delta:%i\n", cl.frame.serverframe,
@@ -726,18 +728,18 @@ void CL_ParseFrame (void)
 		cl.time = cl.frame.servertime - 100;
 
 	// read areabits
-	len = MSG_ReadByte (&net_message);
-	MSG_ReadData (&net_message, &cl.frame.areabits, len);
+	len = MSG_ReadByte (&net_chan.net_message);
+	MSG_ReadData (&net_chan.net_message, &cl.frame.areabits, len);
 
 	// read playerinfo
-	cmd = MSG_ReadByte (&net_message);
+	cmd = MSG_ReadByte (&net_chan.net_message);
 	SHOWNET(svc_strings[cmd]);
 	if (cmd != svc_playerinfo)
 		Com_Error (ERR_DROP, "CL_ParseFrame: not playerinfo");
 	CL_ParsePlayerstate (old, &cl.frame);
 
 	// read packet entities
-	cmd = MSG_ReadByte (&net_message);
+	cmd = MSG_ReadByte (&net_chan.net_message);
 	SHOWNET(svc_strings[cmd]);
 	if (cmd != svc_packetentities)
 		Com_Error (ERR_DROP, "CL_ParseFrame: not packetentities");

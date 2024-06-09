@@ -652,9 +652,11 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 ==================
 CM_InlineModel
 ==================
-*/
-cmodel_t	*CM_InlineModel (char *name)
-{
+"""
+def CM_InlineModel (name): # (cmodel_t	*)
+
+	print ("CM_InlineModel")
+	"""
 	int		num;
 
 	if (!name || name[0] != '*')

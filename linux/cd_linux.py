@@ -100,9 +100,11 @@ static int CDAudio_GetAudioDiskInfo(void)
 	return 0;
 }
 
+"""
+def CDAudio_Play(track: int, looping: bool):
 
-void CDAudio_Play(int track, qboolean looping)
-{
+	print ("CDAudio_Play")
+	"""
 	struct cdrom_tocentry entry;
 	struct cdrom_ti ti;
 

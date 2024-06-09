@@ -18,9 +18,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn, client, cl_cin, cl_ents
+from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma
 from game import q_shared
 from qcommon import net_chan, qcommon, common, cmd, files, cmodel
+from linux import cd_linux
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -414,11 +415,11 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 		Com_sprintf (weapon_filename, sizeof(weapon_filename), "players/male/weapon.md2");
 		Com_sprintf (skin_filename, sizeof(skin_filename), "players/male/grunt.pcx");
 		Com_sprintf (ci->iconname, sizeof(ci->iconname), "/players/male/grunt_i.pcx");
-		ci->model = re.RegisterModel (model_filename);
+		ci->model = vid_so.re.RegisterModel (model_filename);
 		memset(ci->weaponmodel, 0, sizeof(ci->weaponmodel));
-		ci->weaponmodel[0] = re.RegisterModel (weapon_filename);
-		ci->skin = re.RegisterSkin (skin_filename);
-		ci->icon = re.RegisterPic (ci->iconname);
+		ci->weaponmodel[0] = vid_so.re.RegisterModel (weapon_filename);
+		ci->skin = vid_so.re.RegisterSkin (skin_filename);
+		ci->icon = vid_so.re.RegisterPic (ci->iconname);
 	}
 	else
 	{
@@ -436,17 +437,17 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 
 		// model file
 		Com_sprintf (model_filename, sizeof(model_filename), "players/%s/tris.md2", model_name);
-		ci->model = re.RegisterModel (model_filename);
+		ci->model = vid_so.re.RegisterModel (model_filename);
 		if (!ci->model)
 		{
 			strcpy(model_name, "male");
 			Com_sprintf (model_filename, sizeof(model_filename), "players/male/tris.md2");
-			ci->model = re.RegisterModel (model_filename);
+			ci->model = vid_so.re.RegisterModel (model_filename);
 		}
 
 		// skin file
 		Com_sprintf (skin_filename, sizeof(skin_filename), "players/%s/%s.pcx", model_name, skin_name);
-		ci->skin = re.RegisterSkin (skin_filename);
+		ci->skin = vid_so.re.RegisterSkin (skin_filename);
 
 		// if we don't have the skin and the model wasn't male,
 		// see if the male has it (this is for CTF's skins)
@@ -455,11 +456,11 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 			// change model to male
 			strcpy(model_name, "male");
 			Com_sprintf (model_filename, sizeof(model_filename), "players/male/tris.md2");
-			ci->model = re.RegisterModel (model_filename);
+			ci->model = vid_so.re.RegisterModel (model_filename);
 
 			// see if the skin exists for the male model
 			Com_sprintf (skin_filename, sizeof(skin_filename), "players/%s/%s.pcx", model_name, skin_name);
-			ci->skin = re.RegisterSkin (skin_filename);
+			ci->skin = vid_so.re.RegisterSkin (skin_filename);
 		}
 
 		// if we still don't have a skin, it means that the male model didn't have
@@ -467,17 +468,17 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 		if (!ci->skin) {
 			// see if the skin exists for the male model
 			Com_sprintf (skin_filename, sizeof(skin_filename), "players/%s/grunt.pcx", model_name, skin_name);
-			ci->skin = re.RegisterSkin (skin_filename);
+			ci->skin = vid_so.re.RegisterSkin (skin_filename);
 		}
 
 		// weapon file
 		for (i = 0; i < num_cl_weaponmodels; i++) {
 			Com_sprintf (weapon_filename, sizeof(weapon_filename), "players/%s/%s", model_name, cl_weaponmodels[i]);
-			ci->weaponmodel[i] = re.RegisterModel(weapon_filename);
+			ci->weaponmodel[i] = vid_so.re.RegisterModel(weapon_filename);
 			if (!ci->weaponmodel[i] && strcmp(model_name, "cyborg") == 0) {
 				// try male
 				Com_sprintf (weapon_filename, sizeof(weapon_filename), "players/male/%s", cl_weaponmodels[i]);
-				ci->weaponmodel[i] = re.RegisterModel(weapon_filename);
+				ci->weaponmodel[i] = vid_so.re.RegisterModel(weapon_filename);
 			}
 			if (!cl_vwep->value)
 				break; // only one when vwep is off
@@ -485,7 +486,7 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 
 		// icon file
 		Com_sprintf (ci->iconname, sizeof(ci->iconname), "/players/%s/%s_i.pcx", model_name, skin_name);
-		ci->icon = re.RegisterPic (ci->iconname);
+		ci->icon = vid_so.re.RegisterPic (ci->iconname);
 	}
 
 	// must have loaded all data types to be valud
@@ -538,51 +539,51 @@ def CL_ParseConfigString ():
 		common.Com_Error (qcommon.ERR_DROP, "configstring > MAX_CONFIGSTRINGS")
 	s = common.MSG_ReadString(net_chan.net_message)
 
-	"""
-	strncpy (olds, cl_main.cl.configstrings[i], sizeof(olds));
-	olds[sizeof(olds) - 1] = 0;
 
-	strcpy (cl_main.cl.configstrings[i], s);
+	olds = cl_main.cl.configstrings[i]
+	#olds[sizeof(olds) - 1] = 0;
 
-	// do something apropriate 
+	cl_main.cl.configstrings[i] = s
 
-	if (i >= CS_LIGHTS && i < CS_LIGHTS+MAX_LIGHTSTYLES)
-		CL_SetLightstyle (i - CS_LIGHTS);
-	else if (i == CS_CDTRACK)
-	{
-		if (cl_main.cl.refresh_prepped)
-			CDAudio_Play (atoi(cl_main.cl.configstrings[CS_CDTRACK]), true);
-	}
-	else if (i >= CS_MODELS && i < CS_MODELS+MAX_MODELS)
-	{
-		if (cl_main.cl.refresh_prepped)
-		{
-			cl_main.cl.model_draw[i-CS_MODELS] = re.RegisterModel (cl_main.cl.configstrings[i]);
-			if (cl_main.cl.configstrings[i][0] == '*')
-				cl_main.cl.model_clip[i-CS_MODELS] = CM_InlineModel (cl_main.cl.configstrings[i]);
-			else
-				cl_main.cl.model_clip[i-CS_MODELS] = NULL;
-		}
-	}
-	else if (i >= CS_SOUNDS && i < CS_SOUNDS+MAX_MODELS)
-	{
-		if (cl_main.cl.refresh_prepped)
-			cl_main.cl.sound_precache[i-CS_SOUNDS] = S_RegisterSound (cl_main.cl.configstrings[i]);
-	}
-	else if (i >= CS_IMAGES && i < CS_IMAGES+MAX_MODELS)
-	{
-		if (cl_main.cl.refresh_prepped)
-			cl_main.cl.image_precache[i-CS_IMAGES] = re.RegisterPic (cl_main.cl.configstrings[i]);
-	}
-	else if (i >= CS_PLAYERSKINS && i < CS_PLAYERSKINS+MAX_CLIENTS)
-	{
-		if (cl_main.cl.refresh_prepped && strcmp(olds, s))
-			CL_ParseClientinfo (i-CS_PLAYERSKINS);
-	}
-}
+	# do something apropriate 
+
+	if i >= q_shared.CS_LIGHTS and i < q_shared.CS_LIGHTS+q_shared.MAX_LIGHTSTYLES:
+		cl_fx.CL_SetLightstyle (i - q_shared.CS_LIGHTS)
+	elif i == q_shared.CS_CDTRACK:
+	
+		if cl_main.cl.refresh_prepped:
+			cd_linux.CDAudio_Play (atoi(cl_main.cl.configstrings[q_shared.CS_CDTRACK]), True)
+	
+	elif i >= q_shared.CS_MODELS and i < q_shared.CS_MODELS+q_shared.MAX_MODELS:
+	
+		if cl_main.cl.refresh_prepped:
+		
+			cl_main.cl.model_draw[i-q_shared.CS_MODELS] = vid_so.re.RegisterModel (cl_main.cl.configstrings[i])
+			if cl_main.cl.configstrings[i][0] == '*':
+				cl_main.cl.model_clip[i-q_shared.CS_MODELS] = cmodel.CM_InlineModel (cl_main.cl.configstrings[i])
+			else:
+				cl_main.cl.model_clip[i-q_shared.CS_MODELS] = None
+		
+	
+	elif i >= q_shared.CS_SOUNDS and i < q_shared.CS_SOUNDS+q_shared.MAX_MODELS:
+	
+		if cl_main.cl.refresh_prepped:
+			cl_main.cl.sound_precache[i-q_shared.CS_SOUNDS] = snd_dma.S_RegisterSound (cl_main.cl.configstrings[i])
+	
+	elif i >= q_shared.CS_IMAGES and i < q_shared.CS_IMAGES+q_shared.MAX_MODELS:
+	
+		if cl_main.cl.refresh_prepped:
+			cl_main.cl.image_precache[i-q_shared.CS_IMAGES] = vid_so.re.RegisterPic (cl_main.cl.configstrings[i])
+	
+	elif i >= q_shared.CS_PLAYERSKINS and i < q_shared.CS_PLAYERSKINS+q_shared.MAX_CLIENTS:
+	
+		if cl_main.cl.refresh_prepped and strcmp(olds, s):
+			CL_ParseClientinfo (i-q_shared.CS_PLAYERSKINS)
+	
 
 
-/*
+
+"""
 =====================================================================
 
 ACTION MESSAGES
@@ -702,16 +703,18 @@ def CL_ParseServerMessage ():
 			else:
 				SHOWNET(svc_strings[cmdval])
 		
+		cmdval = qcommon.svc_ops_e(cmdval)
+
 		# other commands
-		if cmdval == qcommon.svc_ops_e.svc_nop.value:
+		if cmdval == qcommon.svc_ops_e.svc_nop:
 			##Com_Printf ("svc_nop\n");
 			pass
 			
-		elif cmdval == qcommon.svc_ops_e.svc_disconnect.value:
+		elif cmdval == qcommon.svc_ops_e.svc_disconnect:
 			common.Com_Error (ERR_DISCONNECT,"Server disconnected\n");
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_reconnect.value:
+		elif cmdval == qcommon.svc_ops_e.svc_reconnect:
 			common.Com_Printf ("Server disconnected, reconnecting\n");
 			if cl_main.cls.download:
 				#ZOID, close download
@@ -722,7 +725,7 @@ def CL_ParseServerMessage ():
 			cl_main.cls.connect_time = -99999	# CL_CheckForResend() will fire immediately
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_print.value:
+		elif cmdval == qcommon.svc_ops_e.svc_print:
 			i = common.MSG_ReadByte (net_chan.net_message)
 			if i == PRINT_CHAT:
 			
@@ -733,63 +736,63 @@ def CL_ParseServerMessage ():
 			con.ormask = 0
 
 			
-		elif cmdval == qcommon.svc_ops_e.svc_centerprint.value:
+		elif cmdval == qcommon.svc_ops_e.svc_centerprint:
 			SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message))
 
 			
-		elif cmdval == qcommon.svc_ops_e.svc_stufftext.value:
+		elif cmdval == qcommon.svc_ops_e.svc_stufftext:
 			s = common.MSG_ReadString(net_chan.net_message)
 			common.Com_DPrintf ("stufftext: {}\n".format(s))
 			cmd.Cbuf_AddText (s)
 
 			
-		elif cmdval == qcommon.svc_ops_e.svc_serverdata.value:
+		elif cmdval == qcommon.svc_ops_e.svc_serverdata:
 			cmd.Cbuf_Execute ()		# make sure any stuffed commands are done
 			CL_ParseServerData ()
 
 			
-		elif cmdval == qcommon.svc_ops_e.svc_configstring.value:
+		elif cmdval == qcommon.svc_ops_e.svc_configstring:
 			CL_ParseConfigString ()
 
 			
-		elif cmdval == qcommon.svc_ops_e.svc_sound.value:
+		elif cmdval == qcommon.svc_ops_e.svc_sound:
 			CL_ParseStartSoundPacket()
 
 			
-		elif cmdval == qcommon.svc_ops_e.svc_spawnbaseline.value:
+		elif cmdval == qcommon.svc_ops_e.svc_spawnbaseline:
 			CL_ParseBaseline ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_temp_entity.value:
+		elif cmdval == qcommon.svc_ops_e.svc_temp_entity:
 			CL_ParseTEnt ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash.value:
+		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash:
 			CL_ParseMuzzleFlash ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash2.value:
+		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash2:
 			CL_ParseMuzzleFlash2 ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_download.value:
+		elif cmdval == qcommon.svc_ops_e.svc_download:
 			CL_ParseDownload ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_frame.value:
+		elif cmdval == qcommon.svc_ops_e.svc_frame:
 			CL_ParseFrame ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_inventory.value:
+		elif cmdval == qcommon.svc_ops_e.svc_inventory:
 			CL_ParseInventory ()
 
 
-		elif cmdval == qcommon.svc_ops_e.svc_layout.value:
+		elif cmdval == qcommon.svc_ops_e.svc_layout:
 			s = MSG_ReadString(net_chan.net_message)
 			cl_main.cl.layout = s
 
 
-		elif cmdval in [qcommon.svc_ops_e.svc_playerinfo.value, qcommon.svc_ops_e.svc_packetentities.value, qcommon.svc_ops_e.svc_deltapacketentities.value]:
+		elif cmdval in [qcommon.svc_ops_e.svc_playerinfo, qcommon.svc_ops_e.svc_packetentities, qcommon.svc_ops_e.svc_deltapacketentities]:
 			common.Com_Error (qcommon.ERR_DROP, "Out of place frame data");
 
 

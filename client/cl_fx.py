@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // cl_fx.c -- entity effects parsing and management
 
 #include "client.h"
@@ -88,9 +89,11 @@ void CL_RunLightStyles (void)
 	}
 }
 
+"""
+def CL_SetLightstyle (i: int):
 
-void CL_SetLightstyle (int i)
-{
+	print ("CL_SetLightstyle")
+	"""
 	char	*s;
 	int		j, k;
 
@@ -2296,3 +2299,4 @@ void CL_ClearEffects (void)
 	CL_ClearDlights ();
 	CL_ClearLightStyles ();
 }
+"""
