@@ -88,16 +88,16 @@ MAX_SOUNDS 			= 256		# so they cannot be blindly increased
 MAX_IMAGES			= 256
 MAX_ITEMS			= 256
 MAX_GENERAL			= (MAX_CLIENTS*2)	# general config strings
-"""
-
-// game print flags
-#define	PRINT_LOW			0		// pickup messages
-#define	PRINT_MEDIUM		1		// death messages
-#define	PRINT_HIGH			2		// critical messages
-#define	PRINT_CHAT			3		// chat messages
 
 
-"""
+# game print flags
+PRINT_LOW			= 0		# pickup messages
+PRINT_MEDIUM		= 1		# death messages
+PRINT_HIGH			= 2		# critical messages
+PRINT_CHAT			= 3		# chat messages
+
+
+
 ERR_FATAL			= 0		# exit the entire game with a popup window
 ERR_DROP			= 1		# print to console and disconnect from game
 ERR_DISCONNECT		= 2		# don't kill server
@@ -1133,18 +1133,18 @@ MAX_CONFIGSTRINGS	= (CS_GENERAL+MAX_GENERAL)
 // ertity events are for effects that take place reletive
 // to an existing entities origin.  Very network efficient.
 // All muzzle flashes really should be converted to events...
-typedef enum
-{
-	EV_NONE,
-	EV_ITEM_RESPAWN,
-	EV_FOOTSTEP,
-	EV_FALLSHORT,
-	EV_FALL,
-	EV_FALLFAR,
-	EV_PLAYER_TELEPORT,
-	EV_OTHER_TELEPORT
-} entity_event_t;
 """
+class entity_event_t(Enum):
+
+	EV_NONE = 0
+	EV_ITEM_RESPAWN = 1
+	EV_FOOTSTEP = 2
+	EV_FALLSHORT = 3
+	EV_FALL = 4
+	EV_FALLFAR = 5
+	EV_PLAYER_TELEPORT = 6
+	EV_OTHER_TELEPORT = 7
+
 
 # entity_state_t is the information conveyed from the server
 # in an update message about entities that the client will

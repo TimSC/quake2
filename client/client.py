@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import numpy as np
 from enum import Enum
 from game import q_shared
 from qcommon import qcommon
@@ -70,12 +71,12 @@ class centity_t(object):
 		self.prev = q_shared.entity_state_t()			# will always be valid, but might just be a copy of current
 
 		self.serverframe: int = 0		# if not current, this ent isn't in the frame
-		"""
-		int			trailcount;			// for diminishing grenade trails
-		vec3_t		lerp_origin;		// for trails (variable hz)
 
-		int			fly_stoptime;
-"""
+		self.trailcount: int = 0	# for diminishing grenade trails
+		self.lerp_origin = np.zeros((3,), dtype=np.float32) #vec3_t		;		// for trails (variable hz)
+
+		self.fly_stoptime: int = 0
+
 
 #define MAX_CLIENTWEAPONMODELS		20		// PGM -- upped from 16 to fit the chainfist vwep
 """
@@ -117,9 +118,9 @@ class client_state_t(object):
 		"""
 		qboolean	sound_prepped;		// ambient sounds can start
 		qboolean	force_refdef;		// vid has changed, so we can't use a paused refdef
-
-		int			parse_entities;		// index (not anded off) into cl_parse_entities[]
 		"""
+		self.parse_entities: int = 0 # index (not anded off) into cl_parse_entities[]
+
 		self.cmd = q_shared.usercmd_t()
 		self.cmds = [q_shared.usercmd_t() for i in range(CMD_BACKUP)] #usercmd_t[CMD_BACKUP], each mesage will send several old cmds
 		self.cmd_time = [0 for i in range(CMD_BACKUP)] #int[CMD_BACKUP]	# time sent, for calculating pings
@@ -360,7 +361,9 @@ extern	cdlight_t	cl_dlights[MAX_DLIGHTS];
 // the cl_parse_entities must be large enough to hold UPDATE_BACKUP frames of
 // entities, so that when a delta compressed message arives from the server
 // it can be un-deltad from the original 
-#define	MAX_PARSE_ENTITIES	1024
+"""
+MAX_PARSE_ENTITIES = 1024
+"""
 extern	entity_state_t	cl_parse_entities[MAX_PARSE_ENTITIES];
 
 //=============================================================================

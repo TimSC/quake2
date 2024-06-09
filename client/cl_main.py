@@ -53,9 +53,11 @@ cl_entities = []
 for i in range(q_shared.MAX_EDICTS):
 	cl_entities.append(client.centity_t())
 
-"""
-entity_state_t	cl_parse_entities[MAX_PARSE_ENTITIES];
 
+cl_parse_entities = [] 
+for i in range(client.MAX_PARSE_ENTITIES):
+	cl_parse_entities.append(q_shared.entity_state_t())
+"""
 extern	cvar_t *allow_download;
 extern	cvar_t *allow_download_players;
 extern	cvar_t *allow_download_models;

@@ -598,9 +598,11 @@ ACTION MESSAGES
 ==================
 CL_ParseStartSoundPacket
 ==================
-*/
-void CL_ParseStartSoundPacket(void)
-{
+"""
+def CL_ParseStartSoundPacket():
+
+	print ("CL_ParseStartSoundPacket")
+	"""
     vec3_t  pos_v;
 	float	*pos;
     int 	channel, ent;
@@ -730,9 +732,9 @@ def CL_ParseServerMessage ():
 
 		elif cmdval == qcommon.svc_ops_e.svc_print:
 			i = common.MSG_ReadByte (net_chan.net_message)
-			if i == PRINT_CHAT:
+			if i == q_shared.PRINT_CHAT:
 			
-				S_StartLocalSound ("misc/talk.wav")
+				snd_dma.S_StartLocalSound ("misc/talk.wav")
 				con.ormask = 128
 			
 			common.Com_Printf (common.MSG_ReadString(net_chan.net_message))

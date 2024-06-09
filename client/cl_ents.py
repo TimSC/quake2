@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import copy
 from qcommon import common, net_chan, qcommon
 from game import q_shared
-from client import cl_main, cl_parse
+from client import cl_main, cl_parse, client
 """
 // cl_ents.c -- entity parsing and management
 
@@ -332,61 +332,63 @@ CL_DeltaEntity
 Parses deltas from the given base and adds the resulting entity
 to the current frame
 ==================
-*/
-void CL_DeltaEntity (frame_t *frame, int newnum, entity_state_t *old, int bits)
-{
+"""
+def CL_DeltaEntity (frame, newnum, old, bits): #frame_t *, int, entity_state_t *, int
+
+	"""
 	centity_t	*ent;
 	entity_state_t	*state;
+	"""
 
-	ent = &cl_entities[newnum];
+	ent = cl_main.cl_entities[newnum]
 
-	state = &cl_parse_entities[cl_main.cl.parse_entities & (MAX_PARSE_ENTITIES-1)];
-	cl_main.cl.parse_entities++;
-	frame.num_entities++;
+	state = cl_main.cl_parse_entities[cl_main.cl.parse_entities & (client.MAX_PARSE_ENTITIES-1)]
+	cl_main.cl.parse_entities+=1
+	frame.num_entities+=1
 
-	CL_ParseDelta (old, state, newnum, bits);
+	CL_ParseDelta (old, state, newnum, bits)
 
-	// some data changes will force no lerping
+	# some data changes will force no lerping
 	if (state.modelindex != ent.current.modelindex
-		|| state.modelindex2 != ent.current.modelindex2
-		|| state.modelindex3 != ent.current.modelindex3
-		|| state.modelindex4 != ent.current.modelindex4
-		|| abs(state.origin[0] - ent.current.origin[0]) > 512
-		|| abs(state.origin[1] - ent.current.origin[1]) > 512
-		|| abs(state.origin[2] - ent.current.origin[2]) > 512
-		|| state.event == EV_PLAYER_TELEPORT
-		|| state.event == EV_OTHER_TELEPORT
-		)
-	{
-		ent.serverframe = -99;
-	}
+		or state.modelindex2 != ent.current.modelindex2
+		or state.modelindex3 != ent.current.modelindex3
+		or state.modelindex4 != ent.current.modelindex4
+		or abs(state.origin[0] - ent.current.origin[0]) > 512
+		or abs(state.origin[1] - ent.current.origin[1]) > 512
+		or abs(state.origin[2] - ent.current.origin[2]) > 512
+		or state.event == q_shared.entity_event_t.EV_PLAYER_TELEPORT
+		or state.event == q_shared.entity_event_t.EV_OTHER_TELEPORT
+		):
+	
+		ent.serverframe = -99
+	
 
-	if (ent.serverframe != cl_main.cl.frame.serverframe - 1)
-	{	// wasn't in last update, so initialize some things
-		ent.trailcount = 1024;		// for diminishing rocket / grenade trails
-		// duplicate the current state so lerping doesn't hurt anything
-		ent.prev = *state;
-		if (state.event == EV_OTHER_TELEPORT)
-		{
-			VectorCopy (state.origin, ent.prev.origin);
-			VectorCopy (state.origin, ent.lerp_origin);
-		}
-		else
-		{
-			VectorCopy (state.old_origin, ent.prev.origin);
-			VectorCopy (state.old_origin, ent.lerp_origin);
-		}
-	}
-	else
-	{	// shuffle the last state to previous
+	if ent.serverframe != cl_main.cl.frame.serverframe - 1:
+		# wasn't in last update, so initialize some things
+		ent.trailcount = 1024		# for diminishing rocket / grenade trails
+		# duplicate the current state so lerping doesn't hurt anything
+		ent.prev = copy.copy(state)
+		if state.event == q_shared.entity_event_t.EV_OTHER_TELEPORT:
+		
+			q_shared.VectorCopy (state.origin, ent.prev.origin)
+			q_shared.VectorCopy (state.origin, ent.lerp_origin)
+		
+		else:
+		
+			q_shared.VectorCopy (state.old_origin, ent.prev.origin)
+			q_shared.VectorCopy (state.old_origin, ent.lerp_origin)
+		
+	
+	else:
+		# shuffle the last state to previous
 		ent.prev = ent.current;
-	}
+	
 
-	ent.serverframe = cl_main.cl.frame.serverframe;
-	ent.current = *state;
-}
+	ent.serverframe = cl_main.cl.frame.serverframe
+	ent.current = copy.copy(state)
 
-/*
+
+"""
 ==================
 CL_ParsePacketEntities
 
@@ -396,129 +398,128 @@ rest of the data stream.
 """
 def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 
-	print ("CL_ParsePacketEntities")
 	"""
 	int			newnum;
 	int			bits;
 	entity_state_t	*oldstate;
 	int			oldindex, oldnum;
+	"""
 
-	newframe.parse_entities = cl_main.cl.parse_entities;
-	newframe.num_entities = 0;
+	newframe.parse_entities = cl_main.cl.parse_entities
+	newframe.num_entities = 0
 
-	// delta from the entities present in oldframe
-	oldindex = 0;
-	if (!oldframe)
-		oldnum = 99999;
-	else
-	{
-		if (oldindex >= oldframe.num_entities)
-			oldnum = 99999;
-		else
-		{
-			oldstate = &cl_parse_entities[(oldframe.parse_entities+oldindex) & (MAX_PARSE_ENTITIES-1)];
-			oldnum = oldstate.number;
-		}
-	}
-
-	while (1)
-	{
-		newnum = CL_ParseEntityBits (&bits);
-		if (newnum >= q_shared.MAX_EDICTS)
-			Com_Error (q_shared.ERR_DROP,"CL_ParsePacketEntities: bad number:%i", newnum);
-
-		if (net_chan.net_message.readcount > net_chan.net_message.cursize)
-			Com_Error (q_shared.ERR_DROP,"CL_ParsePacketEntities: end of message");
-
-		if (!newnum)
-			break;
-
-		while (oldnum < newnum)
-		{	// one or more entities from the old packet are unchanged
-			if (cl_main.cl_shownet.value == 3)
-				Com_Printf ("   unchanged: %i\n", oldnum);
-			CL_DeltaEntity (newframe, oldnum, oldstate, 0);
-			
-			oldindex++;
-
-			if (oldindex >= oldframe.num_entities)
-				oldnum = 99999;
-			else
-			{
-				oldstate = &cl_parse_entities[(oldframe.parse_entities+oldindex) & (MAX_PARSE_ENTITIES-1)];
-				oldnum = oldstate.number;
-			}
-		}
-
-		if (bits & U_REMOVE)
-		{	// the entity present in oldframe is not in the current frame
-			if (cl_main.cl_shownet.value == 3)
-				Com_Printf ("   remove: %i\n", newnum);
-			if (oldnum != newnum)
-				Com_Printf ("U_REMOVE: oldnum != newnum\n");
-
-			oldindex++;
-
-			if (oldindex >= oldframe.num_entities)
-				oldnum = 99999;
-			else
-			{
-				oldstate = &cl_parse_entities[(oldframe.parse_entities+oldindex) & (MAX_PARSE_ENTITIES-1)];
-				oldnum = oldstate.number;
-			}
-			continue;
-		}
-
-		if (oldnum == newnum)
-		{	// delta from previous state
-			if (cl_main.cl_shownet.value == 3)
-				Com_Printf ("   delta: %i\n", newnum);
-			CL_DeltaEntity (newframe, newnum, oldstate, bits);
-
-			oldindex++;
-
-			if (oldindex >= oldframe.num_entities)
-				oldnum = 99999;
-			else
-			{
-				oldstate = &cl_parse_entities[(oldframe.parse_entities+oldindex) & (MAX_PARSE_ENTITIES-1)];
-				oldnum = oldstate.number;
-			}
-			continue;
-		}
-
-		if (oldnum > newnum)
-		{	// delta from baseline
-			if (cl_main.cl_shownet.value == 3)
-				Com_Printf ("   baseline: %i\n", newnum);
-			CL_DeltaEntity (newframe, newnum, &cl_entities[newnum].baseline, bits);
-			continue;
-		}
-
-	}
-
-	// any remaining entities in the old frame are copied over
-	while (oldnum != 99999)
-	{	// one or more entities from the old packet are unchanged
-		if (cl_main.cl_shownet.value == 3)
-			Com_Printf ("   unchanged: %i\n", oldnum);
-		CL_DeltaEntity (newframe, oldnum, oldstate, 0);
+	# delta from the entities present in oldframe
+	oldindex = 0
+	if oldframe is None:
+		oldnum = 99999
+	else:
+	
+		if oldindex >= oldframe.num_entities:
+			oldnum = 99999
+		else:
+			oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
+			oldnum = oldstate.number
 		
-		oldindex++;
+	
 
-		if (oldindex >= oldframe.num_entities)
-			oldnum = 99999;
-		else
-		{
-			oldstate = &cl_parse_entities[(oldframe.parse_entities+oldindex) & (MAX_PARSE_ENTITIES-1)];
-			oldnum = oldstate.number;
-		}
-	}
-}
+	while 1:
+	
+		newnum, bits = CL_ParseEntityBits ()
+		if newnum >= q_shared.MAX_EDICTS:
+			common.Com_Error (q_shared.ERR_DROP,"CL_ParsePacketEntities: bad number:{}".format(newnum))
+
+		if net_chan.net_message.readcount > net_chan.net_message.cursize:
+			common.Com_Error (q_shared.ERR_DROP,"CL_ParsePacketEntities: end of message")
+
+		if newnum==0:
+			break
+
+		while oldnum < newnum:
+			# one or more entities from the old packet are unchanged
+			if cl_main.cl_shownet.value == 3:
+				common.Com_Printf ("   unchanged: {}\n".format(oldnum))
+			CL_DeltaEntity (newframe, oldnum, oldstate, 0)
+			
+			oldindex+=1
+
+			if oldindex >= oldframe.num_entities:
+				oldnum = 99999
+			else:
+			
+				oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
+				oldnum = oldstate.number
+			
+		
+
+		if bits & qcommon.U_REMOVE:
+			# the entity present in oldframe is not in the current frame
+			if cl_main.cl_shownet.value == 3:
+				common.Com_Printf ("   remove: {}\n".format(newnum))
+			if oldnum != newnum:
+				common.Com_Printf ("U_REMOVE: oldnum != newnum\n")
+
+			oldindex+=1
+
+			if oldindex >= oldframe.num_entities:
+				oldnum = 99999
+			else:
+			
+				oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
+				oldnum = oldstate.number
+			
+			continue
+		
+
+		if oldnum == newnum:
+			# delta from previous state
+			if cl_main.cl_shownet.value == 3:
+				common.Com_Printf ("   delta: {}\n".format(newnum))
+			CL_DeltaEntity (newframe, newnum, oldstate, bits)
+
+			oldindex+=1
+
+			if oldindex >= oldframe.num_entities:
+				oldnum = 99999
+			else:
+			
+				oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
+				oldnum = oldstate.number
+			
+			continue;
+		
+
+		if oldnum > newnum:
+			# delta from baseline
+			if cl_main.cl_shownet.value == 3:
+				common.Com_Printf ("   baseline: {}\n".format(newnum))
+			CL_DeltaEntity (newframe, newnum, cl_main.cl_entities[newnum].baseline, bits)
+			continue
+		
+
+	
+
+	# any remaining entities in the old frame are copied over
+	while oldnum != 99999:
+		# one or more entities from the old packet are unchanged
+		if cl_main.cl_shownet.value == 3:
+			common.Com_Printf ("   unchanged: {}\n".format(oldnum))
+		CL_DeltaEntity (newframe, oldnum, oldstate, 0)
+		
+		oldindex+=1
+
+		if oldindex >= oldframe.num_entities:
+			oldnum = 99999
+		else:
+		
+			oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
+			oldnum = oldstate.number
+		
+	
 
 
 
-/*
+
+"""
 ===================
 CL_ParsePlayerstate
 ===================
@@ -659,8 +660,8 @@ def CL_FireEntityEvents (frame): #frame_t *
 
 	for (pnum = 0 ; pnum<frame.num_entities ; pnum++)
 	{
-		num = (frame.parse_entities + pnum)&(MAX_PARSE_ENTITIES-1);
-		s1 = &cl_parse_entities[num];
+		num = (frame.parse_entities + pnum)&(client.MAX_PARSE_ENTITIES-1);
+		s1 = &cl_main.cl_parse_entities[num];
 		if (s1.event)
 			CL_EntityEvent (s1);
 
@@ -725,7 +726,7 @@ def CL_ParseFrame ():
 			# is too old, so we can't reconstruct it properly.
 			common.Com_Printf ("Delta frame too old.\n")
 		
-		elif cl_main.cl.parse_entities - old.parse_entities > MAX_PARSE_ENTITIES-128:
+		elif cl_main.cl.parse_entities - old.parse_entities > client.MAX_PARSE_ENTITIES-128:
 		
 			common.Com_Printf ("Delta parse_entities too old.\n")
 		
@@ -875,9 +876,9 @@ void CL_AddPacketEntities (frame_t *frame)
 
 	for (pnum = 0 ; pnum<frame.num_entities ; pnum++)
 	{
-		s1 = &cl_parse_entities[(frame.parse_entities+pnum)&(MAX_PARSE_ENTITIES-1)];
+		s1 = &cl_main.cl_parse_entities[(frame.parse_entities+pnum)&(client.MAX_PARSE_ENTITIES-1)];
 
-		cent = &cl_entities[s1.number];
+		cent = &cl_main.cl_entities[s1.number];
 
 		effects = s1.effects;
 		renderfx = s1.renderfx;
@@ -961,7 +962,7 @@ void CL_AddPacketEntities (frame_t *frame)
 				ci = &cl_main.cl.clientinfo[s1.skinnum & 0xff];
 				ent.skin = ci.skin;
 				ent.model = ci.model;
-				if (!ent.skin || !ent.model)
+				if (!ent.skin or !ent.model)
 				{
 					ent.skin = cl_main.cl.baseclientinfo.skin;
 					ent.model = cl_main.cl.baseclientinfo.model;
@@ -1149,7 +1150,7 @@ void CL_AddPacketEntities (frame_t *frame)
 			{	// custom weapon
 				ci = &cl_main.cl.clientinfo[s1.skinnum & 0xff];
 				i = (s1.skinnum >> 8); // 0 is default weapon model
-				if (!cl_vwep.value || i > MAX_CLIENTWEAPONMODELS - 1)
+				if (!cl_vwep.value or i > MAX_CLIENTWEAPONMODELS - 1)
 					i = 0;
 				ent.model = ci.weaponmodel[i];
 				if (!ent.model) {
@@ -1423,17 +1424,17 @@ void CL_CalcViewValues (void)
 	ps = &cl_main.cl.frame.playerstate;
 	i = (cl_main.cl.frame.serverframe - 1) & qcommon.UPDATE_MASK;
 	oldframe = &cl_main.cl.frames[i];
-	if (oldframe.serverframe != cl_main.cl.frame.serverframe-1 || !oldframe.valid)
+	if (oldframe.serverframe != cl_main.cl.frame.serverframe-1 or !oldframe.valid)
 		oldframe = &cl_main.cl.frame;		// previous frame was dropped or involid
 	ops = &oldframe.playerstate;
 
 	// see if the player entity was teleported this frame
 	if ( fabs(ops.pmove.origin[0] - ps.pmove.origin[0]) > 256*8
-		|| abs(ops.pmove.origin[1] - ps.pmove.origin[1]) > 256*8
-		|| abs(ops.pmove.origin[2] - ps.pmove.origin[2]) > 256*8)
+		or abs(ops.pmove.origin[1] - ps.pmove.origin[1]) > 256*8
+		or abs(ops.pmove.origin[2] - ps.pmove.origin[2]) > 256*8)
 		ops = ps;		// don't interpolate
 
-	ent = &cl_entities[cl_main.cl.playernum+1];
+	ent = &cl_main.cl_entities[cl_main.cl.playernum+1];
 	lerp = cl_main.cl.lerpfrac;
 
 	// calculate the origin
@@ -1553,9 +1554,9 @@ void CL_GetEntitySoundOrigin (int ent, vec3_t org)
 {
 	centity_t	*old;
 
-	if (ent < 0 || ent >= q_shared.MAX_EDICTS)
+	if (ent < 0 or ent >= q_shared.MAX_EDICTS)
 		Com_Error (q_shared.ERR_DROP, "CL_GetEntitySoundOrigin: bad ent");
-	old = &cl_entities[ent];
+	old = &cl_main.cl_entities[ent];
 	VectorCopy (old.lerp_origin, org);
 
 	// FIXME: bmodel issues...
