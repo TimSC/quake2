@@ -158,7 +158,9 @@ extern long Q_ftol( float f );
 #define DotProduct(x,y)			(x[0]*y[0]+x[1]*y[1]+x[2]*y[2])
 #define VectorSubtract(a,b,c)	(c[0]=a[0]-b[0],c[1]=a[1]-b[1],c[2]=a[2]-b[2])
 #define VectorAdd(a,b,c)		(c[0]=a[0]+b[0],c[1]=a[1]+b[1],c[2]=a[2]+b[2])
-#define VectorCopy(a,b)			(b[0]=a[0],b[1]=a[1],b[2]=a[2])
+"""
+def VectorCopy(a,b): b=a.copy()
+"""
 #define VectorClear(a)			(a[0]=a[1]=a[2]=0)
 #define VectorNegate(a,b)		(b[0]=-a[0],b[1]=-a[1],b[2]=-a[2])
 #define VectorSet(v, x, y, z)	(v[0]=(x), v[1]=(y), v[2]=(z))
@@ -463,22 +465,22 @@ typedef struct
 	struct edict_s	*ent;		// not set by CM_*() functions
 } trace_t;
 
+"""
 
+# pmove_state_t is the information necessary for client side movement
+# prediction
+class pmtype_t(Enum):
 
-// pmove_state_t is the information necessary for client side movement
-// prediction
-typedef enum 
-{
-	// can accelerate and turn
-	PM_NORMAL,
-	PM_SPECTATOR,
-	// no acceleration or turning
-	PM_DEAD,
-	PM_GIB,		// different bounding box
-	PM_FREEZE
-} pmtype_t;
+	# can accelerate and turn
+	PM_NORMAL = 0
+	PM_SPECTATOR = 1
+	# no acceleration or turning
+	PM_DEAD = 2
+	PM_GIB = 3		# different bounding box
+	PM_FREEZE = 4
 
-// pmove->pm_flags
+"""
+# pmove->pm_flags
 #define	PMF_DUCKED			1
 #define	PMF_JUMP_HELD		2
 #define	PMF_ON_GROUND		4
@@ -492,20 +494,22 @@ typedef enum
 // prediction stays in sync, so no floats are used.
 // if any part of the game code modifies this struct, it
 // will result in a prediction error of some degree.
-typedef struct
-{
-	pmtype_t	pm_type;
-
-	short		origin[3];		// 12.3
-	short		velocity[3];	// 12.3
-	byte		pm_flags;		// ducked, jump_held, etc
-	byte		pm_time;		// each unit = 8 ms
-	short		gravity;
-	short		delta_angles[3];	// add to command angles to get view direction
-									// changed by spawns, rotating objects, and teleporters
-} pmove_state_t;
-
 """
+class pmove_state_t(object):
+
+	def __init__(self):
+		self.pm_type: pmtype_t = None
+
+		self.origin = np.zeros((3,), dtype=np.int16) # short		[3];		// 12.3
+		self.velocity = np.zeros((3,), dtype=np.int16) #short		[3];	// 12.3
+		self.pm_flags = None #byte		;		// ducked, jump_held, etc
+		self.pm_time = None #byte		;		// each unit = 8 ms
+		self.gravity = None #short		;
+		self.delta_angles = np.zeros((3,), dtype=np.int16) #short		[3];	// add to command angles to get view direction
+									# changed by spawns, rotating objects, and teleporters
+
+
+
 #
 # button bits
 #
@@ -1091,11 +1095,11 @@ ROGUE - VERSIONS
 
 ==========================================================
 */
-
-#define	ANGLE2SHORT(x)	((int)((x)*65536/360) & 65535)
-#define	SHORT2ANGLE(x)	((x)*(360.0/65536))
-
 """
+def	ANGLE2SHORT(x):	return ((int)((x)*65536/360) & 65535)
+def	SHORT2ANGLE(x):	return ((x)*(360.0/65536))
+
+
 #
 # config strings are a general means of communication from
 # the server to all connected clients.
@@ -1151,25 +1155,24 @@ class entity_state_t(object):
 
 		self.number = None #int, edict index
 
-		"""
-		vec3_t	origin;
-		vec3_t	angles;
-		vec3_t	old_origin;		// for lerping
-		int		modelindex;
-		int		modelindex2, modelindex3, modelindex4;	// weapons, CTF flags, etc
-		int		frame;
-		int		skinnum;
-		unsigned int		effects;		// PGM - we're filling it, so it needs to be unsigned
-		int		renderfx;
-		int		solid;			// for client side prediction, 8*(bits 0-4) is x/y radius
-								// 8*(bits 5-9) is z down distance, 8(bits10-15) is z up
-								// gi.linkentity sets this properly
-		int		sound;			// for looping sounds, to guarantee shutoff
-		int		event;			// impulse events -- muzzle flashes, footsteps, etc
-								// events only go out for a single frame, they
-								// are automatically cleared each frame
+		self.origin: vec3_t = np.zeros((3,), dtype=np.float32)
+		self.angles: vec3_t = np.zeros((3,), dtype=np.float32)
+		self.old_origin: vec3_t = np.zeros((3,), dtype=np.float32) # for lerping
+		self.modelindex: int = None
+		self.modelindex2, self.modelindex3, self.modelindex4 = None, None, None # weapons, CTF flags, etc, int
+		self.frame: int = None
+		self.skinnum: int = None
+		self.effects: int = None	# PGM - we're filling it, so it needs to be unsigned, unsigned int
+		self.renderfx: int = None
+		self.solid: int = None  # for client side prediction, 8*(bits 0-4) is x/y radius
+								# 8*(bits 5-9) is z down distance, 8(bits10-15) is z up
+								# gi.linkentity sets this properly
+		self.sound: int	= None	# for looping sounds, to guarantee shutoff
+		self.event: int	= None	# impulse events -- muzzle flashes, footsteps, etc
+								# events only go out for a single frame, they
+								# are automatically cleared each frame
 
-
+"""
 //==============================================
 
 
@@ -1182,21 +1185,21 @@ class player_state_t(object):
 
 	def __init__(self):
 
-		self.pmove = None		# pmove_state_t, for prediction
+		self.pmove = pmove_state_t() # pmove_state_t, for prediction
 
 		# these fields do not need to be communicated bit-precise
 
-		self.viewangles = None		# vec3_t, for fixed views
-		self.viewoffset = None		# vec3_t, add to pmovestate->origin
-		self.kick_angles = None		# vec3_t, add to view direction to get render angles
+		self.viewangles = np.zeros((3,), dtype=np.float32)		# vec3_t, for fixed views
+		self.viewoffset = np.zeros((3,), dtype=np.float32)		# vec3_t, add to pmovestate->origin
+		self.kick_angles = np.zeros((3,), dtype=np.float32)		# vec3_t, add to view direction to get render angles
 									# set by weapon kicks, pain effects, etc
 
-		self.gunangles = None # vec3_t
-		self.gunoffset = None # vec3_t
+		self.gunangles = np.zeros((3,), dtype=np.float32) # vec3_t
+		self.gunoffset = np.zeros((3,), dtype=np.float32) # vec3_t
 		self.gunindex = None # int
 		self.gunframe = None # int
 
-		self.blend = [0.0, 0.0, 0.0, 0.0] # float[4], rgba full screen effect
+		self.blend = np.zeros((4,), dtype=np.float32) # float[4], rgba full screen effect
 		
 		self.fov = None #float, horizontal field of view
 

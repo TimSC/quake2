@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import sys
 import struct
+import numpy as np
 from qcommon import cvar, cmd, files, qcommon, net_chan
 from linux import sys_linux, q_shlinux, net_udp
 from game import q_shared
@@ -888,29 +889,31 @@ def MSG_ReadStringLine (msg_read): # sizebuf_t * (returns char *)
 	
 	return st.decode('ascii')
 
+
+def MSG_ReadCoord (msg_read: qcommon.sizebuf_t)->float:
+
+	return MSG_ReadShort(msg_read) * (1.0/8.0)
+
+
+def MSG_ReadPos (msg_read: qcommon.sizebuf_t):
+
+	pos = np.empty((3,))
+	pos[0] = MSG_ReadShort(msg_read) * (1.0/8.0)
+	pos[1] = MSG_ReadShort(msg_read) * (1.0/8.0)
+	pos[2] = MSG_ReadShort(msg_read) * (1.0/8.0)
+	return pos
+
+
+def MSG_ReadAngle (msg_read: qcommon.sizebuf_t)->float:
+
+	return MSG_ReadChar(msg_read) * (360.0/256.0)
+
+
+def MSG_ReadAngle16 (msg_read)->float: #(sizebuf_t *)
+
+	return q_shared.SHORT2ANGLE(MSG_ReadShort(msg_read))
+
 """
-float MSG_ReadCoord (sizebuf_t *msg_read)
-{
-	return MSG_ReadShort(msg_read) * (1.0/8);
-}
-
-void MSG_ReadPos (sizebuf_t *msg_read, vec3_t pos)
-{
-	pos[0] = MSG_ReadShort(msg_read) * (1.0/8);
-	pos[1] = MSG_ReadShort(msg_read) * (1.0/8);
-	pos[2] = MSG_ReadShort(msg_read) * (1.0/8);
-}
-
-float MSG_ReadAngle (sizebuf_t *msg_read)
-{
-	return MSG_ReadChar(msg_read) * (360.0/256);
-}
-
-float MSG_ReadAngle16 (sizebuf_t *msg_read)
-{
-	return SHORT2ANGLE(MSG_ReadShort(msg_read));
-}
-
 void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move)
 {
 	int bits;
@@ -949,18 +952,17 @@ void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move
 	move->lightlevel = MSG_ReadByte (msg_read);
 }
 
-
-void MSG_ReadData (sizebuf_t *msg_read, void *data, int len)
-{
-	int		i;
-
-	for (i=0 ; i<len ; i++)
-		((byte *)data)[i] = MSG_ReadByte (msg_read);
-}
-
-
-//===========================================================================
 """
+def MSG_ReadData (msg_read, length: int): #sizebuf_t *, void *, int
+
+	data = bytearray(length)
+	for i in range(length):
+		data[i] = MSG_ReadByte (msg_read)
+	return data
+
+
+#===========================================================================
+
 def SZ_Init (buf, length): #sizebuf_t *, byte *, int
 
 	assert isinstance(buf, qcommon.sizebuf_t)

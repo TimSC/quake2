@@ -1587,7 +1587,7 @@ usually be a couple times for each server frame.
 ==============
 """
 def ClientThink (ent, ucmd): #edict_t *, usercmd_t *
-	pass
+	print ("ClientThink")
 
 	"""
 	gclient_t	*client;

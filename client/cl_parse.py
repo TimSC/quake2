@@ -26,9 +26,9 @@ from linux import cd_linux
 // cl_parse.c  -- parse a message received from the server
 
 #include "client.h"
-
-char *svc_strings[256] =
-{
+"""
+svc_strings = \
+[
 	"svc_bad",
 
 	"svc_muzzleflash",
@@ -51,9 +51,12 @@ char *svc_strings[256] =
 	"svc_playerinfo",
 	"svc_packetentities",
 	"svc_deltapacketentities",
-	"svc_frame"
-};
+	"svc_frame"]
 
+while len(svc_strings) < 256:
+	svc_strings.append(None)
+
+"""
 //=============================================================================
 
 void CL_DownloadFileName(char *dest, int destlen, char *fn)
@@ -780,7 +783,7 @@ def CL_ParseServerMessage ():
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_frame:
-			CL_ParseFrame ()
+			cl_ents.CL_ParseFrame ()
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_inventory:

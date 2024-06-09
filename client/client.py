@@ -46,6 +46,9 @@ from qcommon import qcommon
 class frame_t(object):
 
 	def __init__(self):
+		self.clear()
+
+	def clear(self):
 		self.valid = False		# qboolean, cleared if delta parsing was invalid
 		self.serverframe = 0 	# int
 		self.servertime = 0		# int, server time the message is valid for (in msec)
@@ -53,7 +56,7 @@ class frame_t(object):
 		self.areabits = []		#byte[MAX_MAP_AREAS/8], portalarea visibility bits
 		self.playerstate = q_shared.player_state_t() # player_state_t
 		self.num_entities = 0 	# int
-		self.parse_entitie = 0 	# int, non-masked index into cl_parse_entities array
+		self.parse_entities = 0 	# int, non-masked index into cl_parse_entities array
 
 
 class centity_t(object):
@@ -136,10 +139,12 @@ class client_state_t(object):
 		vec3_t		prediction_error;
 		"""
 		self.frame = frame_t()		# frame_t, received from server
-		"""
-		int			surpressCount;		// number of messages rate supressed
-		frame_t		frames[UPDATE_BACKUP];
 
+		surpressCount: int = None		# number of messages rate supressed
+		self.frames = []
+		for i in range(qcommon.UPDATE_BACKUP):
+			self.frames.append(frame_t())
+		"""
 		// the client maintains its own idea of view angles, which are
 		// sent to the server each frame.  It is cleared to 0 upon entering each level.
 		// the server sends a delta each frame which is added to the locally

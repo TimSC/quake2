@@ -248,28 +248,28 @@ class clc_ops_e(Enum):
 	clc_userinfo = 3			# [[userinfo string]
 	clc_stringcmd = 4			# [string] message
 
+
+#==============================================
+
+# plyer_state_t communication
+
+PS_M_TYPE			= (1<<0)
+PS_M_ORIGIN			= (1<<1)
+PS_M_VELOCITY		= (1<<2)
+PS_M_TIME			= (1<<3)
+PS_M_FLAGS			= (1<<4)
+PS_M_GRAVITY		= (1<<5)
+PS_M_DELTA_ANGLES	= (1<<6)
+
+PS_VIEWOFFSET		= (1<<7)
+PS_VIEWANGLES		= (1<<8)
+PS_KICKANGLES		= (1<<9)
+PS_BLEND			= (1<<10)
+PS_FOV				= (1<<11)
+PS_WEAPONINDEX		= (1<<12)
+PS_WEAPONFRAME		= (1<<13)
+PS_RDFLAGS			= (1<<14)
 """
-//==============================================
-
-// plyer_state_t communication
-
-#define	PS_M_TYPE			(1<<0)
-#define	PS_M_ORIGIN			(1<<1)
-#define	PS_M_VELOCITY		(1<<2)
-#define	PS_M_TIME			(1<<3)
-#define	PS_M_FLAGS			(1<<4)
-#define	PS_M_GRAVITY		(1<<5)
-#define	PS_M_DELTA_ANGLES	(1<<6)
-
-#define	PS_VIEWOFFSET		(1<<7)
-#define	PS_VIEWANGLES		(1<<8)
-#define	PS_KICKANGLES		(1<<9)
-#define	PS_BLEND			(1<<10)
-#define	PS_FOV				(1<<11)
-#define	PS_WEAPONINDEX		(1<<12)
-#define	PS_WEAPONFRAME		(1<<13)
-#define	PS_RDFLAGS			(1<<14)
-
 //==============================================
 
 // user_cmd_t communication
