@@ -445,7 +445,7 @@ Redirect all printfs
 """
 def SVC_RemoteCommand ():
 
-	pass
+	print ("SVC_RemoteCommand")
 	"""
 	int		i;
 	char	remaining[1024];
@@ -657,6 +657,8 @@ def SV_ReadPackets ():
 						if cl.state != sv_init.client_state_t.cs_zombie:
 						
 							cl.lastmessage = sv_init.svs.realtime	# don't timeout
+							if net_chan.net_message.data.find(b"new") != -1:
+								print ("cl", net_chan.net_message.data.find(b"new")) #DEBUG
 							sv_user.SV_ExecuteClientMessage (cl)
 						
 					break

@@ -55,23 +55,27 @@ class frame_t(object):
 		self.num_entities = 0 	# int
 		self.parse_entitie = 0 	# int, non-masked index into cl_parse_entities array
 
+
+class centity_t(object):
+
+	def __init__(self):
+
+
+		"""
+		entity_state_t	baseline;		// delta from this if not from a previous frame
+		entity_state_t	current;
+		entity_state_t	prev;			// will always be valid, but might just be a copy of current
+		"""
+		self.serverframe: int = 0		# if not current, this ent isn't in the frame
+		"""
+		int			trailcount;			// for diminishing grenade trails
+		vec3_t		lerp_origin;		// for trails (variable hz)
+
+		int			fly_stoptime;
 """
-typedef struct
-{
-	entity_state_t	baseline;		// delta from this if not from a previous frame
-	entity_state_t	current;
-	entity_state_t	prev;			// will always be valid, but might just be a copy of current
-
-	int			serverframe;		// if not current, this ent isn't in the frame
-
-	int			trailcount;			// for diminishing grenade trails
-	vec3_t		lerp_origin;		// for trails (variable hz)
-
-	int			fly_stoptime;
-} centity_t;
 
 #define MAX_CLIENTWEAPONMODELS		20		// PGM -- upped from 16 to fit the chainfist vwep
-
+"""
 typedef struct
 {
 	char	name[MAX_QPATH];

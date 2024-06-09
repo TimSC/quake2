@@ -300,10 +300,12 @@ vec3_t	bytedirs[NUMVERTEXNORMALS] =
 // writing functions
 //
 """
-def MSG_WriteChar (sb: qcommon.sizebuf_t, c):
+def MSG_WriteChar (sb: qcommon.sizebuf_t, c: bytes|bytearray):
 
+	assert isinstance(c, bytes) or isinstance(c, bytearray)
 	if not isinstance(sb, qcommon.sizebuf_t):
 		raise RuntimeError("Wrong input type")
+	assert len(c) == 1
 
 	"""
 	byte	*buf;
@@ -316,7 +318,6 @@ def MSG_WriteChar (sb: qcommon.sizebuf_t, c):
 	buf = SZ_GetSpace (sb, 1);
 	buf[0] = c;
 	"""
-	assert len(c) == 1
 	offset = SZ_GetSpace(sb, 1)
 
 	struct.pack_into("c", sb.data, offset, c)

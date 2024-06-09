@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from server import sv_main, sv_init
-from qcommon import cvar, qcommon, common, net_chan, cmd
+from qcommon import cvar, qcommon, common, net_chan, cmd, files
 from game import q_shared
 """
 // sv_user.c -- server code for moving users
@@ -48,10 +48,10 @@ def SV_BeginDemoserver ():
 	print ("SV_BeginDemoserver")
 	#char		name[MAX_OSPATH];
 
-	q_shared.Com_sprintf (name, MAX_OSPATH, "demos/{}".format(sv.name))
-	FS_FOpenFile (name, sv.demofile)
-	if not sv.demofile:
-		common.Com_Error (ERR_DROP, "Couldn't open %s\n", name)
+	name = "demos/{}".format(sv_init.sv.name)
+	length, sv_init.sv.demofile = files.FS_FOpenFile (name)
+	if sv_init.sv.demofile is None:
+		common.Com_Error (qcommon.ERR_DROP, "Couldn't open %s\n", name)
 
 
 """

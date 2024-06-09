@@ -18,9 +18,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn, client, cl_cin
+from client import cl_main, cl_scrn, client, cl_cin, cl_ents
 from game import q_shared
-from qcommon import net_chan, qcommon, common, cmd, files
+from qcommon import net_chan, qcommon, common, cmd, files, cmodel
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -363,23 +363,23 @@ def CL_ParseServerData ():
 ==================
 CL_ParseBaseline
 ==================
-*/
-void CL_ParseBaseline (void)
-{
+"""
+def CL_ParseBaseline ():
+
+	"""
 	entity_state_t	*es;
 	int				bits;
 	int				newnum;
 	entity_state_t	nullstate;
+	"""
 
-	memset (&nullstate, 0, sizeof(nullstate));
+	nullstate = q_shared.entity_state_t()
 
-	newnum = CL_ParseEntityBits (&bits);
-	es = &cl_entities[newnum].baseline;
-	CL_ParseDelta (&nullstate, es, newnum, bits);
-}
+	newnum, bits = cl_ents.CL_ParseEntityBits ()
+	es = cl_main.cl_entities[newnum].baseline
+	cl_ents.CL_ParseDelta (nullstate, es, newnum, bits)
 
-
-/*
+"""
 ================
 CL_LoadClientinfo
 
@@ -523,18 +523,22 @@ void CL_ParseClientinfo (int player)
 ================
 CL_ParseConfigString
 ================
-*/
-void CL_ParseConfigString (void)
-{
+"""
+def CL_ParseConfigString ():
+
+	"""
 	int		i;
 	char	*s;
 	char	olds[MAX_QPATH];
+	"""
 
-	i = MSG_ReadShort (&net_chan.net_message);
-	if (i < 0 || i >= MAX_CONFIGSTRINGS)
-		Com_Error (qcommon.ERR_DROP, "configstring > MAX_CONFIGSTRINGS");
-	s = MSG_ReadString(&net_chan.net_message);
 
+	i = common.MSG_ReadShort (net_chan.net_message)
+	if i < 0 or i >= q_shared.MAX_CONFIGSTRINGS:
+		common.Com_Error (qcommon.ERR_DROP, "configstring > MAX_CONFIGSTRINGS")
+	s = common.MSG_ReadString(net_chan.net_message)
+
+	"""
 	strncpy (olds, cl_main.cl.configstrings[i], sizeof(olds));
 	olds[sizeof(olds) - 1] = 0;
 

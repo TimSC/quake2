@@ -94,7 +94,7 @@ void PF_cprintf (edict_t *ent, int level, char *fmt, ...)
 	{
 		n = NUM_FOR_EDICT(ent);
 		if (n < 1 || n > maxclients->value)
-			Com_Error (ERR_DROP, "cprintf to a non-client");
+			Com_Error (qcommon.ERR_DROP, "cprintf to a non-client");
 	}
 
 	va_start (argptr,fmt);
@@ -123,7 +123,7 @@ void PF_centerprintf (edict_t *ent, char *fmt, ...)
 	
 	n = NUM_FOR_EDICT(ent);
 	if (n < 1 || n > maxclients->value)
-		return;	// Com_Error (ERR_DROP, "centerprintf to a non-client");
+		return;	// Com_Error (qcommon.ERR_DROP, "centerprintf to a non-client");
 
 	va_start (argptr,fmt);
 	vsprintf (msg, fmt, argptr);
@@ -151,7 +151,7 @@ void PF_error (char *fmt, ...)
 	vsprintf (msg, fmt, argptr);
 	va_end (argptr);
 
-	Com_Error (ERR_DROP, "Game Error: %s", msg);
+	Com_Error (qcommon.ERR_DROP, "Game Error: %s", msg);
 }
 
 
@@ -168,7 +168,7 @@ void PF_setmodel (edict_t *ent, char *name)
 	cmodel_t	*mod;
 
 	if (!name)
-		Com_Error (ERR_DROP, "PF_setmodel: NULL");
+		Com_Error (qcommon.ERR_DROP, "PF_setmodel: NULL");
 
 	i = SV_ModelIndex (name);
 		
@@ -195,7 +195,7 @@ PF_Configstring
 void PF_Configstring (int index, char *val)
 {
 	if (index < 0 || index >= MAX_CONFIGSTRINGS)
-		Com_Error (ERR_DROP, "configstring: bad index %i\n", index);
+		Com_Error (qcommon.ERR_DROP, "configstring: bad index %i\n", index);
 
 	if (!val)
 		val = "";
@@ -394,10 +394,10 @@ def SV_InitGameProgs ():
 
 	"""
 	if (!ge)
-		Com_Error (ERR_DROP, "failed to load game DLL");
+		Com_Error (qcommon.ERR_DROP, "failed to load game DLL");
 	"""
 	if ge.apiversion != game.GAME_API_VERSION:
-		common.Com_Error (ERR_DROP, "game is version {:d}, not {:d}".format(ge.apiversion, game.GAME_API_VERSION))
+		common.Com_Error (qcommon.ERR_DROP, "game is version {:d}, not {:d}".format(ge.apiversion, game.GAME_API_VERSION))
 
 	ge.Init ()
 

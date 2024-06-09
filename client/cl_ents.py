@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+"""
 // cl_ents.c -- entity parsing and management
 
 #include "client.h"
@@ -197,10 +198,12 @@ CL_ParseEntityBits
 
 Returns the entity number and the header bits
 =================
-*/
-int	bitcounts[32];	/// just for protocol profiling
-int CL_ParseEntityBits (unsigned *bits)
-{
+"""
+#int	bitcounts[32];	/// just for protocol profilingf
+def CL_ParseEntityBits (): # (unsigned *bits)
+
+	return None, None
+	"""
 	unsigned	b, total;
 	int			i;
 	int			number;
@@ -243,10 +246,12 @@ CL_ParseDelta
 
 Can go from either a baseline or a previous packet_entity
 ==================
-*/
-void CL_ParseDelta (entity_state_t *from, entity_state_t *to, int number, int bits)
-{
-	// set everything to the state we are delta'ing from
+"""
+def CL_ParseDelta (fromEnt, toEnt, number, bits): #entity_state_t *from, entity_state_t *to, int number, int bits
+
+	pass
+	# set everything to the state we are delta'ing from
+	"""
 	*to = *from;
 
 	VectorCopy (from->origin, to->old_origin);
@@ -413,7 +418,7 @@ void CL_ParsePacketEntities (frame_t *oldframe, frame_t *newframe)
 	while (1)
 	{
 		newnum = CL_ParseEntityBits (&bits);
-		if (newnum >= MAX_EDICTS)
+		if (newnum >= q_shared.MAX_EDICTS)
 			Com_Error (ERR_DROP,"CL_ParsePacketEntities: bad number:%i", newnum);
 
 		if (net_message.readcount > net_message.cursize)
@@ -1534,10 +1539,11 @@ void CL_GetEntitySoundOrigin (int ent, vec3_t org)
 {
 	centity_t	*old;
 
-	if (ent < 0 || ent >= MAX_EDICTS)
+	if (ent < 0 || ent >= q_shared.MAX_EDICTS)
 		Com_Error (ERR_DROP, "CL_GetEntitySoundOrigin: bad ent");
 	old = &cl_entities[ent];
 	VectorCopy (old->lerp_origin, org);
 
 	// FIXME: bmodel issues...
 }
+"""

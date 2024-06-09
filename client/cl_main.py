@@ -48,9 +48,12 @@ cls = client.client_static_t()
 
 cl = client.client_state_t()
 
-"""
-centity_t		cl_entities[MAX_EDICTS];
 
+cl_entities = []
+for i in range(q_shared.MAX_EDICTS):
+	cl_entities.append(client.centity_t())
+
+"""
 entity_state_t	cl_parse_entities[MAX_PARSE_ENTITIES];
 
 extern	cvar_t *allow_download;
@@ -199,7 +202,7 @@ void CL_Record_f (void)
 
 	// baselines
 	memset (&nullstate, 0, sizeof(nullstate));
-	for (i=0; i<MAX_EDICTS ; i++)
+	for (i=0; i<q_shared.MAX_EDICTS ; i++)
 	{
 		ent = &cl_entities[i].baseline;
 		if (!ent->modelindex)
@@ -697,20 +700,16 @@ drop to full console
 """
 def CL_Changing_f ():
 
-	print ("CL_Changing_f")
-	"""
-	//ZOID
-	//if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
-	if (cls.download)
-		return;
+	#ZOID
+	#if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
+	if cls.download is not None:
+		return
 
-	SCR_BeginLoadingPlaque ();
-	cls.state = client.connstate_t.ca_connected;	// not active anymore, but not disconnected
-	Com_Printf ("\nChanging map...\n");
-}
+	cl_scrn.SCR_BeginLoadingPlaque ()
+	cls.state = client.connstate_t.ca_connected # not active anymore, but not disconnected
+	common.Com_Printf ("\nChanging map...\n")
 
-
-
+"""
 =================
 CL_Reconnect_f
 
@@ -724,12 +723,14 @@ def CL_Reconnect_f ():
 	if cls.download is not None:
 		return
 
+	print ("tx rec", cls.state)
+
 	snd_dma.S_StopAllSounds ()
 	if cls.state == client.connstate_t.ca_connected:
 		common.Com_Printf ("reconnecting...\n")
 		cls.state = client.connstate_t.ca_connected
-		common.MSG_WriteChar (cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd)
-		common.MSG_WriteString (cls.netchan.message, "new")
+		common.MSG_WriteChar (cls.netchan.message, struct.pack("B", qcommon.clc_ops_e.clc_stringcmd.value))
+		common.MSG_WriteString (cls.netchan.message, b"new")
 		return
 
 	if cls.servername:

@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from server import sv_init
+from server import sv_init, sv_main
 from qcommon import qcommon, net_chan, cmodel, common
 from game import q_shared
 """
@@ -492,7 +492,7 @@ def SV_SendClientMessages ():
 	# read the next demo message if needed
 	if sv_init.sv.state == sv_init.server_state_t.ss_demo and sv_init.sv.demofile is not None:
 	
-		if sv_paused.value != 0:
+		if sv_main.sv_paused.value != 0:
 			msglen = 0
 		else:
 			# get the next message
