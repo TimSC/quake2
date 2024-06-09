@@ -302,6 +302,9 @@ vec3_t	bytedirs[NUMVERTEXNORMALS] =
 """
 def MSG_WriteChar (sb: qcommon.sizebuf_t, c):
 
+	if not isinstance(sb, qcommon.sizebuf_t):
+		raise RuntimeError("Wrong input type")
+
 	"""
 	byte	*buf;
 	
@@ -320,6 +323,8 @@ def MSG_WriteChar (sb: qcommon.sizebuf_t, c):
 
 def MSG_WriteByte (sb: qcommon.sizebuf_t, c): #sizebuf_t *, int
 
+	if not isinstance(sb, qcommon.sizebuf_t):
+		raise RuntimeError("Wrong input type")
 	"""
 	byte	*buf;
 	
@@ -335,6 +340,10 @@ def MSG_WriteByte (sb: qcommon.sizebuf_t, c): #sizebuf_t *, int
 
 
 def MSG_WriteShort (sb: qcommon.sizebuf_t, c):
+
+	if not isinstance(sb, qcommon.sizebuf_t):
+		raise RuntimeError("Wrong input type")
+
 	"""
 	byte	*buf;
 	
@@ -355,6 +364,10 @@ def MSG_WriteSShort (sb: qcommon.sizebuf_t, c):
 
 
 def MSG_WriteLong (sb: qcommon.sizebuf_t, c: int): #sizebuf_t *sb, int c)
+
+	if not isinstance(sb, qcommon.sizebuf_t):
+		raise RuntimeError("Wrong input type")
+
 
 	#byte	*buf;
 	
@@ -393,6 +406,9 @@ void MSG_WriteFloat (sizebuf_t *sb, float f)
 def MSG_WriteString (sb: qcommon.sizebuf_t, s): #sizebuf_t
 
 	assert isinstance(s, bytes) or isinstance(s, bytearray) or s is None
+	if not isinstance(sb, qcommon.sizebuf_t):
+		raise RuntimeError("Wrong input type")
+
 	if s is None:
 		SZ_Write (sb, b"\0")
 	else:
@@ -959,6 +975,7 @@ def SZ_Clear (buf: qcommon.sizebuf_t):
 def SZ_GetSpace (buf: qcommon.sizebuf_t, length): #sizebuf_t *, int (void *)
 
 	#void	*data;
+	assert buf.maxsize > 0
 	
 	if buf.cursize + length > buf.maxsize:
 	

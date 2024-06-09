@@ -330,7 +330,9 @@ def NET_SendPacket (sock, data, to): #netsrc_t, void *, netadr_t
 	
 		NET_SendLoopPacket (sock, data, to)
 		return
-	
+
+	raise NotImplementedError()
+
 	"""
 	if (to.type == NA_BROADCAST)
 	{

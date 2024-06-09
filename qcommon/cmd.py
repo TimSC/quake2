@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, common, files
+from qcommon import cvar, common, files, qcommon
 from game import q_shared
 """
 // cmd.c -- Quake script command processing module
@@ -63,8 +63,8 @@ def Cmd_Wait_f ():
 
 =============================================================================
 """
+cmd_text = qcommon.sizebuf_t()
 cmd_text_maxsize=8192
-cmd_text_buf="" #byte[8192]
 defer_text_buf="" #byte[8192];
 """
 ============
@@ -72,10 +72,9 @@ Cbuf_Init
 ============
 """
 def Cbuf_Init ():
-	global cmd_text_buf, cmd_text_maxsize
+	global cmd_text
 
-	cmd_text_buf=""
-	##SZ_Init (&cmd_text, cmd_text_buf, sizeof(cmd_text_buf));
+	common.SZ_Init (cmd_text, cmd_text_maxsize)
 
 """
 ============
@@ -85,17 +84,18 @@ Adds command text at the end of the buffer
 ============
 """
 def Cbuf_AddText (text): #char *
-	global cmd_text_buf, cmd_text_maxsize
+
+	global cmd_text
 
 	l = len (text)
 
-	if len(cmd_text_buf) + l >= cmd_text_maxsize:
+	assert len(cmd_text.data) == cmd_text.cursize
+	if len(cmd_text.data) + l >= cmd_text.maxsize:
 	
 		common.Com_Printf ("Cbuf_AddText: overflow\n")
 		return
 	
-	cmd_text_buf += text
-	##SZ_Write (&cmd_text, text, strlen (text));
+	common.SZ_Write(cmd_text, text.encode('ascii'))
 
 """
 ============
@@ -108,19 +108,20 @@ FIXME: actually change the command buffer to do less copying
 """
 def Cbuf_InsertText (text): #char *
 
-	global cmd_text_buf
+	global cmd_text
 	#char	*temp;
 	#int		templen;
 
 	# copy off any commands still remaining in the exec buffer
-	temp = cmd_text_buf
-	cmd_text_buf = ""
+	temp = cmd_text.data
+
+	common.SZ_Clear (cmd_text)
 	
 	# add the entire text of the file
-	Cbuf_AddText (text);
+	Cbuf_AddText (text)
 	
 	# add the copied off data
-	cmd_text_buf += temp
+	common.SZ_Write(cmd_text, temp)
 
 """
 ============
@@ -179,40 +180,56 @@ Cbuf_Execute
 
 def Cbuf_Execute ():
 
-	global cmd_text_buf, alias_count, cmd_wait
-	alias_count = 0;		# don't allow infinite alias loops
+	global cmd_wait
+	"""
+	int		i;
+	char	*text;
+	char	line[1024];
+	int		quotes;
+	"""
 
-	while len(cmd_text_buf) > 0:
+	alias_count = 0		# don't allow infinite alias loops
+
+	while cmd_text.cursize:
 	
-		# find a \n or ; line break
+# find a \n or ; line break
+
 		quotes = 0;
-		for i in range(len(cmd_text_buf)):
+		for i in range(cmd_text.cursize):
 		
-			if cmd_text_buf[i] == '"':
+			if cmd_text.data[i] == '"':
 				quotes+=1
-			if not (quotes&1) and cmd_text_buf[i] == ';':
+			if not (quotes&1) and cmd_text.data[i] == ';':
 				break	# don't break if inside a quoted string
-			if cmd_text_buf[i] == '\n':
+			if cmd_text.data[i] == '\n':
 				break
 		
-		line = cmd_text_buf[:i]
+		line = cmd_text.data[:i+1]
+		#line[i] = 0
 
-		# delete the text from the command buffer and move remaining commands down
-		# this is necessary because commands (exec, alias) can insert data at the
-		# beginning of the text buffer
+# delete the text from the command buffer and move remaining commands down
+# this is necessary because commands (exec, alias) can insert data at the
+# beginning of the text buffer
 
-		cmd_text_buf = cmd_text_buf[i+1:]
-
-		# execute the command line
-		Cmd_ExecuteString (line)
+		if i == cmd_text.cursize:
+			cmd_text.data = bytearray()
+			cmd_text.cursize = 0
+		else:
+		
+			i+=1
+			cmd_text.cursize -= i
+			cmd_text.data = cmd_text.data[i+1:]
+			assert len(cmd_text.data) == cmd_text.cursize
+		
+# execute the command line
+		print ("cmd", line)
+		Cmd_ExecuteString (line.decode('ascii'))
 		
 		if cmd_wait:
-		
 			# skip out while text still remains in buffer, leaving it
 			# for next frame
 			cmd_wait = False
 			break
-
 
 """
 ===============
@@ -493,7 +510,7 @@ def Cmd_MacroExpandString (text): # char * (returns char *)
 	length = len (scan)
 	if length >= q_shared.MAX_STRING_CHARS:
 	
-		common.Com_Printf ("Line exceeded %i chars, discarded.\n", q_shared.MAX_STRING_CHARS)
+		common.Com_Printf ("Line exceeded {} chars, discarded.\n".format(q_shared.MAX_STRING_CHARS))
 		return None
 	
 	count = 0

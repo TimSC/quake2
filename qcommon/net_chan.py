@@ -273,7 +273,6 @@ def Netchan_Transmit (chan: qcommon.netchan_t, data): #netchan_t *
 		common.Com_Printf ("Netchan_Transmit: dumped unreliable\n")
 
 	# send the datagram
-	#print ("tx", send)
 	net_udp.NET_SendPacket (chan.sock, send.data, chan.remote_address)
 
 	if showpackets.value != 0:

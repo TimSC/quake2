@@ -417,7 +417,7 @@ def SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge):
 
 	newcl.state = sv_init.client_state_t.cs_connected
 	
-	#SZ_Init (&newcl.datagram, newcl.datagram_buf, sizeof(newcl.datagram_buf) )
+	common.SZ_Init(newcl.datagram, qcommon.MAX_MSGLEN)
 	newcl.datagram.allowoverflow = True
 	newcl.lastmessage = sv_init.svs.realtime	# don't timeout
 	newcl.lastconnect = sv_init.svs.realtime

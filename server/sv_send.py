@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import struct
 from server import sv_init
-from qcommon import qcommon, net_chan, cmodel
+from qcommon import qcommon, net_chan, cmodel, common
 from game import q_shared
 """
 // sv_main.c -- server main program
@@ -139,9 +139,8 @@ def SV_BroadcastCommand (msg): #char *
 	if not sv_init.sv.state:
 		return
 
-	sv_init.sv.multicast = qcommon.sizebuf_t()
-	sv_init.sv.multicast.data = struct.pack("B", qcommon.svc_ops_e.svc_stufftext.value)
-	sv_init.sv.multicast.data += msg.encode('utf-8')
+	common.MSG_WriteByte(sv_init.sv.multicast, struct.pack("B", qcommon.svc_ops_e.svc_stufftext.value))
+	common.MSG_WriteString(sv_init.sv.multicast, msg)
 	SV_Multicast (None, q_shared.multicast_t.MULTICAST_ALL_R)
 
 
@@ -180,7 +179,7 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 	
 	# if doing a serverrecord, store everything
 	if sv_init.svs.demofile:
-		sv_init.svs.demo_multicast.data = sv_init.sv.multicast.data
+		common.SZ_Write(sv_init.svs.demo_multicast, sv_init.sv.multicast.data)
 	
 	if to == q_shared.multicast_t.MULTICAST_ALL_R:
 		reliable = True	# intentional fallthrough
@@ -227,13 +226,12 @@ def SV_Multicast (origin, to): #vec3_t, multicast_t
 			if ( mask is not None and (not(mask[cluster>>3] & (1<<(cluster&7)) ) ) ):
 				continue
 
-
 		if reliable:
-			client.netchan.message.data = sv_init.sv.multicast.data
+			common.SZ_Write(client.netchan.message, sv_init.sv.multicast.data)
 		else:
-			client.datagram.data = sv_init.sv.multicast.data
+			common.SZ_Write(client.datagram, sv_init.sv.multicast.data)
 	
-	sv_init.sv.multicast = qcommon.sizebuf_t()
+	common.SZ_Clear(sv_init.sv.multicast)
 
 
 
