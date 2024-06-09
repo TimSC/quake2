@@ -719,35 +719,31 @@ The server is changing levels
 """
 def CL_Reconnect_f ():
 
-	print ("CL_Reconnect_f")
-	"""
-	//ZOID
-	//if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
-	if (cls.download)
-		return;
+	#ZOID
+	#if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
+	if cls.download is not None:
+		return
 
-	S_StopAllSounds ();
-	if (cls.state == client.connstate_t.ca_connected) {
-		Com_Printf ("reconnecting...\n");
-		cls.state = client.connstate_t.ca_connected;
-		MSG_WriteChar (&cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd);
-		MSG_WriteString (&cls.netchan.message, "new");		
-		return;
-	}
+	snd_dma.S_StopAllSounds ()
+	if cls.state == client.connstate_t.ca_connected:
+		common.Com_Printf ("reconnecting...\n")
+		cls.state = client.connstate_t.ca_connected
+		common.MSG_WriteChar (cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd)
+		common.MSG_WriteString (cls.netchan.message, "new")
+		return
 
-	if (*cls.servername) {
-		if (cls.state >= client.connstate_t.ca_connected) {
-			CL_Disconnect();
-			cls.connect_time = cls.realtime - 1500;
-		} else
-			cls.connect_time = -99999; // fire immediately
+	if cls.servername:
+		if cls.state.value >= client.connstate_t.ca_connected.value:
+			CL_Disconnect()
+			cls.connect_time = cls.realtime - 1500
+		else:
+			cls.connect_time = -99999 # fire immediately
 
-		cls.state = client.connstate_t.ca_connecting;
-		Com_Printf ("reconnecting...\n");
-	}
-}
+		cls.state = client.connstate_t.ca_connecting
+		common.Com_Printf ("reconnecting...\n")
 
-/*
+
+"""
 =================
 CL_ParseStatusMessage
 

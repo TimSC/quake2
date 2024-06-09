@@ -261,8 +261,9 @@ class client_static_t(object):
 		self.serverProtocol = 0 #int, in case we are doing some kind of version hack
 
 		self.challenge = 0 #int, from the server to use for connecting
+
+		self.download = None # FILE	*, file transfer from server
 		"""
-		FILE		*download;			// file transfer from server
 		char		downloadtempname[MAX_OSPATH];
 		char		downloadname[MAX_OSPATH];
 		int			downloadnumber;
