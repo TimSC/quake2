@@ -140,7 +140,7 @@ def SV_BroadcastCommand (msg): #char *
 		return
 
 	common.MSG_WriteByte(sv_init.sv.multicast, struct.pack("B", qcommon.svc_ops_e.svc_stufftext.value))
-	common.MSG_WriteString(sv_init.sv.multicast, msg)
+	common.MSG_WriteString(sv_init.sv.multicast, msg.encode('ascii'))
 	SV_Multicast (None, q_shared.multicast_t.MULTICAST_ALL_R)
 
 

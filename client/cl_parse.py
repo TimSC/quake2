@@ -725,16 +725,16 @@ def CL_ParseServerMessage ():
 				S_StartLocalSound ("misc/talk.wav")
 				con.ormask = 128
 			
-			common.Com_Printf (common.MSG_ReadString(net_chan.net_message.data))
+			common.Com_Printf (common.MSG_ReadString(net_chan.net_message))
 			con.ormask = 0
 
 			
 		elif cmdval == qcommon.svc_ops_e.svc_centerprint.value:
-			SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message.data))
+			SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message))
 
 			
 		elif cmdval == qcommon.svc_ops_e.svc_stufftext.value:
-			s = common.MSG_ReadString(net_chan.net_message.data)
+			s = common.MSG_ReadString(net_chan.net_message)
 			common.Com_DPrintf ("stufftext: {}\n".format(s))
 			cmd.Cbuf_AddText (s)
 
@@ -781,7 +781,7 @@ def CL_ParseServerMessage ():
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_layout.value:
-			s = MSG_ReadString(net_chan.net_message.data)
+			s = MSG_ReadString(net_chan.net_message)
 			cl_main.cl.layout = s
 
 

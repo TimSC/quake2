@@ -489,7 +489,9 @@ def SV_InitGame ():
 		# make sure the client is down
 		cl_main.CL_Drop ()
 		cl_scrn.SCR_BeginLoadingPlaque ()
-	
+
+	# Hack different from standard quake 2. Why?	
+	common.SZ_Init (sv.multicast, qcommon.MAX_MSGLEN)
 
 	# get any latched variable changes (maxclients, etc)
 	cvar.Cvar_GetLatchedVars ()

@@ -180,7 +180,7 @@ Cbuf_Execute
 
 def Cbuf_Execute ():
 
-	global cmd_wait
+	global cmd_wait, alias_count
 	"""
 	int		i;
 	char	*text;
@@ -196,15 +196,15 @@ def Cbuf_Execute ():
 
 		quotes = 0;
 		for i in range(cmd_text.cursize):
-		
-			if cmd_text.data[i] == '"':
+
+			if cmd_text.data[i] == ord('"'):
 				quotes+=1
-			if not (quotes&1) and cmd_text.data[i] == ';':
+			if not (quotes&1) and cmd_text.data[i] == ord(';'):
 				break	# don't break if inside a quoted string
-			if cmd_text.data[i] == '\n':
+			if cmd_text.data[i] == ord('\n'):
 				break
 		
-		line = cmd_text.data[:i+1]
+		line = cmd_text.data[:i]
 		#line[i] = 0
 
 # delete the text from the command buffer and move remaining commands down
@@ -218,11 +218,10 @@ def Cbuf_Execute ():
 		
 			i+=1
 			cmd_text.cursize -= i
-			cmd_text.data = cmd_text.data[i+1:]
+			cmd_text.data = cmd_text.data[i:]
 			assert len(cmd_text.data) == cmd_text.cursize
 		
 # execute the command line
-		print ("cmd", line)
 		Cmd_ExecuteString (line.decode('ascii'))
 		
 		if cmd_wait:

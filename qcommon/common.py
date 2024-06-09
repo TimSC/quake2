@@ -745,6 +745,7 @@ def MSG_BeginReading (msg): #sizebuf_t *
 
 # returns -1 if no more characters are available
 def MSG_ReadChar (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#int	c;
 	
@@ -757,6 +758,7 @@ def MSG_ReadChar (msg_read): #sizebuf_t *
 	return c
 
 def MSG_ReadByte (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#int	c;
 	if msg_read.readcount+1 > msg_read.cursize:
@@ -769,7 +771,7 @@ def MSG_ReadByte (msg_read): #sizebuf_t *
 
 
 def MSG_ReadShort (msg_read): #sizebuf_t *
-
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 	#int	c;
 	
 	if msg_read.readcount+2 > msg_read.cursize:
@@ -782,6 +784,7 @@ def MSG_ReadShort (msg_read): #sizebuf_t *
 	return c
 
 def MSG_ReadSShort (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#int	c;
 	
@@ -796,6 +799,7 @@ def MSG_ReadSShort (msg_read): #sizebuf_t *
 
 
 def MSG_ReadLong (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#int	c;
 	
@@ -813,6 +817,7 @@ def MSG_ReadLong (msg_read): #sizebuf_t *
 
 
 def MSG_ReadFloat (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#union
 	#{
@@ -840,6 +845,7 @@ def MSG_ReadFloat (msg_read): #sizebuf_t *
 
 
 def MSG_ReadString (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#static char	string[2048];
 	#int		l,c;
@@ -860,6 +866,7 @@ def MSG_ReadString (msg_read): #sizebuf_t *
 
 
 def MSG_ReadStringLine (msg_read): # sizebuf_t * (returns char *)
+	assert isinstance(msg_read, qcommon.sizebuf_t)
 
 	#static char	string[2048];
 	#int		l,c;
@@ -954,6 +961,8 @@ void MSG_ReadData (sizebuf_t *msg_read, void *data, int len)
 //===========================================================================
 """
 def SZ_Init (buf, length): #sizebuf_t *, byte *, int
+
+	assert isinstance(buf, qcommon.sizebuf_t)
 
 	#memset (buf, 0, sizeof(*buf));
 	#buf->data = data;
