@@ -237,9 +237,11 @@ void CL_RunDLights (void)
 ==============
 CL_ParseMuzzleFlash
 ==============
-*/
-void CL_ParseMuzzleFlash (void)
-{
+"""
+def CL_ParseMuzzleFlash ():
+	
+	print ("CL_ParseMuzzleFlash")
+	"""
 	vec3_t		fv, rv;
 	cdlight_t	*dl;
 	int			i, weapon;
@@ -428,9 +430,11 @@ void CL_ParseMuzzleFlash (void)
 ==============
 CL_ParseMuzzleFlash2
 ==============
-*/
-void CL_ParseMuzzleFlash2 (void) 
-{
+"""
+def CL_ParseMuzzleFlash2 ():
+
+	print ("CL_ParseMuzzleFlash2")
+	"""
 	int			ent;
 	vec3_t		origin;
 	int			flash_number;
@@ -915,9 +919,11 @@ CL_ParticleEffect
 
 Wall impact puffs
 ===============
-*/
-void CL_ParticleEffect (vec3_t org, vec3_t dir, int color, int count)
-{
+"""
+def CL_ParticleEffect (org, dirIn, color, count): #vec3_t org, vec3_t dir, int color, int count
+
+	pass
+	"""
 	int			i, j;
 	cparticle_t	*p;
 	float		d;

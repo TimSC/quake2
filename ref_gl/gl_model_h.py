@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -16,9 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
 
-/*
+"""
 
 d*_t structures are on-disk representations
 m*_t structures are in-memory
@@ -170,78 +170,83 @@ typedef struct mleaf_s
 //
 
 typedef enum {mod_bad, mod_brush, mod_sprite, mod_alias } modtype_t;
+"""
+class model_t(object):
 
-typedef struct model_s
-{
-	char		name[MAX_QPATH];
 
-	int			registration_sequence;
+	def __init__(self):
+		pass
+		"""
+		char		name[MAX_QPATH];
 
-	modtype_t	type;
-	int			numframes;
-	
-	int			flags;
+		int			registration_sequence;
 
-//
-// volume occupied by the model graphics
-//		
-	vec3_t		mins, maxs;
-	float		radius;
+		modtype_t	type;
+		int			numframes;
+		
+		int			flags;
 
-//
-// solid volume for clipping 
-//
-	qboolean	clipbox;
-	vec3_t		clipmins, clipmaxs;
+	//
+	// volume occupied by the model graphics
+	//		
+		vec3_t		mins, maxs;
+		float		radius;
 
-//
-// brush model
-//
-	int			firstmodelsurface, nummodelsurfaces;
-	int			lightmap;		// only for submodels
+	//
+	// solid volume for clipping 
+	//
+		qboolean	clipbox;
+		vec3_t		clipmins, clipmaxs;
 
-	int			numsubmodels;
-	mmodel_t	*submodels;
+	//
+	// brush model
+	//
+		int			firstmodelsurface, nummodelsurfaces;
+		int			lightmap;		// only for submodels
 
-	int			numplanes;
-	cplane_t	*planes;
+		int			numsubmodels;
+		mmodel_t	*submodels;
 
-	int			numleafs;		// number of visible leafs, not counting 0
-	mleaf_t		*leafs;
+		int			numplanes;
+		cplane_t	*planes;
 
-	int			numvertexes;
-	mvertex_t	*vertexes;
+		int			numleafs;		// number of visible leafs, not counting 0
+		mleaf_t		*leafs;
 
-	int			numedges;
-	medge_t		*edges;
+		int			numvertexes;
+		mvertex_t	*vertexes;
 
-	int			numnodes;
-	int			firstnode;
-	mnode_t		*nodes;
+		int			numedges;
+		medge_t		*edges;
 
-	int			numtexinfo;
-	mtexinfo_t	*texinfo;
+		int			numnodes;
+		int			firstnode;
+		mnode_t		*nodes;
 
-	int			numsurfaces;
-	msurface_t	*surfaces;
+		int			numtexinfo;
+		mtexinfo_t	*texinfo;
 
-	int			numsurfedges;
-	int			*surfedges;
+		int			numsurfaces;
+		msurface_t	*surfaces;
 
-	int			nummarksurfaces;
-	msurface_t	**marksurfaces;
+		int			numsurfedges;
+		int			*surfedges;
 
-	dvis_t		*vis;
+		int			nummarksurfaces;
+		msurface_t	**marksurfaces;
 
-	byte		*lightdata;
+		dvis_t		*vis;
 
-	// for alias models and skins
-	image_t		*skins[MAX_MD2SKINS];
+		byte		*lightdata;
 
-	int			extradatasize;
-	void		*extradata;
-} model_t;
+		// for alias models and skins
+		image_t		*skins[MAX_MD2SKINS];
 
+		int			extradatasize;
+		void		*extradata;
+		"""
+
+"""
 //============================================================================
 
 void	Mod_Init (void);
@@ -259,3 +264,4 @@ void	Hunk_Free (void *base);
 
 void	Mod_FreeAll (void);
 void	Mod_Free (model_t *mod);
+"""

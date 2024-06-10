@@ -21,6 +21,8 @@ import numpy as np
 from enum import Enum
 from game import q_shared
 from qcommon import qcommon
+from ref_gl import gl_model_h, gl_image
+from client import snd_loc
 """
 // client.h -- primary header for client
 
@@ -79,18 +81,23 @@ class centity_t(object):
 
 
 #define MAX_CLIENTWEAPONMODELS		20		// PGM -- upped from 16 to fit the chainfist vwep
-"""
-typedef struct
-{
-	char	name[MAX_QPATH];
-	char	cinfo[MAX_QPATH];
-	struct image_s	*skin;
-	struct image_s	*icon;
-	char	iconname[MAX_QPATH];
-	struct model_s	*model;
-	struct model_s	*weaponmodel[MAX_CLIENTWEAPONMODELS];
-} clientinfo_t;
 
+class clientinfo_t(object):
+
+	def __init__(self):
+
+		pass
+		"""
+		char	name[MAX_QPATH];
+		char	cinfo[MAX_QPATH];
+		struct image_s	*skin;
+		struct image_s	*icon;
+		char	iconname[MAX_QPATH];
+		struct model_s	*model;
+		struct model_s	*weaponmodel[MAX_CLIENTWEAPONMODELS];
+		"""
+
+"""
 extern char cl_weaponmodels[MAX_CLIENTWEAPONMODELS][MAX_QPATH];
 extern int num_cl_weaponmodels;
 """
@@ -194,19 +201,28 @@ class client_state_t(object):
 		for i in range(q_shared.MAX_CONFIGSTRINGS):
 			self.configstrings.append(None)
 
-		"""
 		#
 		# locally derived information from server state
 		#
-		struct model_s	*model_draw[MAX_MODELS];
-		struct cmodel_s	*model_clip[MAX_MODELS];
+		self.model_draw = [] #struct model_s	*[MAX_MODELS];
+		for i in range(q_shared.MAX_MODELS):
+			self.model_draw.append(gl_model_h.model_t())
+		self.model_clip = [] #struct cmodel_s	*model_clip[MAX_MODELS];
+		for i in range(q_shared.MAX_MODELS):
+			self.model_clip.append(q_shared.cmodel_t())
 
-		struct sfx_s	*sound_precache[MAX_SOUNDS];
-		struct image_s	*image_precache[MAX_IMAGES];
+		self.sound_precache = [] #struct sfx_s	*sound_precache[MAX_SOUNDS];
+		for i in range(q_shared.MAX_SOUNDS):
+			self.sound_precache.append(None)
+		self.image_precache = [] #struct image_s	*image_precache[MAX_IMAGES];
+		for i in range(q_shared.MAX_IMAGES):
+			self.image_precache.append(gl_image.image_t())
 
-		clientinfo_t	clientinfo[MAX_CLIENTS];
-		clientinfo_t	baseclientinfo;
-		"""
+		self.clientinfo = [] # clientinfo_t	clientinfo[MAX_CLIENTS];
+		for i in range(q_shared.MAX_CLIENTS):
+			self.clientinfo.append(clientinfo_t())
+		self.baseclientinfo = clientinfo_t()
+
 
 """
 extern	client_state_t	cl;

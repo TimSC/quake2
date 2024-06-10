@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma
+from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent
 from game import q_shared
 from qcommon import net_chan, qcommon, common, cmd, files, cmodel
 from linux import cd_linux
@@ -601,65 +601,65 @@ CL_ParseStartSoundPacket
 """
 def CL_ParseStartSoundPacket():
 
-	print ("CL_ParseStartSoundPacket")
 	"""
-    vec3_t  pos_v;
+	vec3_t  pos_v;
 	float	*pos;
-    int 	channel, ent;
-    int 	sound_num;
-    float 	volume;
-    float 	attenuation;  
+	int 	channel, ent;
+	int 	sound_num;
+	float 	volume;
+	float 	attenuation;  
 	int		flags;
 	float	ofs;
+	"""
 
-	flags = MSG_ReadByte (&net_chan.net_message);
-	sound_num = MSG_ReadByte (&net_chan.net_message);
+	flags = common.MSG_ReadByte (net_chan.net_message)
+	sound_num = common.MSG_ReadByte (net_chan.net_message)
 
-    if (flags & SND_VOLUME)
-		volume = MSG_ReadByte (&net_chan.net_message) / 255.0;
-	else
-		volume = DEFAULT_SOUND_PACKET_VOLUME;
+	if flags & qcommon.SND_VOLUME:
+		volume = common.MSG_ReadByte (net_chan.net_message) / 255.0
+	else:
+		volume = qcommon.DEFAULT_SOUND_PACKET_VOLUME
 	
-    if (flags & SND_ATTENUATION)
-		attenuation = MSG_ReadByte (&net_chan.net_message) / 64.0;
-	else
-		attenuation = DEFAULT_SOUND_PACKET_ATTENUATION;	
+	if flags & qcommon.SND_ATTENUATION:
+		attenuation = common.MSG_ReadByte (net_chan.net_message) / 64.0
+	else:
+		attenuation = qcommon.DEFAULT_SOUND_PACKET_ATTENUATION
 
-    if (flags & SND_OFFSET)
-		ofs = MSG_ReadByte (&net_chan.net_message) / 1000.0;
-	else
-		ofs = 0;
+	if flags & qcommon.SND_OFFSET:
+		ofs = common.MSG_ReadByte (net_chan.net_message) / 1000.0
+	else:
+		ofs = 0
 
-	if (flags & SND_ENT)
-	{	// entity reletive
-		channel = MSG_ReadShort(&net_chan.net_message); 
-		ent = channel>>3;
-		if (ent > MAX_EDICTS)
-			Com_Error (qcommon.ERR_DROP,"CL_ParseStartSoundPacket: ent = %i", ent);
+	if flags & qcommon.SND_ENT:
+		# entity reletive
+		channel = common.MSG_ReadShort(net_chan.net_message)
+		ent = channel>>3
+		if ent > q_shared.MAX_EDICTS:
+			common.Com_Error (qcommon.ERR_DROP,"CL_ParseStartSoundPacket: ent = {}".format(ent))
 
-		channel &= 7;
-	}
-	else
-	{
-		ent = 0;
-		channel = 0;
-	}
+		channel &= 7
+	
+	else:
+	
+		ent = 0
+		channel = 0
+	
 
-	if (flags & SND_POS)
-	{	// positioned in space
-		MSG_ReadPos (&net_chan.net_message, pos_v);
+	if flags & qcommon.SND_POS:
+		# positioned in space
+		pos_v = common.MSG_ReadPos (net_chan.net_message)
  
-		pos = pos_v;
-	}
-	else	// use entity number
-		pos = NULL;
+		pos = pos_v
+	
+	else:	# use entity number
+		pos = None
 
-	if (!cl_main.cl.sound_precache[sound_num])
-		return;
+	if not cl_main.cl.sound_precache[sound_num]:
+		return
 
-	S_StartSound (pos, ent, channel, cl_main.cl.sound_precache[sound_num], volume, attenuation, ofs);
-}       
-"""
+	snd_dma.S_StartSound (pos, ent, channel, cl_main.cl.sound_precache[sound_num], volume, attenuation, ofs)
+	   
+
 
 def SHOWNET(s): #char *
 
@@ -769,15 +769,15 @@ def CL_ParseServerMessage ():
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_temp_entity:
-			CL_ParseTEnt ()
+			cl_tent.CL_ParseTEnt ()
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash:
-			CL_ParseMuzzleFlash ()
+			cl_fx.CL_ParseMuzzleFlash ()
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash2:
-			CL_ParseMuzzleFlash2 ()
+			cl_fx.CL_ParseMuzzleFlash2 ()
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_download:
@@ -793,7 +793,7 @@ def CL_ParseServerMessage ():
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_layout:
-			s = MSG_ReadString(net_chan.net_message)
+			s = common.MSG_ReadString(net_chan.net_message)
 			cl_main.cl.layout = s
 
 

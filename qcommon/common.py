@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import sys
 import struct
+import json
 import numpy as np
 from qcommon import cvar, cmd, files, qcommon, net_chan
 from linux import sys_linux, q_shlinux, net_udp
@@ -291,12 +292,10 @@ def Com_SetServerState (state):
 Handles byte ordering and avoids alignment errors
 ==============================================================================
 */
+"""
+bytedirs = np.array(json.load(open("client/anorms.json", "rt")), dtype=np.float32)
 
-vec3_t	bytedirs[NUMVERTEXNORMALS] =
-{
-#include "../client/anorms.h"
-};
-
+"""
 //
 // writing functions
 //
@@ -507,7 +506,7 @@ void MSG_WriteDir (sizebuf_t *sb, vec3_t dir)
 
 	bestd = 0;
 	best = 0;
-	for (i=0 ; i<NUMVERTEXNORMALS ; i++)
+	for (i=0 ; i<qcommon.NUMVERTEXNORMALS ; i++)
 	{
 		d = DotProduct (dir, bytedirs[i]);
 		if (d > bestd)
@@ -519,19 +518,22 @@ void MSG_WriteDir (sizebuf_t *sb, vec3_t dir)
 	MSG_WriteByte (sb, best);
 }
 
+"""
+def MSG_ReadDir (sb):
 
-void MSG_ReadDir (sizebuf_t *sb, vec3_t dir)
-{
-	int		b;
+	if not isinstance(sb, qcommon.sizebuf_t):
+		raise RuntimeError("Wrong input type")
+	#int		b;
 
-	b = MSG_ReadByte (sb);
-	if (b >= NUMVERTEXNORMALS)
-		Com_Error (ERR_DROP, "MSF_ReadDir: out of range");
-	VectorCopy (bytedirs[b], dir);
-}
+	b = MSG_ReadByte (sb)
+	if b >= qcommon.NUMVERTEXNORMALS:
+		Com_Error (ERR_DROP, "MSF_ReadDir: out of range")
+	dirOut = np.zeros((3,), dtype=np.float32)
+	q_shared.VectorCopy (bytedirs[b], dirOut)
+	return dirOut
 
 
-/*
+"""
 ==================
 MSG_WriteDeltaEntity
 
@@ -1337,7 +1339,7 @@ byte	COM_BlockSequenceCheckByte (byte *base, int length, int sequence, int chall
 	float temp;
 	byte c;
 
-	temp = bytedirs[(sequence/3) % NUMVERTEXNORMALS][sequence % 3];
+	temp = bytedirs[(sequence/3) % qcommon.NUMVERTEXNORMALS][sequence % 3];
 	temp = LittleFloat(temp);
 	p = ((byte *)&temp);
 
@@ -1350,7 +1352,7 @@ byte	COM_BlockSequenceCheckByte (byte *base, int length, int sequence, int chall
 	buf[length+2] = ((sequence>>8) & 0xff) ^ p[2];
 	buf[length+3] = p[3];
 
-	temp = bytedirs[((sequence+challenge)/3) % NUMVERTEXNORMALS][(sequence+challenge) % 3];
+	temp = bytedirs[((sequence+challenge)/3) % qcommon.NUMVERTEXNORMALS][(sequence+challenge) % 3];
 	temp = LittleFloat(temp);
 	p = ((byte *)&temp);
 

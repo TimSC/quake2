@@ -269,35 +269,35 @@ PS_FOV				= (1<<11)
 PS_WEAPONINDEX		= (1<<12)
 PS_WEAPONFRAME		= (1<<13)
 PS_RDFLAGS			= (1<<14)
-"""
-//==============================================
 
-// user_cmd_t communication
+#==============================================
 
-// ms and light always sent, the others are optional
-#define	CM_ANGLE1 	(1<<0)
-#define	CM_ANGLE2 	(1<<1)
-#define	CM_ANGLE3 	(1<<2)
-#define	CM_FORWARD	(1<<3)
-#define	CM_SIDE		(1<<4)
-#define	CM_UP		(1<<5)
-#define	CM_BUTTONS	(1<<6)
-#define	CM_IMPULSE	(1<<7)
+# user_cmd_t communication
 
-//==============================================
+# ms and light always sent, the others are optional
+CM_ANGLE1 	= (1<<0)
+CM_ANGLE2 	= (1<<1)
+CM_ANGLE3 	= (1<<2)
+CM_FORWARD	= (1<<3)
+CM_SIDE		= (1<<4)
+CM_UP		= (1<<5)
+CM_BUTTONS	= (1<<6)
+CM_IMPULSE	= (1<<7)
 
-// a sound without an ent or pos will be a local only sound
-#define	SND_VOLUME		(1<<0)		// a byte
-#define	SND_ATTENUATION	(1<<1)		// a byte
-#define	SND_POS			(1<<2)		// three coordinates
-#define	SND_ENT			(1<<3)		// a short 0-2: channel, 3-12: entity
-#define	SND_OFFSET		(1<<4)		// a byte, msec offset from frame start
+#==============================================
 
-#define DEFAULT_SOUND_PACKET_VOLUME	1.0
-#define DEFAULT_SOUND_PACKET_ATTENUATION 1.0
+# a sound without an ent or pos will be a local only sound
+SND_VOLUME		= (1<<0)		# a byte
+SND_ATTENUATION	= (1<<1)		# a byte
+SND_POS			= (1<<2)		# three coordinates
+SND_ENT			= (1<<3)		# a short 0-2: channel, 3-12: entity
+SND_OFFSET		= (1<<4)		# a byte, msec offset from frame start
 
-//==============================================
-"""
+DEFAULT_SOUND_PACKET_VOLUME	= 1.0
+DEFAULT_SOUND_PACKET_ATTENUATION = 1.0
+
+#==============================================
+
 # entity_state_t communication
 
 # try to pack the common update flags into the first byte
@@ -790,8 +790,9 @@ void Z_FreeTags (int tag);
 void Qcommon_Init (int argc, char **argv);
 void Qcommon_Frame (int msec);
 void Qcommon_Shutdown (void);
-
-#define NUMVERTEXNORMALS	162
+"""
+NUMVERTEXNORMALS = 162
+"""
 extern	vec3_t	bytedirs[NUMVERTEXNORMALS];
 
 // this is in the client code, but can be used for debugging from server
