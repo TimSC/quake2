@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from qcommon import common, net_chan
+from game import q_shared
+from client import cl_main
 """
 // cl_fx.c -- entity effects parsing and management
 
@@ -240,7 +243,6 @@ CL_ParseMuzzleFlash
 """
 def CL_ParseMuzzleFlash ():
 	
-	print ("CL_ParseMuzzleFlash")
 	"""
 	vec3_t		fv, rv;
 	cdlight_t	*dl;
@@ -249,17 +251,18 @@ def CL_ParseMuzzleFlash ():
 	int			silenced;
 	float		volume;
 	char		soundname[64];
+	"""
 
-	i = MSG_ReadShort (&net_message);
-	if (i < 1 || i >= MAX_EDICTS)
-		Com_Error (ERR_DROP, "CL_ParseMuzzleFlash: bad entity");
+	i = common.MSG_ReadShort (net_chan.net_message)
+	if i < 1 or i >= q_shared.MAX_EDICTS:
+		Com_Error (ERR_DROP, "CL_ParseMuzzleFlash: bad entity")
 
-	weapon = MSG_ReadByte (&net_message);
-	silenced = weapon & MZ_SILENCED;
-	weapon &= ~MZ_SILENCED;
+	weapon = common.MSG_ReadByte (net_chan.net_message)
+	silenced = weapon & q_shared.MZ_SILENCED
+	weapon &= ~q_shared.MZ_SILENCED
 
-	pl = &cl_entities[i];
-
+	pl = cl_main.cl_entities[i]
+	"""
 	dl = CL_AllocDlight (i);
 	VectorCopy (pl->current.origin,  dl->origin);
 	AngleVectors (pl->current.angles, fv, rv, NULL);
@@ -442,17 +445,17 @@ def CL_ParseMuzzleFlash2 ():
 	vec3_t		forward, right;
 	char		soundname[64];
 
-	ent = MSG_ReadShort (&net_message);
-	if (ent < 1 || ent >= MAX_EDICTS)
+	ent = MSG_ReadShort (&net_chan.net_message);
+	if (ent < 1 || ent >= q_shared.MAX_EDICTS)
 		Com_Error (ERR_DROP, "CL_ParseMuzzleFlash2: bad entity");
 
-	flash_number = MSG_ReadByte (&net_message);
+	flash_number = MSG_ReadByte (&net_chan.net_message);
 
 	// locate the origin
-	AngleVectors (cl_entities[ent].current.angles, forward, right, NULL);
-	origin[0] = cl_entities[ent].current.origin[0] + forward[0] * monster_flash_offset[flash_number][0] + right[0] * monster_flash_offset[flash_number][1];
-	origin[1] = cl_entities[ent].current.origin[1] + forward[1] * monster_flash_offset[flash_number][0] + right[1] * monster_flash_offset[flash_number][1];
-	origin[2] = cl_entities[ent].current.origin[2] + forward[2] * monster_flash_offset[flash_number][0] + right[2] * monster_flash_offset[flash_number][1] + monster_flash_offset[flash_number][2];
+	AngleVectors (cl_main.cl_entities[ent].current.angles, forward, right, NULL);
+	origin[0] = cl_main.cl_entities[ent].current.origin[0] + forward[0] * monster_flash_offset[flash_number][0] + right[0] * monster_flash_offset[flash_number][1];
+	origin[1] = cl_main.cl_entities[ent].current.origin[1] + forward[1] * monster_flash_offset[flash_number][0] + right[1] * monster_flash_offset[flash_number][1];
+	origin[2] = cl_main.cl_entities[ent].current.origin[2] + forward[2] * monster_flash_offset[flash_number][0] + right[2] * monster_flash_offset[flash_number][1] + monster_flash_offset[flash_number][2];
 
 	dl = CL_AllocDlight (ent);
 	VectorCopy (origin,  dl->origin);

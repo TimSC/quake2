@@ -410,6 +410,8 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 
 	# delta from the entities present in oldframe
 	oldindex = 0
+	oldnum = 0
+	oldstate = None
 	if oldframe is None:
 		oldnum = 99999
 	else:
@@ -420,11 +422,12 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
 			oldnum = oldstate.number
 		
-	
+
 
 	while 1:
 	
 		newnum, bits = CL_ParseEntityBits ()
+
 		if newnum >= q_shared.MAX_EDICTS:
 			common.Com_Error (q_shared.ERR_DROP,"CL_ParsePacketEntities: bad number:{}".format(newnum))
 
@@ -448,7 +451,6 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			
 				oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
 				oldnum = oldstate.number
-			
 		
 
 		if bits & qcommon.U_REMOVE:
@@ -483,7 +485,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			else:
 			
 				oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
-				oldnum = oldstate.number
+				oldnum = oldstate.numbers
 			
 			continue;
 		
@@ -514,7 +516,6 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
 			oldnum = oldstate.number
 		
-	
 
 
 

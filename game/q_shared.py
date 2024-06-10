@@ -632,45 +632,45 @@ typedef struct
 #define	RDF_IRGOGGLES		4
 #define RDF_UVGOGGLES		8
 //ROGUE
+"""
+#
+# muzzle flashes / player effects
+#
+MZ_BLASTER			= 0
+MZ_MACHINEGUN		= 1
+MZ_SHOTGUN			= 2
+MZ_CHAINGUN1		= 3
+MZ_CHAINGUN2		= 4
+MZ_CHAINGUN3		= 5
+MZ_RAILGUN			= 6
+MZ_ROCKET			= 7
+MZ_GRENADE			= 8
+MZ_LOGIN			= 9
+MZ_LOGOUT			= 10
+MZ_RESPAWN			= 11
+MZ_BFG				= 12
+MZ_SSHOTGUN			= 13
+MZ_HYPERBLASTER		= 14
+MZ_ITEMRESPAWN		= 15
+# RAFAEL
+MZ_IONRIPPER		= 16
+MZ_BLUEHYPERBLASTER = 17
+MZ_PHALANX			= 18
+MZ_SILENCED			= 128		# bit flag ORed with one of the above numbers
 
-//
-// muzzle flashes / player effects
-//
-#define	MZ_BLASTER			0
-#define MZ_MACHINEGUN		1
-#define	MZ_SHOTGUN			2
-#define	MZ_CHAINGUN1		3
-#define	MZ_CHAINGUN2		4
-#define	MZ_CHAINGUN3		5
-#define	MZ_RAILGUN			6
-#define	MZ_ROCKET			7
-#define	MZ_GRENADE			8
-#define	MZ_LOGIN			9
-#define	MZ_LOGOUT			10
-#define	MZ_RESPAWN			11
-#define	MZ_BFG				12
-#define	MZ_SSHOTGUN			13
-#define	MZ_HYPERBLASTER		14
-#define	MZ_ITEMRESPAWN		15
-// RAFAEL
-#define MZ_IONRIPPER		16
-#define MZ_BLUEHYPERBLASTER 17
-#define MZ_PHALANX			18
-#define MZ_SILENCED			128		// bit flag ORed with one of the above numbers
-
-//ROGUE
-#define MZ_ETF_RIFLE		30
-#define MZ_UNUSED			31
-#define MZ_SHOTGUN2			32
-#define MZ_HEATBEAM			33
-#define MZ_BLASTER2			34
-#define	MZ_TRACKER			35
-#define	MZ_NUKE1			36
-#define	MZ_NUKE2			37
-#define	MZ_NUKE4			38
-#define	MZ_NUKE8			39
-//ROGUE
-
+#ROGUE
+MZ_ETF_RIFLE		= 30
+MZ_UNUSED			= 31
+MZ_SHOTGUN2			= 32
+MZ_HEATBEAM			= 33
+MZ_BLASTER2			= 34
+MZ_TRACKER			= 35
+MZ_NUKE1			= 36
+MZ_NUKE2			= 37
+MZ_NUKE4			= 38
+MZ_NUKE8			= 39
+#ROGUE
+"""
 //
 // monster muzzle flashes
 //
@@ -1153,7 +1153,7 @@ class entity_state_t(object):
 
 	def __init__(self): 
 
-		self.number = None #int, edict index
+		self.number = 0 #int, edict index
 
 		self.origin: vec3_t = np.zeros((3,), dtype=np.float32)
 		self.angles: vec3_t = np.zeros((3,), dtype=np.float32)
