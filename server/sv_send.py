@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from server import sv_init, sv_main
+from server import sv_init, sv_main, sv_user
 from qcommon import qcommon, net_chan, cmodel, common
 from game import q_shared
 """
@@ -438,7 +438,7 @@ def SV_DemoCompleted ():
 		sv_init.sv.demofile.close()
 		sv_init.sv.demofile = None
 	
-	SV_Nextserver ()
+	sv_user.SV_Nextserver ()
 
 """
 =======================
@@ -502,7 +502,7 @@ def SV_SendClientMessages ():
 				SV_DemoCompleted ()
 				return
 			
-			msglen = q_shared.LittleLong (msglen)
+			msglen = q_shared.LittleSLong (msglen)
 			if msglen == -1:
 			
 				SV_DemoCompleted ()

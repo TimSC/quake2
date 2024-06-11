@@ -974,15 +974,15 @@ class temp_event_t(Enum):
 	TE_FLECHETTE=55
 #ROGUE
 
-"""
-#define SPLASH_UNKNOWN		0
-#define SPLASH_SPARKS		1
-#define SPLASH_BLUE_WATER	2
-#define SPLASH_BROWN_WATER	3
-#define SPLASH_SLIME		4
-#define	SPLASH_LAVA			5
-#define SPLASH_BLOOD		6
 
+SPLASH_UNKNOWN		= 0
+SPLASH_SPARKS		= 1
+SPLASH_BLUE_WATER	= 2
+SPLASH_BROWN_WATER	= 3
+SPLASH_SLIME		= 4
+SPLASH_LAVA			= 5
+SPLASH_BLOOD		= 6
+"""
 
 // sound channels
 // channel 0 never willingly overrides
@@ -2177,6 +2177,12 @@ def BigLong (l): #int, (returns int)
 	return struct.unpack(">I", l)[0]
 def LittleLong (l): #int, (returns int)
 	return struct.unpack("<I", l)[0]
+
+def BigSLong (l): #int, (returns int)
+	return struct.unpack(">i", l)[0]
+def LittleSLong (l): #int, (returns int)
+	return struct.unpack("<i", l)[0]
+
 """
 float	BigFloat (float l) {return _BigFloat(l);}
 float	LittleFloat (float l) {return _LittleFloat(l);}

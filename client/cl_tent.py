@@ -302,20 +302,20 @@ def CL_SmokeAndFlash(origin):
 	explosion_t	*ex;
 
 	ex = CL_AllocExplosion ();
-	q_shared.VectorCopy (origin, ex->ent.origin);
-	ex->type = ex_misc;
-	ex->frames = 4;
-	ex->ent.flags = q_shared.RF_TRANSLUCENT;
-	ex->start = cl_main.cl.frame.servertime - 100;
-	ex->ent.model = cl_mod_smoke;
+	q_shared.VectorCopy (origin, ex.ent.origin);
+	ex.type = ex_misc;
+	ex.frames = 4;
+	ex.ent.flags = q_shared.RF_TRANSLUCENT;
+	ex.start = cl_main.cl.frame.servertime - 100;
+	ex.ent.model = cl_mod_smoke;
 
 	ex = CL_AllocExplosion ();
-	q_shared.VectorCopy (origin, ex->ent.origin);
-	ex->type = ex_flash;
-	ex->ent.flags = q_shared.RF_FULLBRIGHT;
-	ex->frames = 2;
-	ex->start = cl_main.cl.frame.servertime - 100;
-	ex->ent.model = cl_mod_flash;
+	q_shared.VectorCopy (origin, ex.ent.origin);
+	ex.type = ex_flash;
+	ex.ent.flags = q_shared.RF_FULLBRIGHT;
+	ex.frames = 2;
+	ex.start = cl_main.cl.frame.servertime - 100;
+	ex.ent.model = cl_mod_flash;
 }
 
 /*
@@ -649,7 +649,7 @@ void CL_ParseSteam (void)
 		magnitude = MSG_ReadShort (&net_chan.net_message);
 		color = r & 0xff;
 		CL_ParticleSteamEffect (pos, dir, color, cnt, magnitude);
-//		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+//		snd_dma.S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 	}
 }
 
@@ -725,9 +725,9 @@ void CL_ParseNuke (void)
 =================
 CL_ParseTEnt
 =================
-*/
-static byte splash_color[] = {0x00, 0xe0, 0xb0, 0x50, 0xd0, 0xe0, 0xe8};
 """
+splash_color = [0x00, 0xe0, 0xb0, 0x50, 0xd0, 0xe0, 0xe8] #static byte[]
+
 def CL_ParseTEnt ():
 
 	"""
@@ -787,7 +787,7 @@ def CL_ParseTEnt ():
 		else
 			cl_fx.CL_ParticleEffect (pos, dir, 0xb0, 40);
 		//FIXME : replace or remove this sound
-		S_StartSound (pos, 0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos, 0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 		break;
 	"""
 	elif typeIn == q_shared.temp_event_t.TE_SHOTGUN: # bullet hitting wall
@@ -796,30 +796,30 @@ def CL_ParseTEnt ():
 		cl_fx.CL_ParticleEffect (pos, readdir, 0, 20)
 		CL_SmokeAndFlash(pos)
 
+
+	elif typeIn == q_shared.temp_event_t.TE_SPLASH:			# bullet hitting water
+		cnt = common.MSG_ReadByte (net_chan.net_message)
+		pos = common.MSG_ReadPos (net_chan.net_message)
+		readdir = common.MSG_ReadDir (net_chan.net_message)
+		r = common.MSG_ReadByte (net_chan.net_message)
+		if r > 6:
+			color = 0x00
+		else:
+			color = splash_color[r]
+		cl_fx.CL_ParticleEffect (pos, readdir, color, cnt)
+
+		if r == q_shared.SPLASH_SPARKS:
+		
+			r = random.randint(0, 2)
+			if r == 0:
+				snd_dma.S_StartSound (pos, 0, 0, cl_sfx_spark5, 1, q_shared.ATTN_STATIC, 0)
+			elif r == 1:
+				snd_dma.S_StartSound (pos, 0, 0, cl_sfx_spark6, 1, q_shared.ATTN_STATIC, 0)
+			else:
+				snd_dma.S_StartSound (pos, 0, 0, cl_sfx_spark7, 1, q_shared.ATTN_STATIC, 0)
+		
+
 		"""
-	case TE_SPLASH:			// bullet hitting water
-		cnt = MSG_ReadByte (&net_chan.net_message);
-		MSG_ReadPos (&net_chan.net_message, pos);
-		MSG_ReadDir (&net_chan.net_message, dir);
-		r = MSG_ReadByte (&net_chan.net_message);
-		if (r > 6)
-			color = 0x00;
-		else
-			color = splash_color[r];
-		cl_fx.CL_ParticleEffect (pos, dir, color, cnt);
-
-		if (r == SPLASH_SPARKS)
-		{
-			r = rand() & 3;
-			if (r == 0)
-				S_StartSound (pos, 0, 0, cl_sfx_spark5, 1, ATTN_STATIC, 0);
-			else if (r == 1)
-				S_StartSound (pos, 0, 0, cl_sfx_spark6, 1, ATTN_STATIC, 0);
-			else
-				S_StartSound (pos, 0, 0, cl_sfx_spark7, 1, ATTN_STATIC, 0);
-		}
-		break;
-
 	case TE_LASER_SPARKS:
 		cnt = MSG_ReadByte (&net_chan.net_message);
 		MSG_ReadPos (&net_chan.net_message, pos);
@@ -863,58 +863,59 @@ def CL_ParseTEnt ():
 		ex.frames = 4
 		snd_dma.S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0)
 
+
+	elif typeIn == q_shared.temp_event_t.TE_RAILTRAIL:			# railgun effect
+		pos = common.MSG_ReadPos (net_chan.net_message)
+		pos2 = common.MSG_ReadPos (net_chan.net_message)
+		cl_fx.CL_RailTrail (pos, pos2)
+		snd_dma.S_StartSound (pos2, 0, 0, cl_sfx_railg, 1, q_shared.ATTN_NORM, 0);
+
+		
+	elif typeIn in [q_shared.temp_event_t.TE_EXPLOSION2,
+		q_shared.temp_event_t.TE_GRENADE_EXPLOSION,
+		q_shared.temp_event_t.TE_GRENADE_EXPLOSION_WATER]:
+
+		pos = common.MSG_ReadPos (net_chan.net_message)
+
+		ex = CL_AllocExplosion ()
+		q_shared.VectorCopy (pos, ex.ent.origin)
+		ex.type = exptype_t.ex_poly
+		ex.ent.flags = q_shared.RF_FULLBRIGHT
+		ex.start = cl_main.cl.frame.servertime - 100
+		ex.light = 350
+		ex.lightcolor[0] = 1.0
+		ex.lightcolor[1] = 0.5
+		ex.lightcolor[2] = 0.5
+		ex.ent.model = cl_mod_explo4
+		ex.frames = 19
+		ex.baseframe = 30
+		ex.ent.angles[1] = random.randint(0, 359)
+		cl_fx.CL_ExplosionParticles (pos)
+		if typeIn == q_shared.temp_event_t.TE_GRENADE_EXPLOSION_WATER:
+			snd_dma.S_StartSound (pos, 0, 0, cl_sfx_watrexp, 1, q_shared.ATTN_NORM, 0)
+		else:
+			snd_dma.S_StartSound (pos, 0, 0, cl_sfx_grenexp, 1, q_shared.ATTN_NORM, 0)
+
 		"""
-	case TE_RAILTRAIL:			// railgun effect
-		MSG_ReadPos (&net_chan.net_message, pos);
-		MSG_ReadPos (&net_chan.net_message, pos2);
-		CL_RailTrail (pos, pos2);
-		S_StartSound (pos2, 0, 0, cl_sfx_railg, 1, q_shared.ATTN_NORM, 0);
-		break;
-
-	case TE_EXPLOSION2:
-	case TE_GRENADE_EXPLOSION:
-	case TE_GRENADE_EXPLOSION_WATER:
-		MSG_ReadPos (&net_chan.net_message, pos);
-
-		ex = CL_AllocExplosion ();
-		q_shared.VectorCopy (pos, ex->ent.origin);
-		ex->type = exptype_t.ex_poly;
-		ex->ent.flags = q_shared.RF_FULLBRIGHT;
-		ex->start = cl_main.cl.frame.servertime - 100;
-		ex->light = 350;
-		ex->lightcolor[0] = 1.0;
-		ex->lightcolor[1] = 0.5;
-		ex->lightcolor[2] = 0.5;
-		ex->ent.model = cl_mod_explo4;
-		ex->frames = 19;
-		ex->baseframe = 30;
-		ex->ent.angles[1] = rand() % 360;
-		cl_fx.CL_ExplosionParticles (pos);
-		if (type == TE_GRENADE_EXPLOSION_WATER)
-			S_StartSound (pos, 0, 0, cl_sfx_watrexp, 1, q_shared.ATTN_NORM, 0);
-		else
-			S_StartSound (pos, 0, 0, cl_sfx_grenexp, 1, q_shared.ATTN_NORM, 0);
-		break;
-
 	// RAFAEL
 	case TE_PLASMA_EXPLOSION:
 		MSG_ReadPos (&net_chan.net_message, pos);
 		ex = CL_AllocExplosion ();
-		q_shared.VectorCopy (pos, ex->ent.origin);
-		ex->type = exptype_t.ex_poly;
-		ex->ent.flags = q_shared.RF_FULLBRIGHT;
-		ex->start = cl_main.cl.frame.servertime - 100;
-		ex->light = 350;
-		ex->lightcolor[0] = 1.0; 
-		ex->lightcolor[1] = 0.5;
-		ex->lightcolor[2] = 0.5;
-		ex->ent.angles[1] = rand() % 360;
-		ex->ent.model = cl_mod_explo4;
+		q_shared.VectorCopy (pos, ex.ent.origin);
+		ex.type = exptype_t.ex_poly;
+		ex.ent.flags = q_shared.RF_FULLBRIGHT;
+		ex.start = cl_main.cl.frame.servertime - 100;
+		ex.light = 350;
+		ex.lightcolor[0] = 1.0; 
+		ex.lightcolor[1] = 0.5;
+		ex.lightcolor[2] = 0.5;
+		ex.ent.angles[1] = rand() % 360;
+		ex.ent.model = cl_mod_explo4;
 		if (frand() < 0.5)
-			ex->baseframe = 15;
-		ex->frames = 15;
+			ex.baseframe = 15;
+		ex.frames = 15;
 		cl_fx.CL_ExplosionParticles (pos);
-		S_StartSound (pos, 0, 0, cl_sfx_rockexp, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos, 0, 0, cl_sfx_rockexp, 1, q_shared.ATTN_NORM, 0);
 		break;
 	"""	
 	elif typeIn in [q_shared.temp_event_t.TE_EXPLOSION1,
@@ -954,18 +955,18 @@ def CL_ParseTEnt ():
 	case TE_BFG_EXPLOSION:
 		MSG_ReadPos (&net_chan.net_message, pos);
 		ex = CL_AllocExplosion ();
-		q_shared.VectorCopy (pos, ex->ent.origin);
-		ex->type = exptype_t.ex_poly;
-		ex->ent.flags = q_shared.RF_FULLBRIGHT;
-		ex->start = cl_main.cl.frame.servertime - 100;
-		ex->light = 350;
-		ex->lightcolor[0] = 0.0;
-		ex->lightcolor[1] = 1.0;
-		ex->lightcolor[2] = 0.0;
-		ex->ent.model = cl_mod_bfg_explo;
-		ex->ent.flags |= q_shared.RF_TRANSLUCENT;
-		ex->ent.alpha = 0.30;
-		ex->frames = 4;
+		q_shared.VectorCopy (pos, ex.ent.origin);
+		ex.type = exptype_t.ex_poly;
+		ex.ent.flags = q_shared.RF_FULLBRIGHT;
+		ex.start = cl_main.cl.frame.servertime - 100;
+		ex.light = 350;
+		ex.lightcolor[0] = 0.0;
+		ex.lightcolor[1] = 1.0;
+		ex.lightcolor[2] = 0.0;
+		ex.ent.model = cl_mod_bfg_explo;
+		ex.ent.flags |= q_shared.RF_TRANSLUCENT;
+		ex.ent.alpha = 0.30;
+		ex.frames = 4;
 		break;
 
 	case TE_BFG_BIGEXPLOSION:
@@ -991,7 +992,7 @@ def CL_ParseTEnt ():
 	case TE_BOSSTPORT:			// boss teleporting to station
 		MSG_ReadPos (&net_chan.net_message, pos);
 		CL_BigTeleportParticles (pos);
-		S_StartSound (pos, 0, 0, S_RegisterSound ("misc/bigtele.wav"), 1, ATTN_NONE, 0);
+		snd_dma.S_StartSound (pos, 0, 0, S_RegisterSound ("misc/bigtele.wav"), 1, ATTN_NONE, 0);
 		break;
 
 	case TE_GRAPPLE_CABLE:
@@ -1007,18 +1008,18 @@ def CL_ParseTEnt ():
 		cl_fx.CL_ParticleEffect2 (pos, dir, color, cnt);
 
 		ex = CL_AllocExplosion ();
-		q_shared.VectorCopy (pos, ex->ent.origin);
-		ex->type = ex_flash;
+		q_shared.VectorCopy (pos, ex.ent.origin);
+		ex.type = ex_flash;
 		// note to self
 		// we need a better no draw flag
-		ex->ent.flags = RF_BEAM;
-		ex->start = cl_main.cl.frame.servertime - 0.1;
-		ex->light = 100 + (rand()%75);
-		ex->lightcolor[0] = 1.0;
-		ex->lightcolor[1] = 1.0;
-		ex->lightcolor[2] = 0.3;
-		ex->ent.model = cl_mod_flash;
-		ex->frames = 2;
+		ex.ent.flags = RF_BEAM;
+		ex.start = cl_main.cl.frame.servertime - 0.1;
+		ex.light = 100 + (rand()%75);
+		ex.lightcolor[0] = 1.0;
+		ex.lightcolor[1] = 1.0;
+		ex.lightcolor[2] = 0.3;
+		ex.ent.model = cl_mod_flash;
+		ex.frames = 2;
 		break;
 
 	case TE_GREENBLOOD:
@@ -1051,47 +1052,47 @@ def CL_ParseTEnt ():
 			CL_BlasterParticles2 (pos, dir, 0x6f); // 75
 
 		ex = CL_AllocExplosion ();
-		q_shared.VectorCopy (pos, ex->ent.origin);
-		ex->ent.angles[0] = acos(dir[2])/M_PI*180;
+		q_shared.VectorCopy (pos, ex.ent.origin);
+		ex.ent.angles[0] = acos(dir[2])/M_PI*180;
 	// PMM - fixed to correct for pitch of 0
 		if (dir[0])
-			ex->ent.angles[1] = math.atan2(dir[1], dir[0])/M_PI*180;
+			ex.ent.angles[1] = math.atan2(dir[1], dir[0])/M_PI*180;
 		else if (dir[1] > 0)
-			ex->ent.angles[1] = 90;
+			ex.ent.angles[1] = 90;
 		else if (dir[1] < 0)
-			ex->ent.angles[1] = 270;
+			ex.ent.angles[1] = 270;
 		else
-			ex->ent.angles[1] = 0;
+			ex.ent.angles[1] = 0;
 
-		ex->type = ex_misc;
-		ex->ent.flags = q_shared.RF_FULLBRIGHT|q_shared.RF_TRANSLUCENT;
+		ex.type = ex_misc;
+		ex.ent.flags = q_shared.RF_FULLBRIGHT|q_shared.RF_TRANSLUCENT;
 
 		// PMM
 		if (type == TE_BLASTER2)
-			ex->ent.skinnum = 1;
+			ex.ent.skinnum = 1;
 		else // flechette
-			ex->ent.skinnum = 2;
+			ex.ent.skinnum = 2;
 
-		ex->start = cl_main.cl.frame.servertime - 100;
-		ex->light = 150;
+		ex.start = cl_main.cl.frame.servertime - 100;
+		ex.light = 150;
 		// PMM
 		if (type == TE_BLASTER2)
-			ex->lightcolor[1] = 1;
+			ex.lightcolor[1] = 1;
 		else // flechette
 		{
-			ex->lightcolor[0] = 0.19;
-			ex->lightcolor[1] = 0.41;
-			ex->lightcolor[2] = 0.75;
+			ex.lightcolor[0] = 0.19;
+			ex.lightcolor[1] = 0.41;
+			ex.lightcolor[2] = 0.75;
 		}
-		ex->ent.model = cl_mod_explode;
-		ex->frames = 4;
-		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+		ex.ent.model = cl_mod_explode;
+		ex.frames = 4;
+		snd_dma.S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 
 	case TE_LIGHTNING:
 		ent = CL_ParseLightning (cl_mod_lightning);
-		S_StartSound (NULL, ent, CHAN_WEAPON, cl_sfx_lightning, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (NULL, ent, CHAN_WEAPON, cl_sfx_lightning, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 	case TE_DEBUGTRAIL:
@@ -1104,23 +1105,23 @@ def CL_ParseTEnt ():
 		MSG_ReadPos (&net_chan.net_message, pos);
 
 		ex = CL_AllocExplosion ();
-		q_shared.VectorCopy (pos, ex->ent.origin);
-		ex->type = exptype_t.ex_poly;
-		ex->ent.flags = q_shared.RF_FULLBRIGHT;
-		ex->start = cl_main.cl.frame.servertime - 100;
-		ex->light = 350;
-		ex->lightcolor[0] = 1.0;
-		ex->lightcolor[1] = 0.5;
-		ex->lightcolor[2] = 0.5;
-		ex->ent.angles[1] = rand() % 360;
-		ex->ent.model = cl_mod_explo4;
+		q_shared.VectorCopy (pos, ex.ent.origin);
+		ex.type = exptype_t.ex_poly;
+		ex.ent.flags = q_shared.RF_FULLBRIGHT;
+		ex.start = cl_main.cl.frame.servertime - 100;
+		ex.light = 350;
+		ex.lightcolor[0] = 1.0;
+		ex.lightcolor[1] = 0.5;
+		ex.lightcolor[2] = 0.5;
+		ex.ent.angles[1] = rand() % 360;
+		ex.ent.model = cl_mod_explo4;
 		if (frand() < 0.5)
-			ex->baseframe = 15;
-		ex->frames = 15;
+			ex.baseframe = 15;
+		ex.frames = 15;
 		if (type == TE_ROCKET_EXPLOSION_WATER)
-			S_StartSound (pos, 0, 0, cl_sfx_watrexp, 1, q_shared.ATTN_NORM, 0);
+			snd_dma.S_StartSound (pos, 0, 0, cl_sfx_watrexp, 1, q_shared.ATTN_NORM, 0);
 		else
-			S_StartSound (pos, 0, 0, cl_sfx_rockexp, 1, q_shared.ATTN_NORM, 0);
+			snd_dma.S_StartSound (pos, 0, 0, cl_sfx_rockexp, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 	case TE_FLASHLIGHT:
@@ -1155,7 +1156,7 @@ def CL_ParseTEnt ():
 		magnitude = 60;
 		color = r & 0xff;
 		CL_ParticleSteamEffect (pos, dir, color, cnt, magnitude);
-		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 		break;
 	
 	case TE_HEATBEAM_STEAM:
@@ -1169,7 +1170,7 @@ def CL_ParseTEnt ():
 		color = 0xe0;
 		magnitude = 60;
 		CL_ParticleSteamEffect (pos, dir, color, cnt, magnitude);
-		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 	case TE_STEAM:
@@ -1182,7 +1183,7 @@ def CL_ParseTEnt ():
 		MSG_ReadPos (&net_chan.net_message, pos);
 		MSG_ReadPos (&net_chan.net_message, pos2);
 		CL_BubbleTrail2 (pos, pos2, cnt);
-		S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos,  0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 	case TE_MOREBLOOD:
@@ -1203,7 +1204,7 @@ def CL_ParseTEnt ():
 //		cl_fx.CL_ParticleEffect (pos, dir, 109, 40);
 		cl_fx.CL_ParticleEffect (pos, dir, 0x75, 40);
 		//FIXME : replace or remove this sound
-		S_StartSound (pos, 0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos, 0, 0, cl_sfx_lashit, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 	case TE_TRACKER_EXPLOSION:
@@ -1211,7 +1212,7 @@ def CL_ParseTEnt ():
 		CL_ColorFlash (pos, 0, 150, -1, -1, -1);
 		CL_ColorExplosionParticles (pos, 0, 1);
 //		CL_Tracker_Explode (pos);
-		S_StartSound (pos, 0, 0, cl_sfx_disrexp, 1, q_shared.ATTN_NORM, 0);
+		snd_dma.S_StartSound (pos, 0, 0, cl_sfx_disrexp, 1, q_shared.ATTN_NORM, 0);
 		break;
 
 	case TE_TELEPORT_EFFECT:
@@ -1648,39 +1649,39 @@ void CL_AddExplosions (void)
 
 	for (i=0, ex=cl_explosions ; i< MAX_EXPLOSIONS ; i++, ex++)
 	{
-		if (ex->type == ex_free)
+		if (ex.type == ex_free)
 			continue;
-		frac = (cl.time - ex->start)/100.0;
+		frac = (cl.time - ex.start)/100.0;
 		f = floor(frac);
 
-		ent = &ex->ent;
+		ent = &ex.ent;
 
-		switch (ex->type)
+		switch (ex.type)
 		{
 		case ex_mflash:
-			if (f >= ex->frames-1)
-				ex->type = ex_free;
+			if (f >= ex.frames-1)
+				ex.type = ex_free;
 			break;
 		case ex_misc:
-			if (f >= ex->frames-1)
+			if (f >= ex.frames-1)
 			{
-				ex->type = ex_free;
+				ex.type = ex_free;
 				break;
 			}
-			ent->alpha = 1.0 - frac/(ex->frames-1);
+			ent->alpha = 1.0 - frac/(ex.frames-1);
 			break;
 		case ex_flash:
 			if (f >= 1)
 			{
-				ex->type = ex_free;
+				ex.type = ex_free;
 				break;
 			}
 			ent->alpha = 1.0;
 			break;
 		case exptype_t.ex_poly:
-			if (f >= ex->frames-1)
+			if (f >= ex.frames-1)
 			{
-				ex->type = ex_free;
+				ex.type = ex_free;
 				break;
 			}
 
@@ -1702,9 +1703,9 @@ void CL_AddExplosions (void)
 			}
 			break;
 		case exptype_t.ex_poly2:
-			if (f >= ex->frames-1)
+			if (f >= ex.frames-1)
 			{
-				ex->type = ex_free;
+				ex.type = ex_free;
 				break;
 			}
 
@@ -1714,20 +1715,20 @@ void CL_AddExplosions (void)
 			break;
 		}
 
-		if (ex->type == ex_free)
+		if (ex.type == ex_free)
 			continue;
-		if (ex->light)
+		if (ex.light)
 		{
-			V_AddLight (ent->origin, ex->light*ent->alpha,
-				ex->lightcolor[0], ex->lightcolor[1], ex->lightcolor[2]);
+			V_AddLight (ent->origin, ex.light*ent->alpha,
+				ex.lightcolor[0], ex.lightcolor[1], ex.lightcolor[2]);
 		}
 
 		q_shared.VectorCopy (ent->origin, ent->oldorigin);
 
 		if (f < 0)
 			f = 0;
-		ent->frame = ex->baseframe + f + 1;
-		ent->oldframe = ex->baseframe + f;
+		ent->frame = ex.baseframe + f + 1;
+		ent->oldframe = ex.baseframe + f;
 		ent->backlerp = 1.0 - cl.lerpfrac;
 
 		V_AddEntity (ent);

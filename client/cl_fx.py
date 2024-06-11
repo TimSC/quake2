@@ -1627,9 +1627,11 @@ void CL_RocketTrail (vec3_t start, vec3_t end, centity_t *old)
 CL_RailTrail
 
 ===============
-*/
-void CL_RailTrail (vec3_t start, vec3_t end)
-{
+"""
+def CL_RailTrail (start, end): # vec3_t, vec3_t
+
+	print ("CL_RailTrail")
+	"""
 	vec3_t		move;
 	vec3_t		vec;
 	float		len;
