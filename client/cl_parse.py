@@ -271,7 +271,6 @@ void CL_ParseDownload (void)
 		char	newn[MAX_OSPATH];
 
 //		Com_Printf ("100%%\n");
-
 		fclose (cl_main.cls.download);
 
 		// rename the temp file to it's final name

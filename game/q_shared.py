@@ -1172,6 +1172,23 @@ class entity_state_t(object):
 								# events only go out for a single frame, they
 								# are automatically cleared each frame
 
+	def copy(self, obj):
+
+		self.number = obj.number
+		self.origin: vec3_t = obj.origin
+		self.angles: vec3_t = obj.angles
+		self.old_origin: vec3_t = obj.old_origin
+		self.modelindex: int = obj.modelindex
+		self.modelindex2, self.modelindex3, self.modelindex4 = obj.modelindex2, obj.modelindex3, obj.modelindex4
+		self.frame: int = obj.frame
+		self.skinnum: int = obj.skinnum
+		self.effects: int = obj.effects
+		self.renderfx: int = obj.renderfx
+		self.solid: int = obj.solid					
+		self.sound: int	= obj.sound
+		self.event: int	= obj.event
+
+
 """
 //==============================================
 

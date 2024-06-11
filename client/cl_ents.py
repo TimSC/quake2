@@ -256,7 +256,7 @@ def CL_ParseDelta (fromEnt, toEnt, number, bits): #entity_state_t *from, entity_
 
 	# set everything to the state we are delta'ing from
 	
-	toEnt = copy.copy(fromEnt)
+	toEnt.copy(fromEnt)
 
 	q_shared.VectorCopy (fromEnt.origin, toEnt.old_origin)
 	toEnt.number = number
@@ -440,6 +440,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			# one or more entities from the old packet are unchanged
 			if cl_main.cl_shownet.value == 3:
 				common.Com_Printf ("   unchanged: {}\n".format(oldnum))
+
 			CL_DeltaEntity (newframe, oldnum, oldstate, 0)
 			
 			oldindex+=1
@@ -456,6 +457,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			# the entity present in oldframe is not in the current frame
 			if cl_main.cl_shownet.value == 3:
 				common.Com_Printf ("   remove: {}\n".format(newnum))
+
 			if oldnum != newnum:
 				common.Com_Printf ("U_REMOVE: oldnum != newnum\n")
 
@@ -475,6 +477,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			# delta from previous state
 			if cl_main.cl_shownet.value == 3:
 				common.Com_Printf ("   delta: {}\n".format(newnum))
+
 			CL_DeltaEntity (newframe, newnum, oldstate, bits)
 
 			oldindex+=1
@@ -484,7 +487,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			else:
 			
 				oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
-				oldnum = oldstate.numbers
+				oldnum = oldstate.number
 			
 			continue;
 		
@@ -502,6 +505,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 		# one or more entities from the old packet are unchanged
 		if cl_main.cl_shownet.value == 3:
 			common.Com_Printf ("   unchanged: {}\n".format(oldnum))
+
 		CL_DeltaEntity (newframe, oldnum, oldstate, 0)
 		
 		oldindex+=1
@@ -712,8 +716,8 @@ def CL_ParseFrame ():
 		cl_main.cls.demowaiting = False	# we can start recording now
 	
 	else:
-	
 		old = cl_main.cl.frames[cl_main.cl.frame.deltaframe & qcommon.UPDATE_MASK]
+
 		if not old.valid:
 			# should never happen
 			common.Com_Printf ("Delta from invalid frame (not supposed to happen!).\n");
