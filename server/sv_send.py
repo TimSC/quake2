@@ -509,7 +509,7 @@ def SV_SendClientMessages ():
 				return
 			
 			if msglen > qcommon.MAX_MSGLEN:
-				commonCom_Error (ERR_DROP, "SV_SendClientMessages: msglen > MAX_MSGLEN");
+				common.Com_Error (q_shared.ERR_DROP, "SV_SendClientMessages: msglen > MAX_MSGLEN");
 
 			try:			
 				msgbuf = sv_init.sv.demofile.read(msglen)

@@ -143,7 +143,7 @@ void CL_Record_f (void)
 		return;
 	}
 
-	if (cls.state != ca_active)
+	if (cls.state != client.connstate_t.ca_active)
 	{
 		Com_Printf ("You must be in a level to record.\n");
 		return;
@@ -311,7 +311,7 @@ def CL_ForwardToServer_f ():
 	print ("CL_ForwardToServer_f")
 
 	"""
-	if (cls.state != client.connstate_t.ca_connected && cls.state != ca_active)
+	if (cls.state != client.connstate_t.ca_connected && cls.state != client.connstate_t.ca_active)
 	{
 		Com_Printf ("Can't \"%s\", not connected\n", Cmd_Argv(0));
 		return;
@@ -1075,7 +1075,7 @@ def CL_Snd_Restart_f ():
 	pass
 	#S_Shutdown ();
 	#S_Init ();
-	#CL_RegisterSounds ();
+	cl_parse.CL_RegisterSounds ()
 
 """
 int precache_check; // for autodownload of precache items
@@ -1723,9 +1723,10 @@ def CL_Frame (msec): #int
 
 	// allow rendering DLL change
 	VID_CheckChanges ();
-	if (!cl.refresh_prepped && cls.state == ca_active)
-		CL_PrepRefresh ();
-"""
+	"""
+	if not cl.refresh_prepped and cls.state == client.connstate_t.ca_active:
+		cl_view.CL_PrepRefresh ()
+
 	# update the screen
 	if common.host_speeds.value:
 		common.time_before_ref = q_shlinux.Sys_Milliseconds ()
@@ -1751,7 +1752,7 @@ def CL_Frame (msec): #int
 	"""
 	if ( log_stats->value )
 	{
-		if ( cls.state == ca_active )
+		if ( cls.state == client.connstate_t.ca_active )
 		{
 			if ( !lasttimecalled )
 			{

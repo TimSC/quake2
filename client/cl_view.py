@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 from qcommon import cvar, common, cmd
 from game import q_shared
-
+from client import cl_tent
 """
 #include "client.h"
 
@@ -249,9 +249,9 @@ CL_PrepRefresh
 
 Call before entering a new level, or after changing dlls
 =================
-*/
-void CL_PrepRefresh (void)
-{
+"""
+def CL_PrepRefresh ():
+	"""
 	char		mapname[32];
 	int			i;
 	char		name[MAX_QPATH];
@@ -279,9 +279,9 @@ void CL_PrepRefresh (void)
 	SCR_UpdateScreen ();
 	SCR_TouchPics ();
 	Com_Printf ("                                     \r");
-
-	CL_RegisterTEntModels ();
-
+	"""
+	cl_tent.CL_RegisterTEntModels ()
+	"""
 	num_cl_weaponmodels = 1;
 	strcpy(cl_weaponmodels[0], "weapon.md2");
 

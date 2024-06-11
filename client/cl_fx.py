@@ -104,7 +104,7 @@ def CL_SetLightstyle (i: int):
 
 	j = strlen (s);
 	if (j >= MAX_QPATH)
-		Com_Error (ERR_DROP, "svc_lightstyle length=%i", j);
+		Com_Error (q_shared.ERR_DROP, "svc_lightstyle length=%i", j);
 
 	cl_lightstyle[i].length = j;
 
@@ -255,7 +255,7 @@ def CL_ParseMuzzleFlash ():
 
 	i = common.MSG_ReadShort (net_chan.net_message)
 	if i < 1 or i >= q_shared.MAX_EDICTS:
-		Com_Error (ERR_DROP, "CL_ParseMuzzleFlash: bad entity")
+		Com_Error (q_shared.ERR_DROP, "CL_ParseMuzzleFlash: bad entity")
 
 	weapon = common.MSG_ReadByte (net_chan.net_message)
 	silenced = weapon & q_shared.MZ_SILENCED
@@ -444,13 +444,15 @@ def CL_ParseMuzzleFlash2 ():
 	cdlight_t	*dl;
 	vec3_t		forward, right;
 	char		soundname[64];
+	"""
 
-	ent = MSG_ReadShort (&net_chan.net_message);
-	if (ent < 1 || ent >= q_shared.MAX_EDICTS)
-		Com_Error (ERR_DROP, "CL_ParseMuzzleFlash2: bad entity");
+	ent = common.MSG_ReadShort (net_chan.net_message)
+	if ent < 1 or ent >= q_shared.MAX_EDICTS:
+		common.Com_Error (q_shared.ERR_DROP, "CL_ParseMuzzleFlash2: bad entity")
 
-	flash_number = MSG_ReadByte (&net_chan.net_message);
+	flash_number = common.MSG_ReadByte (net_chan.net_message)
 
+	"""
 	// locate the origin
 	AngleVectors (cl_main.cl_entities[ent].current.angles, forward, right, NULL);
 	origin[0] = cl_main.cl_entities[ent].current.origin[0] + forward[0] * monster_flash_offset[flash_number][0] + right[0] * monster_flash_offset[flash_number][1];
@@ -1166,9 +1168,11 @@ void CL_ItemRespawnParticles (vec3_t org)
 ===============
 CL_ExplosionParticles
 ===============
-*/
-void CL_ExplosionParticles (vec3_t org)
-{
+"""
+def CL_ExplosionParticles (org): #vec3_t
+
+	print ("CL_ExplosionParticles")
+	"""
 	int			i, j;
 	cparticle_t	*p;
 
@@ -1250,9 +1254,11 @@ CL_BlasterParticles
 
 Wall impact puffs
 ===============
-*/
-void CL_BlasterParticles (vec3_t org, vec3_t dir)
-{
+"""
+def CL_BlasterParticles (org, readdir): # vec3_t, vec3_t
+
+	print ("CL_BlasterParticles")
+	"""
 	int			i, j;
 	cparticle_t	*p;
 	float		d;

@@ -307,14 +307,15 @@ sfx_t *S_AliasName (char *aliasname, char *truename)
 S_BeginRegistration
 
 =====================
-*/
-void S_BeginRegistration (void)
-{
-	s_registration_sequence++;
-	s_registering = true;
-}
+"""
+def S_BeginRegistration ():
 
-/*
+	global s_registration_sequence, s_registering
+
+	s_registration_sequence+=1
+	s_registering = True
+
+"""
 ==================
 S_RegisterSound
 
@@ -342,9 +343,11 @@ def S_RegisterSound (name): #char * (returns sfx_t *)
 S_EndRegistration
 
 =====================
-*/
-void S_EndRegistration (void)
-{
+"""
+def S_EndRegistration ():
+	
+	pass
+	"""
 	int		i;
 	sfx_t	*sfx;
 	int		size;

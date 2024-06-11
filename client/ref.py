@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+import numpy as np
 """
 #ifndef __REF_H
 #define __REF_H
@@ -47,38 +47,45 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //ROGUE
 
 #define SHELL_WHITE_COLOR	0xD7
+"""
+class entity_t(object):
 
-typedef struct entity_s
-{
-	struct model_s		*model;			// opaque type outside refresh
-	float				angles[3];
+	def __init__(self):
 
-	/*
-	** most recent data
-	*/
-	float				origin[3];		// also used as RF_BEAM's "from"
-	int					frame;			// also used as RF_BEAM's diameter
+		"""
+		struct model_s		*model;			// opaque type outside refresh
+		"""
+		self.angles = np.zeros((3,), dtype=np.float32) # float[3];
+		"""
 
-	/*
-	** previous data for lerping
-	*/
-	float				oldorigin[3];	// also used as RF_BEAM's "to"
-	int					oldframe;
+		/*
+		** most recent data
+		*/
+		"""
+		self.origin = np.zeros((3,), dtype=np.float32) #float [3], also used as RF_BEAM's "from"
+		"""
+		int					frame;			// also used as RF_BEAM's diameter
 
-	/*
-	** misc
-	*/
-	float	backlerp;				// 0.0 = current, 1.0 = old
-	int		skinnum;				// also used as RF_BEAM's palette index
+		/*
+		** previous data for lerping
+		*/
+		float				oldorigin[3];	// also used as RF_BEAM's "to"
+		int					oldframe;
 
-	int		lightstyle;				// for flashing entities
-	float	alpha;					// ignore if RF_TRANSLUCENT isn't set
+		/*
+		** misc
+		*/
+		float	backlerp;				// 0.0 = current, 1.0 = old
+		int		skinnum;				// also used as RF_BEAM's palette index
 
-	struct image_s	*skin;			// NULL for inline skin
-	int		flags;
+		int		lightstyle;				// for flashing entities
+		float	alpha;					// ignore if RF_TRANSLUCENT isn't set
 
-} entity_t;
+		struct image_s	*skin;			// NULL for inline skin
+		int		flags;
+		"""
 
+"""
 #define ENTITY_FLAGS  68
 
 typedef struct

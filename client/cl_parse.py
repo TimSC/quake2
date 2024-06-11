@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent
+from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent, console
 from game import q_shared
 from qcommon import net_chan, qcommon, common, cmd, files, cmodel
 from linux import cd_linux
@@ -181,25 +181,25 @@ void	CL_Download_f (void)
 ======================
 CL_RegisterSounds
 ======================
-*/
-void CL_RegisterSounds (void)
-{
-	int		i;
+"""
+def CL_RegisterSounds ():
 
-	S_BeginRegistration ();
-	CL_RegisterTEntSounds ();
-	for (i=1 ; i<MAX_SOUNDS ; i++)
-	{
-		if (!cl_main.cl.configstrings[CS_SOUNDS+i][0])
-			break;
-		cl_main.cl.sound_precache[i] = S_RegisterSound (cl_main.cl.configstrings[CS_SOUNDS+i]);
-		Sys_SendKeyEvents ();	// pump message loop
-	}
-	S_EndRegistration ();
-}
+	#int		i;
+
+	snd_dma.S_BeginRegistration ()
+	cl_tent.CL_RegisterTEntSounds ()
+	for i in range(1, q_shared.MAX_SOUNDS):
+	
+		if cl_main.cl.configstrings[q_shared.CS_SOUNDS+i] is None:
+			break
+		cl_main.cl.sound_precache[i] = snd_dma.S_RegisterSound (cl_main.cl.configstrings[q_shared.CS_SOUNDS+i])
+		Sys_SendKeyEvents ()	# pump message loop
+	
+	snd_dma.S_EndRegistration ()
 
 
-/*
+
+"""
 =====================
 CL_ParseDownload
 
@@ -734,10 +734,10 @@ def CL_ParseServerMessage ():
 			if i == q_shared.PRINT_CHAT:
 			
 				snd_dma.S_StartLocalSound ("misc/talk.wav")
-				con.ormask = 128
+				console.con.ormask = 128
 			
 			common.Com_Printf (common.MSG_ReadString(net_chan.net_message))
-			con.ormask = 0
+			console.con.ormask = 0
 
 			
 		elif cmdval == qcommon.svc_ops_e.svc_centerprint:

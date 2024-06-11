@@ -601,22 +601,22 @@ typedef struct
 #define EF_HALF_DAMAGE		0x40000000
 #define EF_TRACKERTRAIL		0x80000000
 //ROGUE
-
-// entity_state_t->renderfx flags
-#define	RF_MINLIGHT			1		// allways have some light (viewmodel)
-#define	RF_VIEWERMODEL		2		// don't draw through eyes, only mirrors
-#define	RF_WEAPONMODEL		4		// only draw through eyes
-#define	RF_FULLBRIGHT		8		// allways draw full intensity
-#define	RF_DEPTHHACK		16		// for view weapon Z crunching
-#define	RF_TRANSLUCENT		32
-#define	RF_FRAMELERP		64
-#define RF_BEAM				128
-#define	RF_CUSTOMSKIN		256		// skin is an index in image_precache
-#define	RF_GLOW				512		// pulse lighting for bonus items
-#define RF_SHELL_RED		1024
-#define	RF_SHELL_GREEN		2048
-#define RF_SHELL_BLUE		4096
-
+"""
+# entity_state_t->renderfx flags
+RF_MINLIGHT			= 1		# allways have some light (viewmodel)
+RF_VIEWERMODEL		= 2		# don't draw through eyes, only mirrors
+RF_WEAPONMODEL		= 4		# only draw through eyes
+RF_FULLBRIGHT		= 8		# allways draw full intensity
+RF_DEPTHHACK		= 16		# for view weapon Z crunching
+RF_TRANSLUCENT		= 32
+RF_FRAMELERP		= 64
+RF_BEAM				= 128
+RF_CUSTOMSKIN		= 256		# skin is an index in image_precache
+RF_GLOW				= 512		# pulse lighting for bonus items
+RF_SHELL_RED		= 1024
+RF_SHELL_GREEN		= 2048
+RF_SHELL_BLUE		= 4096
+"""
 //ROGUE
 #define RF_IR_VISIBLE		0x00008000		// 32768
 #define	RF_SHELL_DOUBLE		0x00010000		// 65536
