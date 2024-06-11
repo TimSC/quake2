@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import copy
 from qcommon import common, net_chan, qcommon
 from game import q_shared
-from client import cl_main, cl_parse, client
+from client import cl_main, cl_parse, client, cl_pred
 """
 // cl_ents.c -- entity parsing and management
 
@@ -782,7 +782,7 @@ def CL_ParseFrame ():
 	
 		# fire entity events
 		CL_FireEntityEvents (cl_main.cl.frame)
-		CL_CheckPredictionError ()
+		cl_pred.CL_CheckPredictionError ()
 	
 
 

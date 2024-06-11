@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -25,9 +25,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ===================
 CL_CheckPredictionError
 ===================
-*/
-void CL_CheckPredictionError (void)
-{
+"""
+def CL_CheckPredictionError ():
+	
+	print ("CL_CheckPredictionError")
+	"""
 	int		frame;
 	int		delta[3];
 	int		i;
@@ -276,3 +278,4 @@ void CL_PredictMovement (void)
 
 	VectorCopy (pm.viewangles, cl.predicted_angles);
 }
+"""
