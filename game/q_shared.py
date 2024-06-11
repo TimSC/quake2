@@ -1184,6 +1184,9 @@ class entity_state_t(object):
 class player_state_t(object):
 
 	def __init__(self):
+		self.clear()
+
+	def clear(self):
 
 		self.pmove = pmove_state_t() # pmove_state_t, for prediction
 

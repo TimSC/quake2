@@ -810,15 +810,25 @@ def MSG_ReadLong (msg_read): #sizebuf_t *
 	if msg_read.readcount+4 > msg_read.cursize:
 		c = -1
 	else:
-		c = msg_read.data[msg_read.readcount] \
-		+ (msg_read.data[msg_read.readcount+1]<<8) \
-		+ (msg_read.data[msg_read.readcount+2]<<16) \
-		+ (msg_read.data[msg_read.readcount+3]<<24)
+		c = struct.unpack_from("<L", msg_read.data, msg_read.readcount)[0]
 	
 	msg_read.readcount += 4
 	
 	return c
 
+def MSG_ReadSLong (msg_read): #sizebuf_t *
+	assert isinstance(msg_read, qcommon.sizebuf_t)
+
+	#int	c;
+	
+	if msg_read.readcount+4 > msg_read.cursize:
+		c = -1
+	else:
+		c = struct.unpack_from("<l", msg_read.data, msg_read.readcount)[0]
+	
+	msg_read.readcount += 4
+	
+	return c
 
 def MSG_ReadFloat (msg_read): #sizebuf_t *
 	assert isinstance(msg_read, qcommon.sizebuf_t)

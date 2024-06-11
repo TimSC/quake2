@@ -95,7 +95,7 @@ void CL_ParseProjectiles (void)
 		pr.origin[0] = ( ( bits[0] + ((bits[1]&15)<<8) ) <<1) - 4096;
 		pr.origin[1] = ( ( (bits[1]>>4) + (bits[2]<<4) ) <<1) - 4096;
 		pr.origin[2] = ( ( bits[3] + ((bits[4]&15)<<8) ) <<1) - 4096;
-		VectorCopy(pr.origin, pr.oldorigin);
+		q_shared.VectorCopy(pr.origin, pr.oldorigin);
 
 		if (bits[4] & 64)
 			pr.effects = EF_BLASTER;
@@ -135,7 +135,7 @@ void CL_ParseProjectiles (void)
 				if (cl_projectiles[j].num == pr.num) {
 					// already present, set up oldorigin for interpolation
 					if (!old)
-						VectorCopy(cl_projectiles[j].origin, pr.oldorigin);
+						q_shared.VectorCopy(cl_projectiles[j].origin, pr.oldorigin);
 					cl_projectiles[j] = pr;
 					break;
 				}
@@ -190,7 +190,7 @@ void CL_AddProjectiles (void)
 			CL_BlasterTrail (pr.oldorigin, ent.origin);
 		V_AddLight (pr.origin, 200, 1, 1, 0);
 
-		VectorCopy (pr.angles, ent.angles);
+		q_shared.VectorCopy (pr.angles, ent.angles);
 		V_AddEntity (&ent);
 	}
 }
@@ -381,7 +381,7 @@ def CL_DeltaEntity (frame, newnum, old, bits): #frame_t *, int, entity_state_t *
 	
 	else:
 		# shuffle the last state to previous
-		ent.prev = ent.current;
+		ent.prev = ent.current
 	
 
 	ent.serverframe = cl_main.cl.frame.serverframe
@@ -421,11 +421,9 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 		else:
 			oldstate = cl_main.cl_parse_entities[(oldframe.parse_entities+oldindex) & (client.MAX_PARSE_ENTITIES-1)]
 			oldnum = oldstate.number
-		
-
 
 	while 1:
-	
+
 		newnum, bits = CL_ParseEntityBits ()
 
 		if newnum >= q_shared.MAX_EDICTS:
@@ -438,6 +436,7 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 			break
 
 		while oldnum < newnum:
+
 			# one or more entities from the old packet are unchanged
 			if cl_main.cl_shownet.value == 3:
 				common.Com_Printf ("   unchanged: {}\n".format(oldnum))
@@ -496,12 +495,10 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 				common.Com_Printf ("   baseline: {}\n".format(newnum))
 			CL_DeltaEntity (newframe, newnum, cl_main.cl_entities[newnum].baseline, bits)
 			continue
-		
-
-	
 
 	# any remaining entities in the old frame are copied over
 	while oldnum != 99999:
+
 		# one or more entities from the old packet are unchanged
 		if cl_main.cl_shownet.value == 3:
 			common.Com_Printf ("   unchanged: {}\n".format(oldnum))
@@ -680,7 +677,6 @@ CL_ParseFrame
 """
 def CL_ParseFrame ():
 
-	print ("CL_ParseFrame")
 	"""
 	int			cmd;
 	int			len;
@@ -693,8 +689,8 @@ def CL_ParseFrame ():
 #	CL_ClearProjectiles(); // clear projectiles for new frame
 #endif
 
-	cl_main.cl.frame.serverframe = common.MSG_ReadLong (net_chan.net_message)
-	cl_main.cl.frame.deltaframe = common.MSG_ReadLong (net_chan.net_message)
+	cl_main.cl.frame.serverframe = common.MSG_ReadSLong (net_chan.net_message)
+	cl_main.cl.frame.deltaframe = common.MSG_ReadSLong (net_chan.net_message)
 	cl_main.cl.frame.servertime = cl_main.cl.frame.serverframe*100
 
 	# BIG HACK to let old demos continue to work
@@ -713,7 +709,7 @@ def CL_ParseFrame ():
 	
 		cl_main.cl.frame.valid = True		# uncompressed frame
 		old = None
-		cls.demowaiting = False	# we can start recording now
+		cl_main.cls.demowaiting = False	# we can start recording now
 	
 	else:
 	
@@ -770,15 +766,15 @@ def CL_ParseFrame ():
 	if cl_main.cl.frame.valid:
 	
 		# getting a valid frame message ends the connection process
-		if cls.state != ca_active:
+		if cl_main.cls.state != client.connstate_t.ca_active:
 		
-			cls.state = ca_active
+			cl_main.cls.state = client.connstate_t.ca_active
 			cl_main.cl.force_refdef = True
 			cl_main.cl.predicted_origin[0] = cl_main.cl.frame.playerstate.pmove.origin[0]*0.125
 			cl_main.cl.predicted_origin[1] = cl_main.cl.frame.playerstate.pmove.origin[1]*0.125
 			cl_main.cl.predicted_origin[2] = cl_main.cl.frame.playerstate.pmove.origin[2]*0.125
-			VectorCopy (cl_main.cl.frame.playerstate.viewangles, cl_main.cl.predicted_angles)
-			if (cls.disable_servercount != cl_main.cl.servercount
+			q_shared.VectorCopy (cl_main.cl.frame.playerstate.viewangles, cl_main.cl.predicted_angles)
+			if (cl_main.cls.disable_servercount != cl_main.cl.servercount
 				and cl_main.cl.refresh_prepped):
 				cl_scrn.SCR_EndLoadingPlaque ()	# get rid of loading plaque
 		
@@ -933,8 +929,8 @@ void CL_AddPacketEntities (frame_t *frame)
 		if (renderfx & (RF_FRAMELERP|RF_BEAM))
 		{	// step origin discretely, because the frames
 			// do the animation properly
-			VectorCopy (cent.current.origin, ent.origin);
-			VectorCopy (cent.current.old_origin, ent.oldorigin);
+			q_shared.VectorCopy (cent.current.origin, ent.origin);
+			q_shared.VectorCopy (cent.current.old_origin, ent.oldorigin);
 		}
 		else
 		{	// interpolate origin
@@ -1343,7 +1339,7 @@ void CL_AddPacketEntities (frame_t *frame)
 			}
 		}
 
-		VectorCopy (ent.origin, cent.lerp_origin);
+		q_shared.VectorCopy (ent.origin, cent.lerp_origin);
 	}
 }
 
@@ -1401,7 +1397,7 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 
 	gun.flags = RF_MINLIGHT | RF_DEPTHHACK | RF_WEAPONMODEL;
 	gun.backlerp = 1.0 - cl_main.cl.lerpfrac;
-	VectorCopy (gun.origin, gun.oldorigin);	// don't lerp at all
+	q_shared.VectorCopy (gun.origin, gun.oldorigin);	// don't lerp at all
 	V_AddEntity (&gun);
 }
 
@@ -1558,7 +1554,7 @@ void CL_GetEntitySoundOrigin (int ent, vec3_t org)
 	if (ent < 0 or ent >= q_shared.MAX_EDICTS)
 		Com_Error (q_shared.ERR_DROP, "CL_GetEntitySoundOrigin: bad ent");
 	old = &cl_main.cl_entities[ent];
-	VectorCopy (old.lerp_origin, org);
+	q_shared.VectorCopy (old.lerp_origin, org);
 
 	// FIXME: bmodel issues...
 }
