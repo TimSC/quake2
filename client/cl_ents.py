@@ -761,7 +761,7 @@ def CL_ParseFrame ():
 #endif
 
 	# save the frame off in the backup array for later delta comparisons
-	cl_main.cl.frames[cl_main.cl.frame.serverframe & qcommon.UPDATE_MASK] = cl_main.cl.frame
+	cl_main.cl.frames[cl_main.cl.frame.serverframe & qcommon.UPDATE_MASK] = copy.copy(cl_main.cl.frame)
 
 	if cl_main.cl.frame.valid:
 	
