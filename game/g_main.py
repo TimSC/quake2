@@ -138,7 +138,9 @@ def GetGameAPI (gimport): #game_import_t * (returns game_export_t *)
 	"""
 	glob.ClientCommand = ClientCommand
 
+	"""
 	glob.RunFrame = G_RunFrame
+	"""
 
 	glob.ServerCommand = ServerCommand
 	"""
@@ -386,9 +388,11 @@ G_RunFrame
 
 Advances the world by 0.1 seconds
 ================
-*/
-void G_RunFrame (void)
-{
+"""
+def G_RunFrame ():
+
+	pass
+	"""
 	int		i;
 	edict_t	*ent;
 

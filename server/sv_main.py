@@ -750,38 +750,35 @@ SV_RunGameFrame
 """
 def SV_RunGameFrame ():
 	
-	pass
-	"""
-	if (host_speeds->value)
-		time_before_game = Sys_Milliseconds ();
 
-	// we always need to bump framenum, even if we
-	// don't run the world, otherwise the delta
-	// compression can get confused when a client
-	// has the "current" frame
-	sv_init.sv.framenum++;
-	sv_init.sv.time = sv_init.sv.framenum*100;
+	if int(common.host_speeds.value):
+		time_before_game = q_shlinux.Sys_Milliseconds ()
 
-	// don't run if paused
-	if (!sv_paused->value || maxclients->value > 1)
-	{
-		ge->RunFrame ();
+	# we always need to bump framenum, even if we
+	# don't run the world, otherwise the delta
+	# compression can get confused when a client
+	# has the "current" frame
+	sv_init.sv.framenum+=1
+	sv_init.sv.time = sv_init.sv.framenum*100
 
-		// never get more than one tic behind
-		if (sv_init.sv.time < sv_init.svs.realtime)
-		{
-			if (sv_showclamp->value)
-				Com_Printf ("sv highclamp\n");
-			sv_init.svs.realtime = sv_init.sv.time;
-		}
-	}
+	# don't run if paused
+	if not int(sv_paused.value) or int(maxclients.value) > 1:
+	
+		sv_game.ge.RunFrame ()
 
-	if (host_speeds->value)
-		time_after_game = Sys_Milliseconds ();
+		# never get more than one tic behind
+		if sv_init.sv.time < sv_init.svs.realtime:
+		
+			if int(sv_showclamp.value):
+				common.Com_Printf ("sv highclamp\n")
+			sv_init.svs.realtime = sv_init.sv.time
 
-}
+	if int(common.host_speeds.value):
+		time_after_game = q_shlinux.Sys_Milliseconds ()
 
-/*
+
+
+"""
 ==================
 SV_Frame
 
@@ -809,7 +806,7 @@ def SV_Frame (msec): #int
 
 	# move autonomous things around if enough time has passed
 	if not int(sv_timedemo.value) and sv_init.svs.realtime < sv_init.sv.time:
-	
+
 		# never let the time get too far off
 		if sv_init.sv.time - sv_init.svs.realtime > 100:
 		
@@ -822,13 +819,13 @@ def SV_Frame (msec): #int
 	
 	"""
 	# update ping based on the last known frame from all clients
-	SV_CalcPings ();
+	SV_CalcPings ()
 	"""
 	# give the clients some timeslices
-	SV_GiveMsec ();
+	SV_GiveMsec ()
 
 	# let everything in the world think and move
-	SV_RunGameFrame ();
+	SV_RunGameFrame ()
 
 	# send messages back to the clients that had packets read this frame
 	sv_send.SV_SendClientMessages ()
@@ -837,7 +834,7 @@ def SV_Frame (msec): #int
 	SV_RecordDemoMessage ();
 
 	# send a heartbeat to the master if needed
-	Master_Heartbeat ();
+	Master_Heartbeat ()
 	"""
 	# clear teleport flags, etc for next frame
 	SV_PrepWorldFrame ()
