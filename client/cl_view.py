@@ -459,7 +459,7 @@ def V_RenderView( stereo_separation: float ):
 	if not cl_main.cl.refresh_prepped:
 		return			# still loading
 
-	if cl_main.cl_timedemo.value:
+	if int(cl_main.cl_timedemo.value):
 	
 		if not cl_main.cl.timedemo_start:
 			cl_main.cl.timedemo_start = q_shlinux.Sys_Milliseconds ()

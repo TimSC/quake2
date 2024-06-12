@@ -590,19 +590,21 @@ def CL_Disconnect ():
 
 	"""
 	byte	final[32];
+	"""
 
-	if (cls.state == client.connstate_t.ca_disconnected)
-		return;
+	if cls.state == client.connstate_t.ca_disconnected:
+		return
 
-	if (cl_timedemo && cl_timedemo->value)
-	{
-		int	time;
+	if cl_timedemo is not None and int(cl_timedemo.value):
+	
+		#int	time;
 		
-		time = q_shlinux.Sys_Milliseconds () - cl.timedemo_start;
-		if (time > 0)
-			Com_Printf ("%i frames, %3.1f seconds: %3.1f fps\n", cl.timedemo_frames,
-			time/1000.0, cl.timedemo_frames*1000.0 / time);
-	}
+		time = q_shlinux.Sys_Milliseconds () - cl.timedemo_start
+		if time > 0:
+			common.Com_Printf ("{} frames, {:3.1f} seconds: {:3.1f} fps\n".format(cl.timedemo_frames,
+			time/1000.0, cl.timedemo_frames*1000.0 / time))
+	
+	"""
 
 	VectorClear (cl.refdef.blend);
 	re.CinematicSetPalette(NULL);
@@ -630,10 +632,10 @@ def CL_Disconnect ():
 		fclose(cls.download);
 		cls.download = NULL;
 	}
-
-	cls.state = client.connstate_t.ca_disconnected;
-}
 """
+	cls.state = client.connstate_t.ca_disconnected
+
+
 def CL_Disconnect_f ():
 
 	common.Com_Error (ERR_DROP, "Disconnected from server");
@@ -997,6 +999,7 @@ def CL_ReadPackets ():
 
 		finally:
 			rx, net_chan.net_from, net_chan.net_message = net_udp.NET_GetPacket (qcommon.netsrc_t.NS_CLIENT)
+
 	"""
 	//
 	// check timeout
@@ -1682,25 +1685,26 @@ def CL_Frame (msec): #int
 		return
 
 	extratime += msec
+	
+	if not int(cl_timedemo.value):
+	
+		if cls.state == client.connstate_t.ca_connected and extratime < 100:
+			return			# don't flood packets out while connecting
+		if extratime < 1000.0/int(cl_maxfps.value):
+			return			# framerate is too high
+	
 	"""
-	if (!cl_timedemo->value)
-	{
-		if (cls.state == client.connstate_t.ca_connected && extratime < 100)
-			return;			// don't flood packets out while connecting
-		if (extratime < 1000/cl_maxfps->value)
-			return;			// framerate is too high
-	}
-
 	// let the mouse activate or deactivate
 	IN_Frame ();
 	"""
+
 	# decide the simulation time
 	cls.frametime = extratime/1000.0
 	cl.time += extratime
 
 	cls.realtime = q_shlinux.curtime
 
-	extratime = 0;
+	extratime = 0
 	#if 0
 	##if (cls.frametime > (1.0 / cl_minfps->value))
 	##	cls.frametime = (1.0 / cl_minfps->value);
@@ -1784,7 +1788,7 @@ CL_Init
 def CL_Init ():
 
 	if common.dedicated.value:
-		return;		# nothing running on the client
+		return		# nothing running on the client
 
 	# all archived variables will now be loaded
 

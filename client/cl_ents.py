@@ -1524,10 +1524,10 @@ def CL_AddEntities ():
 	}
 	else
 		cl_main.cl.lerpfrac = 1.0 - (cl_main.cl.frame.servertime - cl_main.cl.time) * 0.01;
-
-	if (cl_timedemo.value)
-		cl_main.cl.lerpfrac = 1.0;
-
+	"""
+	if int(cl_main.cl_timedemo.value):
+		cl_main.cl.lerpfrac = 1.0
+	"""
 //	CL_AddPacketEntities (&cl_main.cl.frame);
 //	CL_AddTEnts ();
 //	CL_AddParticles ();

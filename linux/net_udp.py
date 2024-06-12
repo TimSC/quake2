@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import time
 from qcommon import qcommon, common
 """
 // net_wins.c
@@ -536,8 +537,11 @@ char *NET_ErrorString (void)
 }
 
 // sleeps msec or until net socket is ready
-void NET_Sleep(int msec)
-{
+"""
+def NET_Sleep(msec: int):
+
+	time.sleep(0)
+	"""
     struct timeval timeout;
 	fd_set	fdset;
 	extern cvar_t *dedicated;

@@ -665,7 +665,6 @@ def SV_ExecuteClientMessage (cl): #client_t *
 
 			s = common.MSG_ReadString (net_chan.net_message)
 
-			print ("c", c, s)
 			# malicious users may try using too many string commands
 			stringCmdCount += 1
 			if stringCmdCount < MAX_STRINGCMDS:

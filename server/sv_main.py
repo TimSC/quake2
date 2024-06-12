@@ -657,8 +657,6 @@ def SV_ReadPackets ():
 						if cl.state != sv_init.client_state_t.cs_zombie:
 						
 							cl.lastmessage = sv_init.svs.realtime	# don't timeout
-							if net_chan.net_message.data.find(b"new") != -1:
-								print ("cl", net_chan.net_message.data.find(b"new")) #DEBUG
 							sv_user.SV_ExecuteClientMessage (cl)
 						
 					break
@@ -808,21 +806,21 @@ def SV_Frame (msec): #int
 
 	# get packets from clients
 	SV_ReadPackets ()
-	"""
-	# move autonomous things around if enough time has passed
-	if (!sv_timedemo->value && sv_init.svs.realtime < sv_init.sv.time)
-	{
-		# never let the time get too far off
-		if (sv_init.sv.time - sv_init.svs.realtime > 100)
-		{
-			if (sv_showclamp->value)
-				Com_Printf ("sv lowclamp\n");
-			sv_init.svs.realtime = sv_init.sv.time - 100;
-		}
-		NET_Sleep(sv_init.sv.time - sv_init.svs.realtime);
-		return;
-	}
 
+	# move autonomous things around if enough time has passed
+	if not int(sv_timedemo.value) and sv_init.svs.realtime < sv_init.sv.time:
+	
+		# never let the time get too far off
+		if sv_init.sv.time - sv_init.svs.realtime > 100:
+		
+			if int(sv_showclamp.value):
+				Com_Printf ("sv lowclamp\n");
+			sv_init.svs.realtime = sv_init.sv.time - 100
+		
+		net_udp.NET_Sleep(sv_init.sv.time - sv_init.svs.realtime)
+		return
+	
+	"""
 	# update ping based on the last known frame from all clients
 	SV_CalcPings ();
 	"""
