@@ -1498,9 +1498,13 @@ CL_AddEntities
 
 Emits all entities, particles, and lights to the refresh
 ===============
-*/
-void CL_AddEntities (void)
-{
+"""
+def CL_AddEntities ():
+	print ("CL_AddEntities")
+
+	pass
+	"""
+
 	if (cls.state != ca_active)
 		return;
 
@@ -1536,15 +1540,17 @@ void CL_AddEntities (void)
 #if 0
 	CL_AddProjectiles ();
 #endif
-	CL_AddTEnts ();
+	"""
+	cl_tent.CL_AddTEnts ()
+	"""
 	CL_AddParticles ();
 	CL_AddDLights ();
 	CL_AddLightStyles ();
-}
+	"""
 
 
 
-/*
+"""
 ===============
 CL_GetEntitySoundOrigin
 

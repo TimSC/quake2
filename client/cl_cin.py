@@ -527,7 +527,7 @@ def SCR_PlayCinematic (arg): # char *
 		cl_main.cl.cinematicframe = -1
 		cl_main.cl.cinematictime = 1
 		cl_scrn.SCR_EndLoadingPlaque ()
-		cl_main.cls.state = ca_active
+		cl_main.cls.state = client.connstate_t.ca_active
 		if cin.pic is None:
 		
 			common.Com_Printf ("{} not found.\n".format(name))

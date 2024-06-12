@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 from qcommon import cvar, common, cmd
 from game import q_shared
-from client import cl_tent
+from client import cl_tent, cl_main, client
 """
 #include "client.h"
 
@@ -168,8 +168,8 @@ void V_TestParticles (void)
 		p = &r_particles[i];
 
 		for (j=0 ; j<3 ; j++)
-			p->origin[j] = cl.refdef.vieworg[j] + cl.v_forward[j]*d +
-			cl.v_right[j]*r + cl.v_up[j]*u;
+			p->origin[j] = cl_main.cl.refdef.vieworg[j] + cl_main.cl.v_forward[j]*d +
+			cl_main.cl.v_right[j]*r + cl_main.cl.v_up[j]*u;
 
 		p->color = 8;
 		p->alpha = cl_testparticles->value;
@@ -200,11 +200,11 @@ void V_TestEntities (void)
 		f = 64 * (i/4) + 128;
 
 		for (j=0 ; j<3 ; j++)
-			ent->origin[j] = cl.refdef.vieworg[j] + cl.v_forward[j]*f +
-			cl.v_right[j]*r;
+			ent->origin[j] = cl_main.cl.refdef.vieworg[j] + cl_main.cl.v_forward[j]*f +
+			cl_main.cl.v_right[j]*r;
 
-		ent->model = cl.baseclientinfo.model;
-		ent->skin = cl.baseclientinfo.skin;
+		ent->model = cl_main.cl.baseclientinfo.model;
+		ent->skin = cl_main.cl.baseclientinfo.skin;
 	}
 }
 
@@ -232,8 +232,8 @@ void V_TestLights (void)
 		f = 64 * (i/4) + 128;
 
 		for (j=0 ; j<3 ; j++)
-			dl->origin[j] = cl.refdef.vieworg[j] + cl.v_forward[j]*f +
-			cl.v_right[j]*r;
+			dl->origin[j] = cl_main.cl.refdef.vieworg[j] + cl_main.cl.v_forward[j]*f +
+			cl_main.cl.v_right[j]*r;
 		dl->color[0] = ((i%6)+1) & 1;
 		dl->color[1] = (((i%6)+1) & 2)>>1;
 		dl->color[2] = (((i%6)+1) & 4)>>2;
@@ -258,20 +258,20 @@ def CL_PrepRefresh ():
 	float		rotate;
 	vec3_t		axis;
 
-	if (!cl.configstrings[CS_MODELS+1][0])
+	if (!cl_main.cl.configstrings[CS_MODELS+1][0])
 		return;		// no map loaded
 
 	SCR_AddDirtyPoint (0, 0);
 	SCR_AddDirtyPoint (viddef.width-1, viddef.height-1);
 
 	// let the render dll load the map
-	strcpy (mapname, cl.configstrings[CS_MODELS+1] + 5);	// skip "maps/"
+	strcpy (mapname, cl_main.cl.configstrings[CS_MODELS+1] + 5);	// skip "maps/"
 	mapname[strlen(mapname)-4] = 0;		// cut off ".bsp"
 
 	// register models, pics, and skins
 	Com_Printf ("Map: %s\r", mapname); 
 	SCR_UpdateScreen ();
-	re.BeginRegistration (mapname);
+	vid_so.re.BeginRegistration (mapname);
 	Com_Printf ("                                     \r");
 
 	// precache status bar pics
@@ -285,9 +285,9 @@ def CL_PrepRefresh ():
 	num_cl_weaponmodels = 1;
 	strcpy(cl_weaponmodels[0], "weapon.md2");
 
-	for (i=1 ; i<MAX_MODELS && cl.configstrings[CS_MODELS+i][0] ; i++)
+	for (i=1 ; i<MAX_MODELS && cl_main.cl.configstrings[CS_MODELS+i][0] ; i++)
 	{
-		strcpy (name, cl.configstrings[CS_MODELS+i]);
+		strcpy (name, cl_main.cl.configstrings[CS_MODELS+i]);
 		name[37] = 0;	// never go beyond one line
 		if (name[0] != '*')
 			Com_Printf ("%s\r", name); 
@@ -298,18 +298,18 @@ def CL_PrepRefresh ():
 			// special player weapon model
 			if (num_cl_weaponmodels < MAX_CLIENTWEAPONMODELS)
 			{
-				strncpy(cl_weaponmodels[num_cl_weaponmodels], cl.configstrings[CS_MODELS+i]+1,
+				strncpy(cl_weaponmodels[num_cl_weaponmodels], cl_main.cl.configstrings[CS_MODELS+i]+1,
 					sizeof(cl_weaponmodels[num_cl_weaponmodels]) - 1);
 				num_cl_weaponmodels++;
 			}
 		} 
 		else
 		{
-			cl.model_draw[i] = re.RegisterModel (cl.configstrings[CS_MODELS+i]);
+			cl_main.cl.model_draw[i] = vid_so.re.RegisterModel (cl_main.cl.configstrings[CS_MODELS+i]);
 			if (name[0] == '*')
-				cl.model_clip[i] = CM_InlineModel (cl.configstrings[CS_MODELS+i]);
+				cl_main.cl.model_clip[i] = CM_InlineModel (cl_main.cl.configstrings[CS_MODELS+i]);
 			else
-				cl.model_clip[i] = NULL;
+				cl_main.cl.model_clip[i] = NULL;
 		}
 		if (name[0] != '*')
 			Com_Printf ("                                     \r");
@@ -317,16 +317,16 @@ def CL_PrepRefresh ():
 
 	Com_Printf ("images\r", i); 
 	SCR_UpdateScreen ();
-	for (i=1 ; i<MAX_IMAGES && cl.configstrings[CS_IMAGES+i][0] ; i++)
+	for (i=1 ; i<MAX_IMAGES && cl_main.cl.configstrings[CS_IMAGES+i][0] ; i++)
 	{
-		cl.image_precache[i] = re.RegisterPic (cl.configstrings[CS_IMAGES+i]);
+		cl_main.cl.image_precache[i] = vid_so.re.RegisterPic (cl_main.cl.configstrings[CS_IMAGES+i]);
 		Sys_SendKeyEvents ();	// pump message loop
 	}
 	
 	Com_Printf ("                                     \r");
 	for (i=0 ; i<MAX_CLIENTS ; i++)
 	{
-		if (!cl.configstrings[CS_PLAYERSKINS+i][0])
+		if (!cl_main.cl.configstrings[CS_PLAYERSKINS+i][0])
 			continue;
 		Com_Printf ("client %i\r", i); 
 		SCR_UpdateScreen ();
@@ -335,29 +335,29 @@ def CL_PrepRefresh ():
 		Com_Printf ("                                     \r");
 	}
 
-	CL_LoadClientinfo (&cl.baseclientinfo, "unnamed\\male/grunt");
+	CL_LoadClientinfo (&cl_main.cl.baseclientinfo, "unnamed\\male/grunt");
 
 	// set sky textures and speed
 	Com_Printf ("sky\r", i); 
 	SCR_UpdateScreen ();
-	rotate = atof (cl.configstrings[CS_SKYROTATE]);
-	sscanf (cl.configstrings[CS_SKYAXIS], "%f %f %f", 
+	rotate = atof (cl_main.cl.configstrings[CS_SKYROTATE]);
+	sscanf (cl_main.cl.configstrings[CS_SKYAXIS], "%f %f %f", 
 		&axis[0], &axis[1], &axis[2]);
-	re.SetSky (cl.configstrings[CS_SKY], rotate, axis);
+	vid_so.re.SetSky (cl_main.cl.configstrings[CS_SKY], rotate, axis);
 	Com_Printf ("                                     \r");
 
 	// the renderer can now free unneeded stuff
-	re.EndRegistration ();
+	vid_so.re.EndRegistration ();
 
 	// clear any lines of console text
 	Con_ClearNotify ();
 
 	SCR_UpdateScreen ();
-	cl.refresh_prepped = true;
-	cl.force_refdef = true;	// make sure we have a valid refdef
+	cl_main.cl.refresh_prepped = true;
+	cl_main.cl.force_refdef = true;	// make sure we have a valid refdef
 
 	// start the cd track
-	CDAudio_Play (atoi(cl.configstrings[CS_CDTRACK]), true);
+	CDAudio_Play (atoi(cl_main.cl.configstrings[CS_CDTRACK]), true);
 }
 
 /*
@@ -413,7 +413,7 @@ def V_Gun_Model_f ():
 		return;
 	}
 	Com_sprintf (name, sizeof(name), "models/%s/tris.md2", Cmd_Argv(1));
-	gun_model = re.RegisterModel (name);
+	gun_model = vid_so.re.RegisterModel (name);
 	"""
 
 """
@@ -439,7 +439,7 @@ void SCR_DrawCrosshair (void)
 	if (!crosshair_pic[0])
 		return;
 
-	re.DrawPic (scr_vrect.x + ((scr_vrect.width - crosshair_width)>>1)
+	vid_so.re.DrawPic (scr_vrect.x + ((scr_vrect.width - crosshair_width)>>1)
 	, scr_vrect.y + ((scr_vrect.height - crosshair_height)>>1), crosshair_pic);
 }
 
@@ -448,126 +448,119 @@ void SCR_DrawCrosshair (void)
 V_RenderView
 
 ==================
-*/
-void V_RenderView( float stereo_separation )
-{
-	extern int entitycmpfnc( const entity_t *, const entity_t * );
+"""
+def V_RenderView( stereo_separation: float ):
 
-	if (cls.state != ca_active)
-		return;
+	#extern int entitycmpfnc( const entity_t *, const entity_t * );
 
-	if (!cl.refresh_prepped)
-		return;			// still loading
+	if cl_main.cls.state != client.connstate_t.ca_active:
+		return
 
-	if (cl_timedemo->value)
-	{
-		if (!cl.timedemo_start)
-			cl.timedemo_start = Sys_Milliseconds ();
-		cl.timedemo_frames++;
-	}
+	if not cl_main.cl.refresh_prepped:
+		return			# still loading
 
-	// an invalid frame will just use the exact previous refdef
-	// we can't use the old frame if the video mode has changed, though...
-	if ( cl.frame.valid && (cl.force_refdef || !cl_paused->value) )
-	{
-		cl.force_refdef = false;
+	if cl_main.cl_timedemo.value:
+	
+		if not cl_main.cl.timedemo_start:
+			cl_main.cl.timedemo_start = q_shlinux.Sys_Milliseconds ()
+		cl_main.cl.timedemo_frames+=1
+	
+	# an invalid frame will just use the exact previous refdef
+	# we can't use the old frame if the video mode has changed, though...
+	if cl_main.cl.frame.valid and (cl_main.cl.force_refdef or not cl_paused.value):
+	
+		cl_main.cl.force_refdef = False
 
-		V_ClearScene ();
+		V_ClearScene ()
 
-		// build a refresh entity list and calc cl.sim*
-		// this also calls CL_CalcViewValues which loads
-		// v_forward, etc.
-		CL_AddEntities ();
+		# build a refresh entity list and calc cl_main.cl.sim*
+		# this also calls CL_CalcViewValues which loads
+		# v_forward, etc.
+		CL_AddEntities ()
 
-		if (cl_testparticles->value)
-			V_TestParticles ();
-		if (cl_testentities->value)
-			V_TestEntities ();
-		if (cl_testlights->value)
-			V_TestLights ();
-		if (cl_testblend->value)
-		{
-			cl.refdef.blend[0] = 1;
-			cl.refdef.blend[1] = 0.5;
-			cl.refdef.blend[2] = 0.25;
-			cl.refdef.blend[3] = 0.5;
-		}
+		if cl_testparticles.value:
+			V_TestParticles ()
+		if cl_testentities.value:
+			V_TestEntities ()
+		if cl_testlights.value:
+			V_TestLights ()
+		if cl_testblend.value:
+		
+			cl_main.cl.refdef.blend[0] = 1
+			cl_main.cl.refdef.blend[1] = 0.5
+			cl_main.cl.refdef.blend[2] = 0.25
+			cl_main.cl.refdef.blend[3] = 0.5
+		
 
-		// offset vieworg appropriately if we're doing stereo separation
-		if ( stereo_separation != 0 )
-		{
-			vec3_t tmp;
+		# offset vieworg appropriately if we're doing stereo separation
+		if stereo_separation != 0:
+		
+			tmp = VectorScale( cl_main.cl.v_right, stereo_separation, tmp )
+			VectorAdd( cl_main.cl.refdef.vieworg, tmp, cl_main.cl.refdef.vieworg )
+		
 
-			VectorScale( cl.v_right, stereo_separation, tmp );
-			VectorAdd( cl.refdef.vieworg, tmp, cl.refdef.vieworg );
-		}
+		# never let it sit exactly on a node line, because a water plane can
+		# dissapear when viewed with the eye exactly on it.
+		# the server protocol only specifies to 1/8 pixel, so add 1/16 in each axis
+		cl_main.cl.refdef.vieworg[0] += 1.0/16
+		cl_main.cl.refdef.vieworg[1] += 1.0/16
+		cl_main.cl.refdef.vieworg[2] += 1.0/16
 
-		// never let it sit exactly on a node line, because a water plane can
-		// dissapear when viewed with the eye exactly on it.
-		// the server protocol only specifies to 1/8 pixel, so add 1/16 in each axis
-		cl.refdef.vieworg[0] += 1.0/16;
-		cl.refdef.vieworg[1] += 1.0/16;
-		cl.refdef.vieworg[2] += 1.0/16;
+		cl_main.cl.refdef.x = scr_vrect.x
+		cl_main.cl.refdef.y = scr_vrect.y
+		cl_main.cl.refdef.width = scr_vrect.width
+		cl_main.cl.refdef.height = scr_vrect.height
+		cl_main.cl.refdef.fov_y = CalcFov (cl_main.cl.refdef.fov_x, cl_main.cl.refdef.width, cl_main.cl.refdef.height)
+		cl_main.cl.refdef.time = cl_main.cl.time*0.001
 
-		cl.refdef.x = scr_vrect.x;
-		cl.refdef.y = scr_vrect.y;
-		cl.refdef.width = scr_vrect.width;
-		cl.refdef.height = scr_vrect.height;
-		cl.refdef.fov_y = CalcFov (cl.refdef.fov_x, cl.refdef.width, cl.refdef.height);
-		cl.refdef.time = cl.time*0.001;
+		cl_main.cl.refdef.areabits = cl_main.cl.frame.areabits
 
-		cl.refdef.areabits = cl.frame.areabits;
+		if not cl_add_entities.value:
+			r_numentities = 0
+		if not cl_add_particles.value:
+			r_numparticles = 0
+		if not cl_add_lights.value:
+			r_numdlights = 0
+		if not cl_add_blend.value:
+			VectorClear (cl_main.cl.refdef.blend)	
 
-		if (!cl_add_entities->value)
-			r_numentities = 0;
-		if (!cl_add_particles->value)
-			r_numparticles = 0;
-		if (!cl_add_lights->value)
-			r_numdlights = 0;
-		if (!cl_add_blend->value)
-		{
-			VectorClear (cl.refdef.blend);
-		}
+		cl_main.cl.refdef.num_entities = r_numentities
+		cl_main.cl.refdef.entities = r_entities
+		cl_main.cl.refdef.num_particles = r_numparticles
+		cl_main.cl.refdef.particles = r_particles
+		cl_main.cl.refdef.num_dlights = r_numdlights
+		cl_main.cl.refdef.dlights = r_dlights
+		cl_main.cl.refdef.lightstyles = r_lightstyles
 
-		cl.refdef.num_entities = r_numentities;
-		cl.refdef.entities = r_entities;
-		cl.refdef.num_particles = r_numparticles;
-		cl.refdef.particles = r_particles;
-		cl.refdef.num_dlights = r_numdlights;
-		cl.refdef.dlights = r_dlights;
-		cl.refdef.lightstyles = r_lightstyles;
+		cl_main.cl.refdef.rdflags = cl_main.cl.frame.playerstate.rdflags
 
-		cl.refdef.rdflags = cl.frame.playerstate.rdflags;
+		# sort entities for better cache locality
+		cl_main.cl.refdef.entities.sort(key=entitycmpfnc)
+	
+	vid_so.re.RenderFrame (cl_main.cl.refdef)
+	if cl_stats.value:
+		common.Com_Printf ("ent:{}  lt:{}  part:{}\n".format(r_numentities, r_numdlights, r_numparticles))
+	if log_stats.value and ( log_stats_file != 0 ):
+		log_stats_file = "{},{},{},".format(r_numentities, r_numdlights, r_numparticles)
 
-		// sort entities for better cache locality
-        qsort( cl.refdef.entities, cl.refdef.num_entities, sizeof( cl.refdef.entities[0] ), (int (*)(const void *, const void *))entitycmpfnc );
-	}
-
-	re.RenderFrame (&cl.refdef);
-	if (cl_stats->value)
-		Com_Printf ("ent:%i  lt:%i  part:%i\n", r_numentities, r_numdlights, r_numparticles);
-	if ( log_stats->value && ( log_stats_file != 0 ) )
-		fprintf( log_stats_file, "%i,%i,%i,",r_numentities, r_numdlights, r_numparticles);
-
-
-	SCR_AddDirtyPoint (scr_vrect.x, scr_vrect.y);
+	SCR_AddDirtyPoint (scr_vrect.x, scr_vrect.y)
 	SCR_AddDirtyPoint (scr_vrect.x+scr_vrect.width-1,
-		scr_vrect.y+scr_vrect.height-1);
+		scr_vrect.y+scr_vrect.height-1)
 
-	SCR_DrawCrosshair ();
-}
+	SCR_DrawCrosshair ()
 
 
-/*
+
+"""
 =============
 V_Viewpos_f
 =============
 """
 def V_Viewpos_f ():
 
-	common.Com_Printf ("({} {} {}) : {}\n".format(int(cl.refdef.vieworg[0]),
-		int(cl.refdef.vieworg[1]), int(cl.refdef.vieworg[2]), 
-		int(cl.refdef.viewangles[YAW])))
+	common.Com_Printf ("({} {} {}) : {}\n".format(int(cl_main.cl.refdef.vieworg[0]),
+		int(cl_main.cl.refdef.vieworg[1]), int(cl_main.cl.refdef.vieworg[2]), 
+		int(cl_main.cl.refdef.viewangles[YAW])))
 
 """
 =============

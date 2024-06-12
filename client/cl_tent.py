@@ -44,8 +44,10 @@ class exptype_t(Enum):
 class explosion_t(object):
 
 	def __init__(self):
+		self.clear()
 
-		self.typeVal = None #exptype_t	
+	def clear(self):
+		self.typeval = exptype_t.ex_free #exptype_t	
 		self.ent = ref.entity_t() #entity_t
 
 		self.frames = None # int			
@@ -55,12 +57,14 @@ class explosion_t(object):
 		self.baseframe = None # int
 
 
+
+
+MAX_EXPLOSIONS = 32
+cl_explosions = []
+for ex in range(MAX_EXPLOSIONS):
+	cl_explosions.append(explosion_t())
+
 """
-
-#define	MAX_EXPLOSIONS	32
-explosion_t	cl_explosions[MAX_EXPLOSIONS];
-
-
 #define	MAX_BEAMS	32
 typedef struct
 {
@@ -249,7 +253,10 @@ def CL_ClearTEnts ():
 	print ("CL_ClearTEnts")
 	"""
 	memset (cl_beams, 0, sizeof(cl_beams))
-	memset (cl_explosions, 0, sizeof(cl_explosions))
+	"""
+	for ex in cl_explosions:
+		ex.clear()
+	"""
 	memset (cl_lasers, 0, sizeof(cl_lasers))
 
 # ROGUE
@@ -265,36 +272,34 @@ CL_AllocExplosion
 """
 def CL_AllocExplosion () -> explosion_t:
 
-	print ("CL_AllocExplosion")
-	return explosion_t()
 	"""
 	int		i;
 	int		time;
 	int		index;
+	"""
 	
-	for (i=0 ; i<MAX_EXPLOSIONS ; i++)
-	{
-		if (cl_explosions[i].type == ex_free)
-		{
-			memset (&cl_explosions[i], 0, sizeof (cl_explosions[i]));
-			return &cl_explosions[i];
-		}
-	}
-// find the oldest explosion
-	time = cl.time;
-	index = 0;
+	for ex in cl_explosions:
+	
+		if ex.typeval == exptype_t.ex_free:
+		
+			ex.clear()
+			return ex
+	
+# find the oldest explosion
+	time = cl_main.cl.time
+	index = 0
 
-	for (i=0 ; i<MAX_EXPLOSIONS ; i++)
-		if (cl_explosions[i].start < time)
-		{
-			time = cl_explosions[i].start;
-			index = i;
-		}
-	memset (&cl_explosions[index], 0, sizeof (cl_explosions[index]));
-	return &cl_explosions[index];
-}
+	for i in range(len(cl_explosions)):
+		if cl_explosions[i].start < time:
+		
+			time = cl_explosions[i].start
+			index = i
 
-/*
+	cl_explosions[index].clear()
+	return cl_explosions[index]
+
+
+"""
 =================
 CL_SmokeAndFlash
 =================
@@ -306,7 +311,7 @@ def CL_SmokeAndFlash(origin):
 
 	ex = CL_AllocExplosion ();
 	q_shared.VectorCopy (origin, ex.ent.origin);
-	ex.type = ex_misc;
+	ex.typeval = ex_misc;
 	ex.frames = 4;
 	ex.ent.flags = q_shared.RF_TRANSLUCENT;
 	ex.start = cl_main.cl.frame.servertime - 100;
@@ -314,7 +319,7 @@ def CL_SmokeAndFlash(origin):
 
 	ex = CL_AllocExplosion ();
 	q_shared.VectorCopy (origin, ex.ent.origin);
-	ex.type = ex_flash;
+	ex.typeval = ex_flash;
 	ex.ent.flags = q_shared.RF_FULLBRIGHT;
 	ex.frames = 2;
 	ex.start = cl_main.cl.frame.servertime - 100;
@@ -856,7 +861,7 @@ def CL_ParseTEnt ():
 		else:
 			ex.ent.angles[1] = 0
 
-		ex.typeIn = exptype_t.ex_misc
+		ex.typeval = exptype_t.ex_misc
 		ex.ent.flags = q_shared.RF_FULLBRIGHT|q_shared.RF_TRANSLUCENT
 		ex.start = cl_main.cl.frame.servertime - 100
 		ex.light = 150
@@ -882,7 +887,7 @@ def CL_ParseTEnt ():
 
 		ex = CL_AllocExplosion ()
 		q_shared.VectorCopy (pos, ex.ent.origin)
-		ex.type = exptype_t.ex_poly
+		ex.typeval = exptype_t.ex_poly
 		ex.ent.flags = q_shared.RF_FULLBRIGHT
 		ex.start = cl_main.cl.frame.servertime - 100
 		ex.light = 350
@@ -905,7 +910,7 @@ def CL_ParseTEnt ():
 		MSG_ReadPos (&net_chan.net_message, pos);
 		ex = CL_AllocExplosion ();
 		q_shared.VectorCopy (pos, ex.ent.origin);
-		ex.type = exptype_t.ex_poly;
+		ex.typeval = exptype_t.ex_poly;
 		ex.ent.flags = q_shared.RF_FULLBRIGHT;
 		ex.start = cl_main.cl.frame.servertime - 100;
 		ex.light = 350;
@@ -931,7 +936,7 @@ def CL_ParseTEnt ():
 
 		ex = CL_AllocExplosion ()
 		q_shared.VectorCopy (pos, ex.ent.origin)
-		ex.type = exptype_t.ex_poly
+		ex.typeval = exptype_t.ex_poly
 		ex.ent.flags = q_shared.RF_FULLBRIGHT
 		ex.start = cl_main.cl.frame.servertime - 100
 		ex.light = 350
@@ -959,7 +964,7 @@ def CL_ParseTEnt ():
 		MSG_ReadPos (&net_chan.net_message, pos);
 		ex = CL_AllocExplosion ();
 		q_shared.VectorCopy (pos, ex.ent.origin);
-		ex.type = exptype_t.ex_poly;
+		ex.typeval = exptype_t.ex_poly;
 		ex.ent.flags = q_shared.RF_FULLBRIGHT;
 		ex.start = cl_main.cl.frame.servertime - 100;
 		ex.light = 350;
@@ -1012,7 +1017,7 @@ def CL_ParseTEnt ():
 
 		ex = CL_AllocExplosion ();
 		q_shared.VectorCopy (pos, ex.ent.origin);
-		ex.type = ex_flash;
+		ex.typeval = ex_flash;
 		// note to self
 		// we need a better no draw flag
 		ex.ent.flags = RF_BEAM;
@@ -1067,7 +1072,7 @@ def CL_ParseTEnt ():
 		else
 			ex.ent.angles[1] = 0;
 
-		ex.type = ex_misc;
+		ex.typeval = ex_misc;
 		ex.ent.flags = q_shared.RF_FULLBRIGHT|q_shared.RF_TRANSLUCENT;
 
 		// PMM
@@ -1109,7 +1114,7 @@ def CL_ParseTEnt ():
 
 		ex = CL_AllocExplosion ();
 		q_shared.VectorCopy (pos, ex.ent.origin);
-		ex.type = exptype_t.ex_poly;
+		ex.typeval = exptype_t.ex_poly;
 		ex.ent.flags = q_shared.RF_FULLBRIGHT;
 		ex.start = cl_main.cl.frame.servertime - 100;
 		ex.light = 350;
@@ -1652,7 +1657,7 @@ void CL_AddExplosions (void)
 
 	for (i=0, ex=cl_explosions ; i< MAX_EXPLOSIONS ; i++, ex++)
 	{
-		if (ex.type == ex_free)
+		if (ex.typeval == ex_free)
 			continue;
 		frac = (cl.time - ex.start)/100.0;
 		f = floor(frac);
@@ -1663,12 +1668,12 @@ void CL_AddExplosions (void)
 		{
 		case ex_mflash:
 			if (f >= ex.frames-1)
-				ex.type = ex_free;
+				ex.typeval = ex_free;
 			break;
 		case ex_misc:
 			if (f >= ex.frames-1)
 			{
-				ex.type = ex_free;
+				ex.typeval = ex_free;
 				break;
 			}
 			ent->alpha = 1.0 - frac/(ex.frames-1);
@@ -1676,7 +1681,7 @@ void CL_AddExplosions (void)
 		case ex_flash:
 			if (f >= 1)
 			{
-				ex.type = ex_free;
+				ex.typeval = ex_free;
 				break;
 			}
 			ent->alpha = 1.0;
@@ -1684,7 +1689,7 @@ void CL_AddExplosions (void)
 		case exptype_t.ex_poly:
 			if (f >= ex.frames-1)
 			{
-				ex.type = ex_free;
+				ex.typeval = ex_free;
 				break;
 			}
 
@@ -1708,7 +1713,7 @@ void CL_AddExplosions (void)
 		case exptype_t.ex_poly2:
 			if (f >= ex.frames-1)
 			{
-				ex.type = ex_free;
+				ex.typeval = ex_free;
 				break;
 			}
 
@@ -1718,7 +1723,7 @@ void CL_AddExplosions (void)
 			break;
 		}
 
-		if (ex.type == ex_free)
+		if (ex.typeval == ex_free)
 			continue;
 		if (ex.light)
 		{
@@ -1779,15 +1784,17 @@ void CL_ProcessSustain ()
 =================
 CL_AddTEnts
 =================
-*/
-void CL_AddTEnts (void)
-{
-	CL_AddBeams ();
-	// PMM - draw plasma beams
-	CL_AddPlayerBeams ();
-	CL_AddExplosions ();
-	CL_AddLasers ();
-	// PMM - set up sustain
-	CL_ProcessSustain();
-}
 """
+def CL_AddTEnts ():
+
+	print ("CL_AddTEnts")
+	"""
+	CL_AddBeams ()
+	// PMM - draw plasma beams
+	CL_AddPlayerBeams ()
+	CL_AddExplosions ()
+	CL_AddLasers ()
+	// PMM - set up sustain
+	CL_ProcessSustain()
+
+	"""

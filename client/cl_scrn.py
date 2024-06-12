@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, qcommon, common
-from client import console, cl_main, client, menu, cl_cin, snd_dma
+from client import console, cl_main, client, menu, cl_cin, snd_dma, cl_view
 from linux import q_shlinux, vid_so, cd_linux
 from game import q_shared
 """
@@ -1389,7 +1389,6 @@ def SCR_UpdateScreen ():
 
 		
 		else:
-		
 
 			# make sure the game palette is active
 			if cl_main.cl.cinematicpalette_active:
@@ -1403,9 +1402,9 @@ def SCR_UpdateScreen ():
 
 			# clear any dirty part of the background
 			SCR_TileClear ()
-			"""
-			V_RenderView ( separation[i] )
 
+			cl_view.V_RenderView ( separation[i] )
+			"""
 			SCR_DrawStats ()
 			if (cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS] & 1)
 				SCR_DrawLayout ()
