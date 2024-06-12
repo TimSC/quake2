@@ -583,6 +583,7 @@ Loads in the map and all submodels
 def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsigned *)
 
 	global last_checksum
+	global numplanes, numnodes, numleafs, numcmodels, numvisibility, numentitychars, map_entitystring, map_name
 
 	print ("CM_LoadMap", name, clientload)
 	return q_shared.cmodel_t(), 0
@@ -608,24 +609,22 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 		
 		return map_cmodels[0], checksum # still have the right version
 	
-	"""
-	// free old stuff
-	numplanes = 0;
-	numnodes = 0;
-	numleafs = 0;
-	numcmodels = 0;
-	numvisibility = 0;
-	numentitychars = 0;
-	map_entitystring[0] = 0;
-	map_name[0] = 0;
-	"""
+
+	# free old stuff
+	numplanes = 0
+	numnodes = 0
+	numleafs = 0
+	numcmodels = 0
+	numvisibility = 0
+	numentitychars = 0
+	map_entitystring[0] = None
+	map_name = None
+
 	if name is None or len(name) == 0:
-		pass
-		"""
-		numleafs = 1;
-		numclusters = 1;
-		numareas = 1;
-		"""
+
+		numleafs = 1
+		numclusters = 1
+		numareas = 1
 		checksum = 0
 		return map_cmodels[0], checksum # cinematic servers won't have anything at all
 
