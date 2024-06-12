@@ -197,9 +197,12 @@ CL_PredictMovement
 
 Sets cl.predicted_origin and cl.predicted_angles
 =================
-*/
-void CL_PredictMovement (void)
-{
+"""
+def CL_PredictMovement ():
+
+	pass
+	#print ("CL_PredictMovement")
+	"""
 	int			ack, current;
 	int			frame;
 	int			oldframe;

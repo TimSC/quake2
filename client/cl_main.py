@@ -21,7 +21,7 @@ import os
 import struct
 from qcommon import cvar, common, cmd, files, net_chan, qcommon
 from game import q_shared
-from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse, cl_fx, cl_tent
+from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse, cl_fx, cl_tent, cl_pred
 from linux import q_shlinux, vid_so, in_linux, net_udp, cd_linux
 
 """
@@ -1720,13 +1720,13 @@ def CL_Frame (msec): #int
 
 	# send a new command message to the server
 	CL_SendCommand ()
-	"""
-	// predict all unacknowledged movements
-	CL_PredictMovement ();
 
-	// allow rendering DLL change
-	VID_CheckChanges ();
-	"""
+	# predict all unacknowledged movements
+	cl_pred.CL_PredictMovement ()
+
+	# allow rendering DLL change
+	vid_so.VID_CheckChanges ()
+	
 	if not cl.refresh_prepped and cls.state == client.connstate_t.ca_active:
 		cl_view.CL_PrepRefresh ()
 

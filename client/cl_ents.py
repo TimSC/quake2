@@ -778,8 +778,8 @@ def CL_ParseFrame ():
 			cl_main.cl.predicted_origin[1] = cl_main.cl.frame.playerstate.pmove.origin[1]*0.125
 			cl_main.cl.predicted_origin[2] = cl_main.cl.frame.playerstate.pmove.origin[2]*0.125
 			q_shared.VectorCopy (cl_main.cl.frame.playerstate.viewangles, cl_main.cl.predicted_angles)
-			if (cl_main.cls.disable_servercount != cl_main.cl.servercount
-				and cl_main.cl.refresh_prepped):
+			if cl_main.cls.disable_servercount != cl_main.cl.servercount \
+				and cl_main.cl.refresh_prepped:
 				cl_scrn.SCR_EndLoadingPlaque ()	# get rid of loading plaque
 		
 		cl_main.cl.sound_prepped = True	# can start mixing ambient sounds

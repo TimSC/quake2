@@ -22,7 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 from qcommon import cvar, common, cmd
 from game import q_shared
-from client import cl_tent, cl_main, client
+from client import cl_tent, cl_main, client, console, cl_scrn
+from linux import vid_so, cd_linux
 """
 #include "client.h"
 
@@ -345,22 +346,22 @@ def CL_PrepRefresh ():
 		&axis[0], &axis[1], &axis[2]);
 	vid_so.re.SetSky (cl_main.cl.configstrings[CS_SKY], rotate, axis);
 	Com_Printf ("                                     \r");
+	"""
+	# the renderer can now free unneeded stuff
+	vid_so.re.EndRegistration ()
 
-	// the renderer can now free unneeded stuff
-	vid_so.re.EndRegistration ();
+	# clear any lines of console text
+	console.Con_ClearNotify ()
 
-	// clear any lines of console text
-	Con_ClearNotify ();
+	cl_scrn.SCR_UpdateScreen ()
+	cl_main.cl.refresh_prepped = True
+	cl_main.cl.force_refdef = True # make sure we have a valid refdef
 
-	SCR_UpdateScreen ();
-	cl_main.cl.refresh_prepped = true;
-	cl_main.cl.force_refdef = true;	// make sure we have a valid refdef
+	# start the cd track
+	cd_linux.CDAudio_Play (cl_main.cl.configstrings[q_shared.CS_CDTRACK], True)
 
-	// start the cd track
-	CDAudio_Play (atoi(cl_main.cl.configstrings[CS_CDTRACK]), true);
-}
 
-/*
+"""
 ====================
 CalcFov
 ====================

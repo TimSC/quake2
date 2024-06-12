@@ -206,39 +206,36 @@ refresh window.
 =============
 """
 def Draw_TileClear (x, y, w, h, pic): #int, int, int, int, char *
+	
+	#image_t	*image;
 
-	pass
-	"""
-	image_t	*image;
+	image = Draw_FindPic (pic)
+	if image is None:
+	
+		gl_rmain.ri.Con_Printf (PRINT_ALL, "Can't find pic: {}\n".format(pic))
+		return
+	
+	if  ( ( gl_config.renderer == GL_RENDERER_MCD ) or ( gl_config.renderer & GL_RENDERER_RENDITION ) )  and not image.has_alpha:
+		GL.glDisable (GL_ALPHA_TEST)
 
-	image = Draw_FindPic (pic);
-	if (!image)
-	{
-		gl_rmain.ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
-		return;
-	}
+	gl_image.GL_Bind (image.texnum)
+	GL.glBegin (GL.GL_QUADS)
+	GL.glTexCoord2f (x/64.0, y/64.0)
+	GL.glVertex2f (x, y)
+	GL.glTexCoord2f ( (x+w)/64.0, y/64.0)
+	GL.glVertex2f (x+w, y)
+	GL.glTexCoord2f ( (x+w)/64.0, (y+h)/64.0)
+	GL.glVertex2f (x+w, y+h)
+	GL.glTexCoord2f ( x/64.0, (y+h)/64.0 )
+	GL.glVertex2f (x, y+h)
+	GL.glEnd ()
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) )  && !image->has_alpha)
-		qglDisable (GL_ALPHA_TEST);
-
-	GL_Bind (image->texnum);
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (x/64.0, y/64.0);
-	qglVertex2f (x, y);
-	qglTexCoord2f ( (x+w)/64.0, y/64.0);
-	qglVertex2f (x+w, y);
-	qglTexCoord2f ( (x+w)/64.0, (y+h)/64.0);
-	qglVertex2f (x+w, y+h);
-	qglTexCoord2f ( x/64.0, (y+h)/64.0 );
-	qglVertex2f (x, y+h);
-	qglEnd ();
-
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) )  && !image->has_alpha)
-		qglEnable (GL_ALPHA_TEST);
-}
+	if ( ( gl_config.renderer == GL_RENDERER_MCD ) or ( gl_config.renderer & GL_RENDERER_RENDITION ) )  and not image.has_alpha:
+		GL.glEnable (GL_ALPHA_TEST)
 
 
-/*
+
+"""
 =============
 Draw_Fill
 

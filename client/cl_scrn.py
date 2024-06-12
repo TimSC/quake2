@@ -39,16 +39,23 @@ from game import q_shared
 
 #include "client.h"
 """
+
+class vrect_t(object):
+
+	def __init__(self):
+		self.x = 0
+		self.y = 0
+		self.width = 0
+		self.height = 0
+
 scr_con_current = 0.0 #float, aproaches scr_conlines at scr_conspeed
 scr_conlines = 0.0 #float, 0.0 to 1.0 lines of console to display
 
 scr_initialized = False # qboolean, ready to draw
 scr_draw_loading = 0 #int
 
-"""
-vrect_t		scr_vrect;		// position of render window on screen
+scr_vrect = vrect_t() #position of render window on screen
 
-"""
 scr_viewsize = None #cvar_t		*
 scr_conspeed = None #cvar_t		*
 scr_centertime = None #cvar_t		*
@@ -63,15 +70,20 @@ scr_graphheight = None #cvar_t		*
 scr_graphscale = None #cvar_t		*
 scr_graphshift = None #cvar_t		*
 scr_drawall = None #cvar_t		*
+
+
+class dirty_t(object):
+
+	def __init__(self):
+		self.x1 = 0
+		self.y1 = 0
+		self.x2 = 0
+		self.y2 = 0
+
+
+scr_dirty = dirty_t()
+scr_old_dirty = [dirty_t(), dirty_t()]
 """
-
-typedef struct
-{
-	int		x1, y1, x2, y2;
-} dirty_t;
-
-dirty_t		scr_dirty, scr_old_dirty[2];
-
 char		crosshair_pic[MAX_QPATH];
 int			crosshair_width, crosshair_height;
 
@@ -323,30 +335,32 @@ Sets scr_vrect, the coordinates of the rendered window
 =================
 """
 def SCR_CalcVrect ():
-	pass
+	
+	global scr_vrect
 	"""
 	int		size;
+	"""
 
-	// bound viewsize
-	if (scr_viewsize->value < 40)
-		Cvar_Set ("viewsize","40");
-	if (scr_viewsize->value > 100)
-		Cvar_Set ("viewsize","100");
+	# bound viewsize
+	if scr_viewsize.value < 40:
+		Cvar_Set ("viewsize","40")
+	if scr_viewsize.value > 100:
+		Cvar_Set ("viewsize","100")
 
-	size = scr_viewsize->value;
+	size = int(scr_viewsize.value)
 
-	scr_vrect.width = vid_so.viddef.width*size/100;
-	scr_vrect.width &= ~7;
+	scr_vrect.width = vid_so.viddef.width*size//100
+	scr_vrect.width &= ~7
 
-	scr_vrect.height = vid_so.viddef.height*size/100;
-	scr_vrect.height &= ~1;
+	scr_vrect.height = vid_so.viddef.height*size//100
+	scr_vrect.height &= ~1
 
-	scr_vrect.x = (vid_so.viddef.width - scr_vrect.width)/2;
-	scr_vrect.y = (vid_so.viddef.height - scr_vrect.height)/2;
-}
+	scr_vrect.x = (vid_so.viddef.width - scr_vrect.width)//2
+	scr_vrect.y = (vid_so.viddef.height - scr_vrect.height)//2
 
 
-/*
+
+"""
 =================
 SCR_SizeUp_f
 
@@ -687,18 +701,17 @@ SCR_AddDirtyPoint
 """
 def SCR_AddDirtyPoint (x, y):
 
-	pass
-	"""
-	if (x < scr_dirty.x1)
-		scr_dirty.x1 = x;
-	if (x > scr_dirty.x2)
-		scr_dirty.x2 = x;
-	if (y < scr_dirty.y1)
-		scr_dirty.y1 = y;
-	if (y > scr_dirty.y2)
-		scr_dirty.y2 = y;
-}
-"""
+	global scr_dirty
+	
+	if x < scr_dirty.x1:
+		scr_dirty.x1 = x
+	if x > scr_dirty.x2:
+		scr_dirty.x2 = x
+	if y < scr_dirty.y1:
+		scr_dirty.y1 = y
+	if y > scr_dirty.y2:
+		scr_dirty.y2 = y
+
 def SCR_DirtyScreen ():
 
 	SCR_AddDirtyPoint (0, 0)
@@ -714,6 +727,7 @@ Clear any parts of the tiled background that were drawn on last frame
 """
 def SCR_TileClear ():
 
+	global scr_vrect
 	"""
 	int		i;
 	int		top, bottom, left, right;
@@ -722,7 +736,7 @@ def SCR_TileClear ():
 
 	global scr_drawall, scr_con_current
 
-	if scr_drawall.value:
+	if int(scr_drawall.value):
 		SCR_DirtyScreen ()	# for power vr or broken page flippers...
 
 	if scr_con_current == 1.0:
@@ -732,75 +746,73 @@ def SCR_TileClear ():
 	if cl_main.cl.cinematictime > 0:
 		return		# full screen cinematic
 
-	"""
-	// erase rect will be the union of the past three frames
-	// so tripple buffering works properly
-	clear = scr_dirty;
-	for (i=0 ; i<2 ; i++)
-	{
-		if (scr_old_dirty[i].x1 < clear.x1)
-			clear.x1 = scr_old_dirty[i].x1;
-		if (scr_old_dirty[i].x2 > clear.x2)
-			clear.x2 = scr_old_dirty[i].x2;
-		if (scr_old_dirty[i].y1 < clear.y1)
-			clear.y1 = scr_old_dirty[i].y1;
-		if (scr_old_dirty[i].y2 > clear.y2)
-			clear.y2 = scr_old_dirty[i].y2;
-	}
+	# erase rect will be the union of the past three frames
+	# so triple buffering works properly
+	clear = copy.copy(scr_dirty)
+	for i in range(2):
+	
+		if scr_old_dirty[i].x1 < clear.x1:
+			clear.x1 = scr_old_dirty[i].x1
+		if scr_old_dirty[i].x2 > clear.x2:
+			clear.x2 = scr_old_dirty[i].x2
+		if scr_old_dirty[i].y1 < clear.y1:
+			clear.y1 = scr_old_dirty[i].y1
+		if scr_old_dirty[i].y2 > clear.y2:
+			clear.y2 = scr_old_dirty[i].y2
 
-	scr_old_dirty[1] = scr_old_dirty[0];
-	scr_old_dirty[0] = scr_dirty;
+	scr_old_dirty[1] = scr_old_dirty[0]
+	scr_old_dirty[0] = scr_dirty
 
-	scr_dirty.x1 = 9999;
-	scr_dirty.x2 = -9999;
-	scr_dirty.y1 = 9999;
-	scr_dirty.y2 = -9999;
+	scr_dirty.x1 = 9999
+	scr_dirty.x2 = -9999
+	scr_dirty.y1 = 9999
+	scr_dirty.y2 = -9999
 
-	// don't bother with anything convered by the console)
-	top = scr_con_current*vid_so.viddef.height;
-	if (top >= clear.y1)
+	# don't bother with anything convered by the console)
+	top = scr_con_current*vid_so.viddef.height
+	if top >= clear.y1:
 		clear.y1 = top;
 
-	if (clear.y2 <= clear.y1)
-		return;		// nothing disturbed
+	if clear.y2 <= clear.y1:
+		return		# nothing disturbed
 
-	top = scr_vrect.y;
-	bottom = top + scr_vrect.height-1;
-	left = scr_vrect.x;
-	right = left + scr_vrect.width-1;
+	top = scr_vrect.y
+	bottom = top + scr_vrect.height-1
+	left = scr_vrect.x
+	right = left + scr_vrect.width-1
 
-	if (clear.y1 < top)
-	{	// clear above view screen
-		i = clear.y2 < top-1 ? clear.y2 : top-1;
+	if clear.y1 < top:
+		# clear above view screen
+		i = min(clear.y2, top-1)
 		vid_so.re.DrawTileClear (clear.x1 , clear.y1,
-			clear.x2 - clear.x1 + 1, i - clear.y1+1, "backtile");
-		clear.y1 = top;
-	}
-	if (clear.y2 > bottom)
-	{	// clear below view screen
-		i = clear.y1 > bottom+1 ? clear.y1 : bottom+1;
+			clear.x2 - clear.x1 + 1, i - clear.y1+1, "backtile")
+		clear.y1 = top
+	
+	if clear.y2 > bottom:
+		# clear below view screen
+		i = max(clear.y1, bottom+1)
 		vid_so.re.DrawTileClear (clear.x1, i,
-			clear.x2-clear.x1+1, clear.y2-i+1, "backtile");
-		clear.y2 = bottom;
-	}
-	if (clear.x1 < left)
-	{	// clear left of view screen
-		i = clear.x2 < left-1 ? clear.x2 : left-1;
+			clear.x2-clear.x1+1, clear.y2-i+1, "backtile")
+		clear.y2 = bottom
+	
+	if clear.x1 < left:
+		# clear left of view screen
+		i = min(clear.x2, left-1)
 		vid_so.re.DrawTileClear (clear.x1, clear.y1,
-			i-clear.x1+1, clear.y2 - clear.y1 + 1, "backtile");
-		clear.x1 = left;
-	}
-	if (clear.x2 > right)
-	{	// clear left of view screen
-		i = clear.x1 > right+1 ? clear.x1 : right+1;
+			i-clear.x1+1, clear.y2 - clear.y1 + 1, "backtile")
+		clear.x1 = left
+	
+	if clear.x2 > right:
+		# clear left of view screen
+		i = max(clear.x1, right+1)
 		vid_so.re.DrawTileClear (i, clear.y1,
-			clear.x2-i+1, clear.y2 - clear.y1 + 1, "backtile");
-		clear.x2 = right;
-	}
-
-}
+			clear.x2-i+1, clear.y2 - clear.y1 + 1, "backtile")
+		clear.x2 = right
+	
 
 
+
+"""
 //===============================================================
 
 
@@ -1303,6 +1315,7 @@ def SCR_UpdateScreen ():
 
 	# if the screen is disabled (loading plaque is up, or vid mode changing)
 	# do nothing at all
+
 	if cl_main.cls.disable_screen != 0:
 	
 		if q_shlinux.Sys_Milliseconds () - cl_main.cls.disable_screen > 120000:
