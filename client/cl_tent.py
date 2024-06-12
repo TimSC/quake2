@@ -148,6 +148,8 @@ def CL_RegisterTEntSounds ():
 	global cl_sfx_ric1, cl_sfx_ric2, cl_sfx_ric3
 	global cl_sfx_lashit
 	global cl_sfx_spark5, cl_sfx_spark6, cl_sfx_spark7
+	global cl_sfx_railg, cl_sfx_rockexp, cl_sfx_grenexp, cl_sfx_watrexp
+	global cl_sfx_footsteps, cl_sfx_lightning, cl_sfx_disrexp
 
 	"""
 	int		i;
@@ -197,65 +199,66 @@ CL_RegisterTEntModels
 =================
 """
 def CL_RegisterTEntModels ():
-	
-	global cl_mod_explode
-	global cl_mod_explo4
+
+	global cl_mod_explode, cl_mod_smoke, cl_mod_flash
+	global cl_mod_parasite_segment, cl_mod_grapple_cable, cl_mod_parasite_tip
+	global cl_mod_explo4, cl_mod_bfg_explo,cl_mod_powerscreen
+	global cl_mod_explo4_big, cl_mod_lightning, cl_mod_heatbeam, cl_mod_monster_heatbeam
 
 	cl_mod_explode = vid_so.re.RegisterModel ("models/objects/explode/tris.md2")
-	"""
-	cl_mod_smoke = vid_so.re.RegisterModel ("models/objects/smoke/tris.md2");
-	cl_mod_flash = vid_so.re.RegisterModel ("models/objects/flash/tris.md2");
-	cl_mod_parasite_segment = vid_so.re.RegisterModel ("models/monsters/parasite/segment/tris.md2");
-	cl_mod_grapple_cable = vid_so.re.RegisterModel ("models/ctf/segment/tris.md2");
-	cl_mod_parasite_tip = vid_so.re.RegisterModel ("models/monsters/parasite/tip/tris.md2");
-	"""
+	cl_mod_smoke = vid_so.re.RegisterModel ("models/objects/smoke/tris.md2")
+	cl_mod_flash = vid_so.re.RegisterModel ("models/objects/flash/tris.md2")
+	cl_mod_parasite_segment = vid_so.re.RegisterModel ("models/monsters/parasite/segment/tris.md2")
+	cl_mod_grapple_cable = vid_so.re.RegisterModel ("models/ctf/segment/tris.md2")
+	cl_mod_parasite_tip = vid_so.re.RegisterModel ("models/monsters/parasite/tip/tris.md2")
 	cl_mod_explo4 = vid_so.re.RegisterModel ("models/objects/r_explode/tris.md2")
-	"""
-	cl_mod_bfg_explo = vid_so.re.RegisterModel ("sprites/s_bfg2.sp2");
-	cl_mod_powerscreen = vid_so.re.RegisterModel ("models/items/armor/effect/tris.md2");
+	cl_mod_bfg_explo = vid_so.re.RegisterModel ("sprites/s_bfg2.sp2")
+	cl_mod_powerscreen = vid_so.re.RegisterModel ("models/items/armor/effect/tris.md2")
 
-vid_so.re.RegisterModel ("models/objects/laser/tris.md2");
-vid_so.re.RegisterModel ("models/objects/grenade2/tris.md2");
-vid_so.re.RegisterModel ("models/weapons/v_machn/tris.md2");
-vid_so.re.RegisterModel ("models/weapons/v_handgr/tris.md2");
-vid_so.re.RegisterModel ("models/weapons/v_shotg2/tris.md2");
-vid_so.re.RegisterModel ("models/objects/gibs/bone/tris.md2");
-vid_so.re.RegisterModel ("models/objects/gibs/sm_meat/tris.md2");
-vid_so.re.RegisterModel ("models/objects/gibs/bone2/tris.md2");
-// RAFAEL
-// vid_so.re.RegisterModel ("models/objects/blaser/tris.md2");
+	vid_so.re.RegisterModel ("models/objects/laser/tris.md2")
+	vid_so.re.RegisterModel ("models/objects/grenade2/tris.md2")
+	vid_so.re.RegisterModel ("models/weapons/v_machn/tris.md2")
+	vid_so.re.RegisterModel ("models/weapons/v_handgr/tris.md2")
+	vid_so.re.RegisterModel ("models/weapons/v_shotg2/tris.md2")
+	vid_so.re.RegisterModel ("models/objects/gibs/bone/tris.md2")
+	vid_so.re.RegisterModel ("models/objects/gibs/sm_meat/tris.md2")
+	vid_so.re.RegisterModel ("models/objects/gibs/bone2/tris.md2")
+	# RAFAEL
+	# vid_so.re.RegisterModel ("models/objects/blaser/tris.md2");
 
-vid_so.re.RegisterPic ("w_machinegun");
-vid_so.re.RegisterPic ("a_bullets");
-vid_so.re.RegisterPic ("i_health");
-vid_so.re.RegisterPic ("a_grenades");
+	vid_so.re.RegisterPic ("w_machinegun")
+	vid_so.re.RegisterPic ("a_bullets")
+	vid_so.re.RegisterPic ("i_health")
+	vid_so.re.RegisterPic ("a_grenades")
 
-//ROGUE
-	cl_mod_explo4_big = vid_so.re.RegisterModel ("models/objects/r_explode2/tris.md2");
-	cl_mod_lightning = vid_so.re.RegisterModel ("models/proj/lightning/tris.md2");
-	cl_mod_heatbeam = vid_so.re.RegisterModel ("models/proj/beam/tris.md2");
-	cl_mod_monster_heatbeam = vid_so.re.RegisterModel ("models/proj/widowbeam/tris.md2");
-//ROGUE
-}	
+#ROGUE
+	cl_mod_explo4_big = vid_so.re.RegisterModel ("models/objects/r_explode2/tris.md2")
+	cl_mod_lightning = vid_so.re.RegisterModel ("models/proj/lightning/tris.md2")
+	cl_mod_heatbeam = vid_so.re.RegisterModel ("models/proj/beam/tris.md2")
+	cl_mod_monster_heatbeam = vid_so.re.RegisterModel ("models/proj/widowbeam/tris.md2")
+#ROGUE
+	
 
-/*
+"""
 =================
 CL_ClearTEnts
 =================
-*/
-void CL_ClearTEnts (void)
-{
-	memset (cl_beams, 0, sizeof(cl_beams));
-	memset (cl_explosions, 0, sizeof(cl_explosions));
-	memset (cl_lasers, 0, sizeof(cl_lasers));
+"""
+def CL_ClearTEnts ():
 
-//ROGUE
-	memset (cl_playerbeams, 0, sizeof(cl_playerbeams));
-	memset (cl_sustains, 0, sizeof(cl_sustains));
-//ROGUE
-}
+	print ("CL_ClearTEnts")
+	"""
+	memset (cl_beams, 0, sizeof(cl_beams))
+	memset (cl_explosions, 0, sizeof(cl_explosions))
+	memset (cl_lasers, 0, sizeof(cl_lasers))
 
-/*
+# ROGUE
+	memset (cl_playerbeams, 0, sizeof(cl_playerbeams))
+	memset (cl_sustains, 0, sizeof(cl_sustains))
+# ROGUE
+	"""
+
+"""
 =================
 CL_AllocExplosion
 =================

@@ -55,14 +55,16 @@ int			lastofs;
 ================
 CL_ClearLightStyles
 ================
-*/
-void CL_ClearLightStyles (void)
-{
+"""
+def CL_ClearLightStyles ():
+
+	print ("CL_ClearLightStyles")
+	"""
 	memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
 	lastofs = -1;
-}
+	"""
 
-/*
+"""
 ================
 CL_RunLightStyles
 ================
@@ -140,13 +142,14 @@ cdlight_t		cl_dlights[MAX_DLIGHTS];
 ================
 CL_ClearDlights
 ================
-*/
-void CL_ClearDlights (void)
-{
-	memset (cl_dlights, 0, sizeof(cl_dlights));
-}
+"""
+def CL_ClearDlights ():
 
-/*
+	print ("CL_ClearDlights")
+	#memset (cl_dlights, 0, sizeof(cl_dlights));
+
+
+"""
 ===============
 CL_AllocDlight
 
@@ -904,9 +907,11 @@ int			cl_numparticles = MAX_PARTICLES;
 ===============
 CL_ClearParticles
 ===============
-*/
-void CL_ClearParticles (void)
-{
+"""
+def CL_ClearParticles ():
+
+	pass
+	"""
 	int		i;
 	
 	free_particles = &particles[0];
@@ -915,10 +920,10 @@ void CL_ClearParticles (void)
 	for (i=0 ;i<cl_numparticles ; i++)
 		particles[i].next = &particles[i+1];
 	particles[cl_numparticles-1].next = NULL;
-}
+	"""
 
 
-/*
+"""
 ===============
 CL_ParticleEffect
 
@@ -2309,11 +2314,10 @@ void CL_EntityEvent (entity_state_t *ent)
 CL_ClearEffects
 
 ==============
-*/
-void CL_ClearEffects (void)
-{
-	CL_ClearParticles ();
-	CL_ClearDlights ();
-	CL_ClearLightStyles ();
-}
 """
+def CL_ClearEffects ():
+
+	CL_ClearParticles ()
+	CL_ClearDlights ()
+	CL_ClearLightStyles ()
+

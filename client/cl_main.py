@@ -21,7 +21,7 @@ import os
 import struct
 from qcommon import cvar, common, cmd, files, net_chan, qcommon
 from game import q_shared
-from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse
+from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse, cl_fx, cl_tent
 from linux import q_shlinux, vid_so, in_linux, net_udp
 
 """
@@ -562,13 +562,14 @@ CL_ClearState
 def CL_ClearState ():
 
 	snd_dma.S_StopAllSounds ()
-	"""
-	CL_ClearEffects ();
-	CL_ClearTEnts ();
-	"""
+
+	cl_fx.CL_ClearEffects ()
+	cl_tent.CL_ClearTEnts ()
+
 # wipe the entire cl structure
 	cl.reset()
-	#memset (&cl_entities, 0, sizeof(cl_entities));
+	for ent in cl_entities:
+		ent.clear()
 
 	common.SZ_Clear (cls.netchan.message)
 

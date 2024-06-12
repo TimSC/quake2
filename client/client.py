@@ -65,9 +65,9 @@ class frame_t(object):
 class centity_t(object):
 
 	def __init__(self):
+		self.clear()
 
-
-
+	def clear(self):
 		self.baseline = q_shared.entity_state_t() # delta from this if not from a previous frame
 		self.current = q_shared.entity_state_t()
 		self.prev = q_shared.entity_state_t()			# will always be valid, but might just be a copy of current
