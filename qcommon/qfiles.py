@@ -324,10 +324,10 @@ typedef struct miptex_s
 
 #define IDBSPHEADER	(('P'<<24)+('S'<<16)+('B'<<8)+'I')
 		// little-endian "IBSP"
-
-#define BSPVERSION	38
-
 """
+BSPVERSION = 38
+
+
 # upper design bounds
 # leaffaces, leafbrushes, planes, and verts are still bounded by
 # 16 bit short limits
@@ -359,40 +359,57 @@ MAX_MAP_VISIBILITY	= 0x100000
 #define	MAX_VALUE	1024
 
 //=============================================================================
+"""
+class lump_t(object):
+	def __init__(self, fileofsIn=None, filelenIn=None):
+		self.fileofs = fileofsIn # int
+		self.filelen = filelenIn
 
-typedef struct
-{
-	int		fileofs, filelen;
-} lump_t;
+	def __repr__(self):
 
-#define	LUMP_ENTITIES		0
-#define	LUMP_PLANES			1
-#define	LUMP_VERTEXES		2
-#define	LUMP_VISIBILITY		3
-#define	LUMP_NODES			4
-#define	LUMP_TEXINFO		5
-#define	LUMP_FACES			6
-#define	LUMP_LIGHTING		7
-#define	LUMP_LEAFS			8
-#define	LUMP_LEAFFACES		9
-#define	LUMP_LEAFBRUSHES	10
-#define	LUMP_EDGES			11
-#define	LUMP_SURFEDGES		12
-#define	LUMP_MODELS			13
-#define	LUMP_BRUSHES		14
-#define	LUMP_BRUSHSIDES		15
-#define	LUMP_POP			16
-#define	LUMP_AREAS			17
-#define	LUMP_AREAPORTALS	18
-#define	HEADER_LUMPS		19
+		return "lumpt({}, {})".format(self.fileofs, self.filelen)
 
-typedef struct
-{
-	int			ident;
-	int			version;	
-	lump_t		lumps[HEADER_LUMPS];
-} dheader_t;
 
+LUMP_ENTITIES		= 0
+LUMP_PLANES			= 1
+LUMP_VERTEXES		= 2
+LUMP_VISIBILITY		= 3
+LUMP_NODES			= 4
+LUMP_TEXINFO		= 5
+LUMP_FACES			= 6
+LUMP_LIGHTING		= 7
+LUMP_LEAFS			= 8
+LUMP_LEAFFACES		= 9
+LUMP_LEAFBRUSHES	= 10
+LUMP_EDGES			= 11
+LUMP_SURFEDGES		= 12
+LUMP_MODELS			= 13
+LUMP_BRUSHES		= 14
+LUMP_BRUSHSIDES		= 15
+LUMP_POP			= 16
+LUMP_AREAS			= 17
+LUMP_AREAPORTALS	= 18
+HEADER_LUMPS = 19
+
+class dheader_t(object):
+
+	def __init__(self):
+
+		self.ident = None #int			
+		self.version = None #int			
+		self.lumps = None # lump_t[HEADER_LUMPS]
+
+	def parse(self, buf: bytes|bytearray):
+		
+		self.ident = struct.unpack("<I", buf[:4])[0]
+		self.version = struct.unpack("<I", buf[4:8])[0] #int
+		self.lumps = [] # lump_t[HEADER_LUMPS]
+		cursor = 8
+		for i in range(HEADER_LUMPS):
+			self.lumps.append(lump_t(*struct.unpack("<II", buf[cursor:cursor+8])))
+			cursor += 8
+
+"""
 typedef struct
 {
 	float		mins[3], maxs[3];

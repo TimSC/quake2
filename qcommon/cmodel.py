@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from game import q_shared
-from qcommon import qfiles, files, common
+from qcommon import qfiles, files, common, cvar, md4
 """
 // cmodel.c -- model loading
 
@@ -152,18 +152,17 @@ c_pointcontents: int = None
 c_traces: int = None
 c_brush_traces: int = None
 last_checksum = None
-"""
 
-/*
+
+"""
 ===============================================================================
 
 					MAP LOADING
 
 ===============================================================================
-*/
-
-byte	*cmod_base;
-
+"""
+cmod_base = None # byte*
+"""
 /*
 =================
 CMod_LoadSubmodels
@@ -206,9 +205,11 @@ void CMod_LoadSubmodels (lump_t *l)
 =================
 CMod_LoadSurfaces
 =================
-*/
-void CMod_LoadSurfaces (lump_t *l)
-{
+"""
+def CMod_LoadSurfaces (l: qfiles.lump_t):
+
+	print ("CMod_LoadSurfaces")
+	"""
 	texinfo_t	*in;
 	mapsurface_t	*out;
 	int			i, count;
@@ -584,9 +585,12 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 
 	global last_checksum
 	global numplanes, numnodes, numleafs, numcmodels, numvisibility, numentitychars, map_entitystring, map_name
+	global numclusters, numareas
+	global map_noareas, cmod_base
 
 	print ("CM_LoadMap", name, clientload)
-	return q_shared.cmodel_t(), 0
+
+	#return q_shared.cmodel_t(), 0
 	"""
 	unsigned		*buf;
 	int				i;
@@ -596,9 +600,9 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 	"""
 	checksum = 0 #unsigned (output)
 
-	map_noareas = Cvar_Get ("map_noareas", "0", 0)
+	map_noareas = cvar.Cvar_Get ("map_noareas", "0", 0)
 
-	if map_name == name or (clientload or Cvar_VariableValue ("flushmap")):
+	if map_name == name and (clientload or int(cvar.Cvar_VariableValue ("flushmap"))):
 	
 		checksum = last_checksum
 		if not clientload:
@@ -609,7 +613,6 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 		
 		return map_cmodels[0], checksum # still have the right version
 	
-
 	# free old stuff
 	numplanes = 0
 	numnodes = 0
@@ -626,6 +629,7 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 		numclusters = 1
 		numareas = 1
 		checksum = 0
+
 		return map_cmodels[0], checksum # cinematic servers won't have anything at all
 
 	#
@@ -635,32 +639,32 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 	if buf is None:
 		common.Com_Error (q_shared.ERR_DROP, "Couldn't load {}".format(name))
 
-	last_checksum = q_shared.LittleLong (Com_BlockChecksum (buf, length))
+	last_checksum = q_shared.LittleLong (md4.Com_BlockChecksum (buf))
 	checksum = last_checksum
+
+	header = qfiles.dheader_t()
+	header.parse(buf)
+
+	if header.version != qfiles.BSPVERSION:
+		common.Com_Error (q_shared.ERR_DROP, "CMod_LoadBrushModel: {} has wrong version number ({} should be {})".format( \
+			name, header.version, qfiles.BSPVERSION))
+
+	cmod_base = buf
+
+	# load into heap
+	CMod_LoadSurfaces (header.lumps[qfiles.LUMP_TEXINFO])
 	"""
-	header = *(dheader_t *)buf;
-	for (i=0 ; i<sizeof(dheader_t)/4 ; i++)
-		((int *)&header)[i] = LittleLong ( ((int *)&header)[i]);
-
-	if (header.version != BSPVERSION)
-		Com_Error (q_shared.ERR_DROP, "CMod_LoadBrushModel: %s has wrong version number (%i should be %i)"
-		, name, header.version, BSPVERSION);
-
-	cmod_base = (byte *)buf;
-
-	// load into heap
-	CMod_LoadSurfaces (&header.lumps[LUMP_TEXINFO]);
-	CMod_LoadLeafs (&header.lumps[LUMP_LEAFS]);
-	CMod_LoadLeafBrushes (&header.lumps[LUMP_LEAFBRUSHES]);
-	CMod_LoadPlanes (&header.lumps[LUMP_PLANES]);
-	CMod_LoadBrushes (&header.lumps[LUMP_BRUSHES]);
-	CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES]);
-	CMod_LoadSubmodels (&header.lumps[LUMP_MODELS]);
-	CMod_LoadNodes (&header.lumps[LUMP_NODES]);
-	CMod_LoadAreas (&header.lumps[LUMP_AREAS]);
-	CMod_LoadAreaPortals (&header.lumps[LUMP_AREAPORTALS]);
-	CMod_LoadVisibility (&header.lumps[LUMP_VISIBILITY]);
-	CMod_LoadEntityString (&header.lumps[LUMP_ENTITIES]);
+	CMod_LoadLeafs (&header.lumps[LUMP_LEAFS])
+	CMod_LoadLeafBrushes (&header.lumps[LUMP_LEAFBRUSHES])
+	CMod_LoadPlanes (&header.lumps[LUMP_PLANES])
+	CMod_LoadBrushes (&header.lumps[LUMP_BRUSHES])
+	CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES])
+	CMod_LoadSubmodels (&header.lumps[LUMP_MODELS])
+	CMod_LoadNodes (&header.lumps[LUMP_NODES])
+	CMod_LoadAreas (&header.lumps[LUMP_AREAS])
+	CMod_LoadAreaPortals (&header.lumps[LUMP_AREAPORTALS])
+	CMod_LoadVisibility (&header.lumps[LUMP_VISIBILITY])
+	CMod_LoadEntityString (&header.lumps[LUMP_ENTITIES])
 
 	FS_FreeFile (buf);
 
@@ -668,13 +672,13 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 
 	memset (portalopen, 0, sizeof(portalopen));
 	FloodAreaConnections ();
-
-	strcpy (map_name, name);
+	"""
+	map_name = name
 
 	return map_cmodels[0], checksum
 
 
-/*
+"""
 ==================
 CM_InlineModel
 ==================
