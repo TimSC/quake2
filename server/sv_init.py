@@ -79,7 +79,7 @@ class server_t(object):
 		self.timedemo = False # qboolean	;		// don't time sync
 
 def EDICT_NUM(n):
-	return sv_game.ge.edicts(n)
+	return sv_game.ge.edicts[n]
 #define NUM_FOR_EDICT(e) ( ((byte *)(e)-(byte *)ge->edicts ) / ge->edict_size)
 
 class client_state_t(Enum):

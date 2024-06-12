@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from game import g_main, q_shared
+from game import g_main, q_shared, game
 """
 #include "g_local.h"
 
@@ -180,7 +180,9 @@ def InitGame ():
 	"""
 	coop = g_main.gi.cvar ("coop", "0", q_shared.CVAR_LATCH);
 	skill = g_main.gi.cvar ("skill", "1", q_shared.CVAR_LATCH);
-	maxentities = g_main.gi.cvar ("maxentities", "1024", q_shared.CVAR_LATCH);
+	"""
+	g_main.maxentities = g_main.gi.cvar ("maxentities", "1024", q_shared.CVAR_LATCH)
+	"""
 
 	# change anytime vars
 	"""
@@ -217,15 +219,19 @@ def InitGame ():
 	Com_sprintf (game.helpmessage2, sizeof(game.helpmessage2), "");
 
 	// initialize all entities for this game
-	game.maxentities = maxentities->value;
-	g_edicts =  g_main.gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME);
-	globals.edicts = g_edicts;
-	globals.max_edicts = game.maxentities;
+	"""
+	game.maxentities = int(g_main.maxentities.value)
+	g_main.g_edicts = [] # g_main.gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME)
+	for i in range(game.maxentities):
+		g_main.g_edicts.append(game.edict_t())
+	g_main.glob.edicts = g_main.g_edicts
+	g_main.glob.max_edicts = game.maxentities
+	"""
 
 	// initialize all clients for this game
 	game.maxclients = maxclients->value;
 	game.clients = g_main.gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
-	globals.num_edicts = game.maxclients+1;
+	glob.num_edicts = game.maxclients+1;
 }
 
 //=========================================================

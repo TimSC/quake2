@@ -26,17 +26,17 @@ game_locals_t	game;
 level_locals_t	level;
 """
 gi = game.game_import_t()
-glob = game.game_export_t()
+glob = game.game_export_t() # Called global in the original C code
 """
 spawn_temp_t	st;
 
 int	sm_meat_index;
 int	snd_fry;
 int meansOfDeath;
-
-edict_t		*g_edicts;
-
 """
+g_edicts = None #edict_t *
+
+
 deathmatch = None #cvar_t	*
 """
 cvar_t	*coop;
@@ -51,7 +51,9 @@ cvar_t	*spectator_password;
 cvar_t	*needpass;
 cvar_t	*maxclients;
 cvar_t	*maxspectators;
-cvar_t	*maxentities;
+"""
+maxentities = None # cvar_t	*
+"""
 cvar_t	*g_select_empty;
 cvar_t	*dedicated;
 

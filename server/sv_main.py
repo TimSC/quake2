@@ -21,7 +21,7 @@ import random
 import struct
 from server import sv_ccmds, sv_send, sv_init, sv_game, sv_user
 from qcommon import cvar, qcommon, common, net_chan, cmd
-from game import q_shared
+from game import q_shared, game
 from linux import net_udp
 """
 #include "server.h"

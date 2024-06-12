@@ -1444,7 +1444,8 @@ loadgames will.
 ============
 """
 def ClientConnect (ent, userinfo): #edict_t *, char * (returns qboolean)
-
+	assert isinstance(ent, game.edict_t)
+	
 	"""
 	char	*value;
 

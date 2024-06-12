@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from game import q_shared
 """
 // game.h -- game dll information visible to server
 """
@@ -54,25 +55,28 @@ typedef struct gclient_s gclient_t;
 
 
 #ifndef GAME_INCLUDE
-
-struct gclient_s
-{
-	player_state_t	ps;		// communicated by server to clients
-	int				ping;
-	// the game dll can add anything it wants after
-	// this point in the structure
-};
-
 """
+class gclient_s(object):
+
+	def __init__(self):
+
+		self.ps = q_shared.player_state_t()		# communicated by server to clients
+		self.ping: int = 0
+		# the game dll can add anything it wants after
+		# this point in the structure
+
+
+
 class edict_t(object):
 
 	def __init__(self):
 
-		pass
-		"""
 
+		"""
 		entity_state_t	s;
-		struct gclient_s	*client;
+		"""
+		self.client = gclient_s() # struct gclient_s *
+		"""
 		qboolean	inuse;
 		int			linkcount;
 
