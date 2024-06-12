@@ -408,28 +408,29 @@ COLLISION DETECTION
 #define	AREA_SOLID		1
 #define	AREA_TRIGGERS	2
 
-
-// plane_t structure
-// !!! if this is changed, it must be changed in asm code too !!!
-typedef struct cplane_s
-{
-	vec3_t	normal;
-	float	dist;
-	byte	type;			// for fast side tests
-	byte	signbits;		// signx + (signy<<1) + (signz<<1)
-	byte	pad[2];
-} cplane_t;
-
-// structure offset for asm code
-#define CPLANE_NORMAL_X			0
-#define CPLANE_NORMAL_Y			4
-#define CPLANE_NORMAL_Z			8
-#define CPLANE_DIST				12
-#define CPLANE_TYPE				16
-#define CPLANE_SIGNBITS			17
-#define CPLANE_PAD0				18
-#define CPLANE_PAD1				19
 """
+# plane_t structure
+# !!! if this is changed, it must be changed in asm code too !!!
+class cplane_t(object):
+
+	def __init__(self):
+
+		self.normal = np.zeros((3,), dtype=np.float32) # vec3_t
+		self.dist = None # float
+		self.type = None # byte, for fast side tests
+		self.signbits = None # byte, signx + (signy<<1) + (signz<<1)
+		self.pad = [None, None] #byte [2]
+
+# structure offset for asm code
+CPLANE_NORMAL_X			= 0
+CPLANE_NORMAL_Y			= 4
+CPLANE_NORMAL_Z			= 8
+CPLANE_DIST				= 12
+CPLANE_TYPE				= 16
+CPLANE_SIGNBITS			= 17
+CPLANE_PAD0				= 18
+CPLANE_PAD1				= 19
+
 class cmodel_t(object):
 
 	def __init__(self):
@@ -438,20 +439,22 @@ class cmodel_t(object):
 		self.origin = None #vec3_t, for sounds or lights
 		self.headnode = None # int			
 
+class csurface_t(object):
+
+	def __init__(self):
+
+		self.name = None # char[16]
+		self.flags = None # int
+		self.value = None # int
+
+class mapsurface_t(object):  # used internally due to name len probs //ZOID
+
+	def __init__(self):
+
+		self.c = csurface_t()
+		self.rname = None # char [32]
+
 """
-typedef struct csurface_s
-{
-	char		name[16];
-	int			flags;
-	int			value;
-} csurface_t;
-
-typedef struct mapsurface_s  // used internally due to name len probs //ZOID
-{
-	csurface_t	c;
-	char		rname[32];
-} mapsurface_t;
-
 // a trace is returned when a box is swept through the world
 typedef struct
 {

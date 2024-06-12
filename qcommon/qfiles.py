@@ -572,15 +572,17 @@ typedef struct
 	int			bitofs[8][2];	// bitofs[numclusters][2]
 } dvis_t;
 
-// each area has a list of portals that lead into other areas
-// when portals are closed, other areas may not be visible or
-// hearable even if the vis info says that it should be
-typedef struct
-{
-	int		portalnum;
-	int		otherarea;
-} dareaportal_t;
+"""
+# each area has a list of portals that lead into other areas
+# when portals are closed, other areas may not be visible or
+# hearable even if the vis info says that it should be
+class dareaportal_t(object):
 
+	def __init__(self):
+		self.portalnum = 0 # int		
+		self.otherarea = 0 # int
+
+"""
 typedef struct
 {
 	int		numareaportals;

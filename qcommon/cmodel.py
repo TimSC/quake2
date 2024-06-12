@@ -23,107 +23,134 @@ from qcommon import qfiles, files, common
 // cmodel.c -- model loading
 
 #include "qcommon.h"
-
-typedef struct
-{
-	cplane_t	*plane;
-	int			children[2];		// negative numbers are leafs
-} cnode_t;
-
-typedef struct
-{
-	cplane_t	*plane;
-	mapsurface_t	*surface;
-} cbrushside_t;
-
-typedef struct
-{
-	int			contents;
-	int			cluster;
-	int			area;
-	unsigned short	firstleafbrush;
-	unsigned short	numleafbrushes;
-} cleaf_t;
-
-typedef struct
-{
-	int			contents;
-	int			numsides;
-	int			firstbrushside;
-	int			checkcount;		// to avoid repeated testings
-} cbrush_t;
-
-typedef struct
-{
-	int		numareaportals;
-	int		firstareaportal;
-	int		floodnum;			// if two areas have equal floodnums, they are connected
-	int		floodvalid;
-} carea_t;
-
-int			checkcount;
-
-char		map_name[MAX_QPATH];
-
-int			numbrushsides;
-cbrushside_t map_brushsides[MAX_MAP_BRUSHSIDES];
-
-int			numtexinfo;
-mapsurface_t	map_surfaces[MAX_MAP_TEXINFO];
-
-int			numplanes;
-cplane_t	map_planes[MAX_MAP_PLANES+6];		// extra for box hull
-
-int			numnodes;
-cnode_t		map_nodes[MAX_MAP_NODES+6];		// extra for box hull
-
-int			numleafs = 1;	// allow leaf funcs to be called without a map
-cleaf_t		map_leafs[MAX_MAP_LEAFS];
-int			emptyleaf, solidleaf;
-
-int			numleafbrushes;
-unsigned short	map_leafbrushes[MAX_MAP_LEAFBRUSHES];
-
-int			numcmodels;
-cmodel_t	map_cmodels[MAX_MAP_MODELS];
-
-int			numbrushes;
-cbrush_t	map_brushes[MAX_MAP_BRUSHES];
-
-int			numvisibility;
-byte		map_visibility[MAX_MAP_VISIBILITY];
-dvis_t		*map_vis = (dvis_t *)map_visibility;
-
-int			numentitychars;
-char		map_entitystring[MAX_MAP_ENTSTRING];
-
-int			numareas = 1;
-carea_t		map_areas[MAX_MAP_AREAS];
-
-int			numareaportals;
-dareaportal_t map_areaportals[MAX_MAP_AREAPORTALS];
-
-int			numclusters = 1;
-
-mapsurface_t	nullsurface;
-
-int			floodvalid;
 """
+class cnode_t(object):
+
+	def __init__(self):
+		self.plane = None #cplane_t *
+		self.children = [None, None] # int[2], negative numbers are leafs
+
+class cbrushside_t(object):
+
+	def __init__(self):
+		self.plane = None #cplane_t *
+		self.surface = None #mapsurface_t *
+
+
+class cleaf_t(object):
+
+	def __init__(self):
+		self.contents: int = None
+		self.cluster: int = None
+		self.area: int = None
+		self.firstleafbrush: int = 0 #unsigned short	
+		self.numleafbrushes: int = 0 #unsigned short	
+
+
+class cbrush_t(object):
+
+	def __init__(self):
+		self.contents: int = None
+		self.numsides: int = None
+		self.firstbrushside: int = None
+		self.checkcount: int = None		# to avoid repeated testings
+
+
+class carea_t(object):
+
+	def __init__(self):
+		self.numareaportals: int = None
+		self.firstareaportal: int = None
+		self.floodnum: int = None			# if two areas have equal floodnums, they are connected
+		self.floodvalid: int = None
+
+
+checkcount: int = None
+
+map_name: str = None # char		[MAX_QPATH];
+
+numbrushsides: int = None
+map_brushsides = []
+for i in range(qfiles.MAX_MAP_BRUSHSIDES):
+	map_brushsides.append(cbrushside_t())
+
+numtexinfo: int = None
+map_surfaces = []
+for i in range(qfiles.MAX_MAP_TEXINFO):
+	map_surfaces.append(q_shared.mapsurface_t())
+
+numplanes: int = None
+map_planes = []
+for i in range(qfiles.MAX_MAP_PLANES+6): # extra for box hull
+	map_planes.append(q_shared.cplane_t())
+
+numnodes: int = None
+map_nodes = []
+for i in range(qfiles.MAX_MAP_NODES+6): # extra for box hull
+	map_nodes.append(cnode_t())
+
+numleafs: int = 1	# allow leaf funcs to be called without a map
+map_leafs = []
+for i in range(qfiles.MAX_MAP_LEAFS):
+	map_leafs.append(cleaf_t())
+emptyleaf: int = None
+solidleaf: int = None
+
+numleafbrushes: int = None
+map_leafbrushes = []
+for i in range(qfiles.MAX_MAP_LEAFBRUSHES):
+	map_leafbrushes.append(None) # unsigned short
+
+numcmodels: int = None
+map_cmodels = []
+for i in range(qfiles.MAX_MAP_MODELS):
+	map_cmodels.append(q_shared.cmodel_t())
+
+numbrushes: int = None
+map_brushes = []
+for i in range(qfiles.MAX_MAP_BRUSHES):
+	map_brushes.append(cbrush_t())
+
+numvisibility: int = None
+map_visibility = []
+for i in range(qfiles.MAX_MAP_VISIBILITY):
+	map_visibility.append(None) # byte
+
+#dvis_t		*map_vis = (dvis_t *)map_visibility;
+
+numentitychars: int = None
+map_entitystring = []
+for i in range(qfiles.MAX_MAP_ENTSTRING):
+	map_entitystring.append(None)
+
+numareas: int = 1
+map_areas = []
+for i in range(qfiles.MAX_MAP_AREAS):
+	map_areas.append(carea_t())
+
+numareaportals: int = None
+map_areaportals = []
+for i in range(qfiles.MAX_MAP_AREAPORTALS):
+	map_areaportals.append(qfiles.dareaportal_t())
+
+numclusters: int = 1
+
+nullsurface = q_shared.mapsurface_t()
+
+floodvalid: int = None
+
 portalopen = [] #qboolean[MAX_MAP_AREAPORTALS];
 for i in range(qfiles.MAX_MAP_AREAPORTALS):
 	portalopen.append(False)
 
-"""
+map_noareas = None # cvar_t	*
 
-cvar_t		*map_noareas;
+#void	CM_InitBoxHull (void)
+#void	FloodAreaConnections (void)
 
-void	CM_InitBoxHull (void);
-void	FloodAreaConnections (void);
-
-
-int		c_pointcontents;
-int		c_traces, c_brush_traces;
-"""
+c_pointcontents: int = None
+c_traces: int = None
+c_brush_traces: int = None
 last_checksum = None
 """
 
