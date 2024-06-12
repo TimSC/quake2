@@ -1305,41 +1305,42 @@ to be placed into the game.  This will happen every level load.
 ============
 """
 def ClientBegin (ent): # edict_t *
+	assert isinstance(ent, game.edict_t)
 	
-	pass
 	"""
 	int		i;
+	"""
 
-	ent->client = game.clients + (ent - g_edicts - 1);
+	entIndex = g_edicts.index(ent) - 1
+	ent.client = game.clients[entIndex]
 
-	if (deathmatch->value)
-	{
-		ClientBeginDeathmatch (ent);
-		return;
-	}
-
-	// if there is already a body waiting for us (a loadgame), just
-	// take it, otherwise spawn one from scratch
-	if (ent->inuse == true)
-	{
-		// the client has cleared the client side viewangles upon
-		// connecting to the server, which is different than the
-		// state when the game is saved, so we need to compensate
-		// with deltaangles
-		for (i=0 ; i<3 ; i++)
-			ent->client->ps.pmove.delta_angles[i] = ANGLE2SHORT(ent->client->ps.viewangles[i]);
-	}
-	else
-	{
-		// a spawn point will completely reinitialize the entity
-		// except for the persistant data that was initialized at
-		// ClientConnect() time
-		G_InitEdict (ent);
-		ent->classname = "player";
-		InitClientResp (ent->client);
-		PutClientInServer (ent);
-	}
-
+	if int(deathmatch.value):
+	
+		ClientBeginDeathmatch (ent)
+		return
+	
+	# if there is already a body waiting for us (a loadgame), just
+	# take it, otherwise spawn one from scratch
+	if ent.inuse == True:
+	
+		# the client has cleared the client side viewangles upon
+		# connecting to the server, which is different than the
+		# state when the game is saved, so we need to compensate
+		# with deltaangles
+		for i in range(3):
+			ent.client.ps.pmove.delta_angles[i] = ANGLE2SHORT(ent.client.ps.viewangles[i])
+	
+	else:
+	
+		# a spawn point will completely reinitialize the entity
+		# except for the persistant data that was initialized at
+		# ClientConnect() time
+		G_InitEdict (ent)
+		ent.classname = "player"
+		InitClientResp (ent.client)
+		PutClientInServer (ent)
+	
+	"""
 	if (level.intermissiontime)
 	{
 		MoveClientToIntermission (ent);
