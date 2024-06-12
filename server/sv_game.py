@@ -180,8 +180,8 @@ void PF_setmodel (edict_t *ent, char *name)
 	if (name[0] == '*')
 	{
 		mod = CM_InlineModel (name);
-		VectorCopy (mod->mins, ent->mins);
-		VectorCopy (mod->maxs, ent->maxs);
+		q_shared.VectorCopy (mod->mins, ent->mins);
+		q_shared.VectorCopy (mod->maxs, ent->maxs);
 		SV_LinkEdict (ent);
 	}
 

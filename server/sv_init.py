@@ -287,7 +287,7 @@ def SV_CreateBaseline ():
 		//
 		// take current state as baseline
 		//
-		VectorCopy (svent->s.origin, svent->s.old_origin);
+		q_shared.VectorCopy (svent->s.origin, svent->s.old_origin);
 		sv.baselines[entnum] = svent->s;
 	}
 }

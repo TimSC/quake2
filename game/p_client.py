@@ -909,9 +909,9 @@ void	SelectSpawnPoint (edict_t *ent, vec3_t origin, vec3_t angles)
 		}
 	}
 
-	VectorCopy (spot->s.origin, origin);
+	q_shared.VectorCopy (spot->s.origin, origin);
 	origin[2] += 9;
-	VectorCopy (spot->s.angles, angles);
+	q_shared.VectorCopy (spot->s.angles, angles);
 }
 
 //======================================================================
@@ -962,11 +962,11 @@ void CopyToBodyQue (edict_t *ent)
 	body->s.number = body - g_edicts;
 
 	body->svflags = ent->svflags;
-	VectorCopy (ent->mins, body->mins);
-	VectorCopy (ent->maxs, body->maxs);
-	VectorCopy (ent->absmin, body->absmin);
-	VectorCopy (ent->absmax, body->absmax);
-	VectorCopy (ent->size, body->size);
+	q_shared.VectorCopy (ent->mins, body->mins);
+	q_shared.VectorCopy (ent->maxs, body->maxs);
+	q_shared.VectorCopy (ent->absmin, body->absmin);
+	q_shared.VectorCopy (ent->absmax, body->absmax);
+	q_shared.VectorCopy (ent->size, body->size);
 	body->solid = ent->solid;
 	body->clipmask = ent->clipmask;
 	body->owner = ent->owner;
@@ -1182,8 +1182,8 @@ void PutClientInServer (edict_t *ent)
 	ent->flags &= ~FL_NO_KNOCKBACK;
 	ent->svflags &= ~SVF_DEADMONSTER;
 
-	VectorCopy (mins, ent->mins);
-	VectorCopy (maxs, ent->maxs);
+	q_shared.VectorCopy (mins, ent->mins);
+	q_shared.VectorCopy (maxs, ent->maxs);
 	VectorClear (ent->velocity);
 
 	// clear playerstate values
@@ -1217,9 +1217,9 @@ void PutClientInServer (edict_t *ent)
 	ent->s.skinnum = ent - g_edicts - 1;
 
 	ent->s.frame = 0;
-	VectorCopy (spawn_origin, ent->s.origin);
+	q_shared.VectorCopy (spawn_origin, ent->s.origin);
 	ent->s.origin[2] += 1;	// make sure off ground
-	VectorCopy (ent->s.origin, ent->s.old_origin);
+	q_shared.VectorCopy (ent->s.origin, ent->s.old_origin);
 
 	// set the delta angle
 	for (i=0 ; i<3 ; i++)
@@ -1230,8 +1230,8 @@ void PutClientInServer (edict_t *ent)
 	ent->s.angles[PITCH] = 0;
 	ent->s.angles[YAW] = spawn_angles[YAW];
 	ent->s.angles[ROLL] = 0;
-	VectorCopy (ent->s.angles, client->ps.viewangles);
-	VectorCopy (ent->s.angles, client->v_angle);
+	q_shared.VectorCopy (ent->s.angles, client->ps.viewangles);
+	q_shared.VectorCopy (ent->s.angles, client->v_angle);
 
 	// spawn a spectator
 	if (client->pers.spectator) {
@@ -1406,6 +1406,7 @@ def ClientUserinfoChanged (ent, userinfo): # edict_t *, char *
 	// combine name and skin into a configstring
 	gi.configstring (CS_PLAYERSKINS+playernum, va("%s\\%s", ent->client->pers.netname, s) );
 	"""
+
 	# fov
 	if int(g_main.deathmatch.value) and (int(dmflags.value) & DF_FIXED_FOV):
 	
@@ -1668,8 +1669,8 @@ def ClientThink (ent, ucmd): #edict_t *, usercmd_t *
 			ent->velocity[i] = pm.s.velocity[i]*0.125;
 		}
 
-		VectorCopy (pm.mins, ent->mins);
-		VectorCopy (pm.maxs, ent->maxs);
+		q_shared.VectorCopy (pm.mins, ent->mins);
+		q_shared.VectorCopy (pm.maxs, ent->maxs);
 
 		client->resp.cmd_angles[0] = SHORT2ANGLE(ucmd->angles[0]);
 		client->resp.cmd_angles[1] = SHORT2ANGLE(ucmd->angles[1]);
@@ -1696,8 +1697,8 @@ def ClientThink (ent, ucmd): #edict_t *, usercmd_t *
 		}
 		else
 		{
-			VectorCopy (pm.viewangles, client->v_angle);
-			VectorCopy (pm.viewangles, client->ps.viewangles);
+			q_shared.VectorCopy (pm.viewangles, client->v_angle);
+			q_shared.VectorCopy (pm.viewangles, client->ps.viewangles);
 		}
 
 		gi.linkentity (ent);

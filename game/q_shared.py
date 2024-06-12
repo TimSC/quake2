@@ -1221,7 +1221,7 @@ class player_state_t(object):
 
 		self.blend = np.zeros((4,), dtype=np.float32) # float[4], rgba full screen effect
 		
-		self.fov = 0.0 #float, horizontal field of view
+		self.fov = 90.0 #float, horizontal field of view # DEBUG set to 90
 
 		self.rdflags = None # int, refdef flags
 

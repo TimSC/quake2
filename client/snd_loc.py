@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+import numpy as np
 
 # snd_loc.h -- private sound functions
 
@@ -100,8 +100,8 @@ class channel_t(object):
 		self.looping = 0			# int, where to loop, -1 = no looping OBSOLETE?
 		self.entnum = 0				# int, to allow overriding a specific sound
 		self.entchannel = 0			# int
-		self.origin = None			# vec3_t, only use if fixed_origin is set
-		self.dist_mult = None		# vec_t, distance multiplier (attenuation/clipK)
+		self.origin = np.zeros((3,), dtype=np.float32)			# vec3_t, only use if fixed_origin is set
+		self.dist_mult = np.zeros((3,), dtype=np.float32)		# vec_t, distance multiplier (attenuation/clipK)
 		self.master_vol = 0			# int, 0-255 master volume
 		self.fixed_origin = False	# qboolean, use origin instead of fetching entnum's origin
 		self.autosound = False		# qboolean, from an entity->sound, cleared each frame

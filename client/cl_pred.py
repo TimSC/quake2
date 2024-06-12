@@ -57,7 +57,7 @@ def CL_CheckPredictionError ():
 			Com_Printf ("prediction miss on %i: %i\n", cl.frame.serverframe, 
 			delta[0] + delta[1] + delta[2]);
 
-		VectorCopy (cl.frame.playerstate.pmove.origin, cl.predicted_origins[frame]);
+		q_shared.VectorCopy (cl.frame.playerstate.pmove.origin, cl.predicted_origins[frame]);
 
 		// save for error itnerpolation
 		for (i=0 ; i<3 ; i++)
@@ -261,7 +261,7 @@ def CL_PredictMovement ():
 		Pmove (&pm);
 
 		// save for debug checking
-		VectorCopy (pm.s.origin, cl.predicted_origins[frame]);
+		q_shared.VectorCopy (pm.s.origin, cl.predicted_origins[frame]);
 	}
 
 	oldframe = (ack-2) & (CMD_BACKUP-1);
@@ -279,6 +279,6 @@ def CL_PredictMovement ():
 	cl.predicted_origin[1] = pm.s.origin[1]*0.125;
 	cl.predicted_origin[2] = pm.s.origin[2]*0.125;
 
-	VectorCopy (pm.viewangles, cl.predicted_angles);
+	q_shared.VectorCopy (pm.viewangles, cl.predicted_angles);
 }
 """

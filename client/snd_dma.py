@@ -17,10 +17,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import numpy as np
 from qcommon import cmd, cvar, common
 from game import q_shared
 from linux import snd_linux, q_shlinux
-from client import snd_mix, snd_loc, snd_mem, cl_main
+from client import snd_mix, snd_loc, snd_mem, cl_main, cl_ents
 import pygame
 """
 // snd_dma.c -- main control for any streaming sound output device
@@ -502,7 +503,7 @@ S_Spatialize
 """
 def S_Spatialize(ch): #channel_t *
 
-	#vec3_t		origin;
+	origin = np.zeros((3,), dtype=np.float32)
 
 	# anything coming from the view entity will always be full volume
 	if ch.entnum == cl_main.cl.playernum+1:
@@ -513,10 +514,10 @@ def S_Spatialize(ch): #channel_t *
 	
 
 	if ch.fixed_origin:	
-		ch.origin = origin	
+		q_shared.VectorCopy(ch.origin, origin)
 
 	else:
-		origin = CL_GetEntitySoundOrigin (ch.entnum)
+		origin = cl_ents.CL_GetEntitySoundOrigin (ch.entnum)
 
 	ch.leftvol, ch.rightvol = S_SpatializeOrigin (origin, ch.master_vol, ch.dist_mult)
 
@@ -1088,10 +1089,10 @@ def S_Update(origin, forward, right, up): #vec3_t, vec3_t, vec3_t, vec3_t
 	if (s_volume->modified)
 		S_InitScaletable ();
 
-	VectorCopy(origin, listener_origin);
-	VectorCopy(forward, listener_forward);
-	VectorCopy(right, listener_right);
-	VectorCopy(up, listener_up);
+	q_shared.VectorCopy(origin, listener_origin);
+	q_shared.VectorCopy(forward, listener_forward);
+	q_shared.VectorCopy(right, listener_right);
+	q_shared.VectorCopy(up, listener_up);
 
 	combine = NULL;
 

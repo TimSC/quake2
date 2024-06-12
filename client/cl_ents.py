@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import copy
+import numpy as np
 from qcommon import common, net_chan, qcommon
 from game import q_shared
 from client import cl_main, cl_parse, client, cl_pred, cl_scrn, cl_tent
@@ -1564,16 +1565,17 @@ CL_GetEntitySoundOrigin
 
 Called to get the sound spatialization origin
 ===============
-*/
-void CL_GetEntitySoundOrigin (int ent, vec3_t org)
-{
-	centity_t	*old;
-
-	if (ent < 0 or ent >= q_shared.MAX_EDICTS)
-		Com_Error (q_shared.ERR_DROP, "CL_GetEntitySoundOrigin: bad ent");
-	old = &cl_main.cl_entities[ent];
-	q_shared.VectorCopy (old.lerp_origin, org);
-
-	// FIXME: bmodel issues...
-}
 """
+def CL_GetEntitySoundOrigin (ent: int): # vec3_t
+
+	org = np.zeros((3,), dtype=np.float32)
+	#centity_t	*old;
+
+	if ent < 0 or ent >= q_shared.MAX_EDICTS:
+		common.Com_Error (q_shared.ERR_DROP, "CL_GetEntitySoundOrigin: bad ent")
+	old = cl_main.cl_entities[ent]
+	q_shared.VectorCopy (old.lerp_origin, org)
+
+	# FIXME: bmodel issues...
+
+	return org
