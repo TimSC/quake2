@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import random
 from enum import Enum
-from server import sv_main, sv_send, sv_game, sv_world
+from server import sv_main, sv_send, sv_game, sv_world, sv_game
 from client import cl_main, cl_scrn
 from qcommon import cvar, common, cmd, qcommon, cmodel, pmove
 from game import q_shared
@@ -79,7 +79,7 @@ class server_t(object):
 		self.timedemo = False # qboolean	;		// don't time sync
 
 def EDICT_NUM(n):
-	return ge.edicts(n)
+	return sv_game.ge.edicts(n)
 #define NUM_FOR_EDICT(e) ( ((byte *)(e)-(byte *)ge->edicts ) / ge->edict_size)
 
 class client_state_t(Enum):

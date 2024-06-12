@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import os
 import struct
-from qcommon import cvar, common, cmd, files, net_chan, qcommon
+from qcommon import cvar, common, cmd, files, net_chan, qcommon, cmodel
 from game import q_shared
 from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse, cl_fx, cl_tent, cl_pred
 from linux import q_shlinux, vid_so, in_linux, net_udp, cd_linux
@@ -180,7 +180,7 @@ void CL_Record_f (void)
 	MSG_WriteString (&buf, cl.gamedir);
 	MSG_WriteShort (&buf, cl.playernum);
 
-	MSG_WriteString (&buf, cl.configstrings[CS_NAME]);
+	MSG_WriteString (&buf, cl.configstrings[q_shared.CS_NAME]);
 
 	// configstrings
 	for (i=0 ; i<MAX_CONFIGSTRINGS ; i++)
@@ -357,7 +357,7 @@ def CL_Quit_f ():
 ================
 CL_Drop
 
-Called after an ERR_DROP was thrown
+Called after an q_shared.ERR_DROP was thrown
 ================
 """
 def CL_Drop ():
@@ -636,7 +636,7 @@ def CL_Disconnect ():
 
 def CL_Disconnect_f ():
 
-	common.Com_Error (ERR_DROP, "Disconnected from server");
+	common.Com_Error (q_shared.ERR_DROP, "Disconnected from server");
 
 
 
@@ -725,8 +725,6 @@ def CL_Reconnect_f ():
 	#if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
 	if cls.download is not None:
 		return
-
-	print ("tx rec", cls.state)
 
 	snd_dma.S_StopAllSounds ()
 	if cls.state == client.connstate_t.ca_connected:
@@ -834,9 +832,9 @@ void CL_Skins_f (void)
 
 	for (i=0 ; i<MAX_CLIENTS ; i++)
 	{
-		if (!cl.configstrings[CS_PLAYERSKINS+i][0])
+		if (!cl.configstrings[q_shared.CS_PLAYERSKINS+i][0])
 			continue;
-		Com_Printf ("client %i: %s\n", i, cl.configstrings[CS_PLAYERSKINS+i]); 
+		Com_Printf ("client %i: %s\n", i, cl.configstrings[q_shared.CS_PLAYERSKINS+i]); 
 		SCR_UpdateScreen ();
 		Sys_SendKeyEvents ();	// pump message loop
 		CL_ParseClientinfo (i);
@@ -1079,18 +1077,18 @@ def CL_Snd_Restart_f ():
 	#S_Init ();
 	cl_parse.CL_RegisterSounds ()
 
-"""
-int precache_check; // for autodownload of precache items
-int precache_spawncount;
-int precache_tex;
-int precache_model_skin;
 
+precache_check: int = 0 # for autodownload of precache items
+precache_spawncount: int = 0
+precache_tex: int = 0
+precache_model_skin: int = 0
+"""
 byte *precache_model; // used for skin checking in alias models
 
 #define PLAYER_MULT 5
 
 // ENV_CNT is map load, ENV_CNT+1 is first env map
-#define ENV_CNT (CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT)
+#define ENV_CNT (q_shared.CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT)
 #define TEXTURE_CNT (ENV_CNT+13)
 
 static const char *env_suf[6] = {"rt", "bk", "lf", "ft", "up", "dn"};
@@ -1108,15 +1106,15 @@ void CL_RequestNextDownload (void)
 		precache_check = ENV_CNT;
 
 //ZOID
-	if (precache_check == CS_MODELS) { // confirm map
-		precache_check = CS_MODELS+2; // 0 isn't used
+	if (precache_check == q_shared.CS_MODELS) { // confirm map
+		precache_check = q_shared.CS_MODELS+2; // 0 isn't used
 		if (allow_download_maps->value)
-			if (!CL_CheckOrDownloadFile(cl.configstrings[CS_MODELS+1]))
+			if (!CL_CheckOrDownloadFile(cl.configstrings[q_shared.CS_MODELS+1]))
 				return; // started a download
 	}
-	if (precache_check >= CS_MODELS && precache_check < CS_MODELS+MAX_MODELS) {
+	if (precache_check >= q_shared.CS_MODELS && precache_check < q_shared.CS_MODELS+MAX_MODELS) {
 		if (allow_download_models->value) {
-			while (precache_check < CS_MODELS+MAX_MODELS &&
+			while (precache_check < q_shared.CS_MODELS+MAX_MODELS &&
 				cl.configstrings[precache_check][0]) {
 				if (cl.configstrings[precache_check][0] == '*' ||
 					cl.configstrings[precache_check][0] == '#') {
@@ -1175,13 +1173,13 @@ void CL_RequestNextDownload (void)
 				precache_check++;
 			}
 		}
-		precache_check = CS_SOUNDS;
+		precache_check = q_shared.CS_SOUNDS;
 	}
-	if (precache_check >= CS_SOUNDS && precache_check < CS_SOUNDS+MAX_SOUNDS) { 
+	if (precache_check >= q_shared.CS_SOUNDS && precache_check < q_shared.CS_SOUNDS+MAX_SOUNDS) { 
 		if (allow_download_sounds->value) {
-			if (precache_check == CS_SOUNDS)
+			if (precache_check == q_shared.CS_SOUNDS)
 				precache_check++; // zero is blank
-			while (precache_check < CS_SOUNDS+MAX_SOUNDS &&
+			while (precache_check < q_shared.CS_SOUNDS+MAX_SOUNDS &&
 				cl.configstrings[precache_check][0]) {
 				if (cl.configstrings[precache_check][0] == '*') {
 					precache_check++;
@@ -1192,40 +1190,40 @@ void CL_RequestNextDownload (void)
 					return; // started a download
 			}
 		}
-		precache_check = CS_IMAGES;
+		precache_check = q_shared.CS_IMAGES;
 	}
-	if (precache_check >= CS_IMAGES && precache_check < CS_IMAGES+MAX_IMAGES) {
-		if (precache_check == CS_IMAGES)
+	if (precache_check >= q_shared.CS_IMAGES && precache_check < q_shared.CS_IMAGES+MAX_IMAGES) {
+		if (precache_check == q_shared.CS_IMAGES)
 			precache_check++; // zero is blank
-		while (precache_check < CS_IMAGES+MAX_IMAGES &&
+		while (precache_check < q_shared.CS_IMAGES+MAX_IMAGES &&
 			cl.configstrings[precache_check][0]) {
 			Com_sprintf(fn, sizeof(fn), "pics/%s.pcx", cl.configstrings[precache_check++]);
 			if (!CL_CheckOrDownloadFile(fn))
 				return; // started a download
 		}
-		precache_check = CS_PLAYERSKINS;
+		precache_check = q_shared.CS_PLAYERSKINS;
 	}
 	// skins are special, since a player has three things to download:
 	// model, weapon model and skin
 	// so precache_check is now *3
-	if (precache_check >= CS_PLAYERSKINS && precache_check < CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT) {
+	if (precache_check >= q_shared.CS_PLAYERSKINS && precache_check < q_shared.CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT) {
 		if (allow_download_players->value) {
-			while (precache_check < CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT) {
+			while (precache_check < q_shared.CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT) {
 				int i, n;
 				char model[MAX_QPATH], skin[MAX_QPATH], *p;
 
-				i = (precache_check - CS_PLAYERSKINS)/PLAYER_MULT;
-				n = (precache_check - CS_PLAYERSKINS)%PLAYER_MULT;
+				i = (precache_check - q_shared.CS_PLAYERSKINS)/PLAYER_MULT;
+				n = (precache_check - q_shared.CS_PLAYERSKINS)%PLAYER_MULT;
 
-				if (!cl.configstrings[CS_PLAYERSKINS+i][0]) {
-					precache_check = CS_PLAYERSKINS + (i + 1) * PLAYER_MULT;
+				if (!cl.configstrings[q_shared.CS_PLAYERSKINS+i][0]) {
+					precache_check = q_shared.CS_PLAYERSKINS + (i + 1) * PLAYER_MULT;
 					continue;
 				}
 
-				if ((p = strchr(cl.configstrings[CS_PLAYERSKINS+i], '\\')) != NULL)
+				if ((p = strchr(cl.configstrings[q_shared.CS_PLAYERSKINS+i], '\\')) != NULL)
 					p++;
 				else
-					p = cl.configstrings[CS_PLAYERSKINS+i];
+					p = cl.configstrings[q_shared.CS_PLAYERSKINS+i];
 				strcpy(model, p);
 				p = strchr(model, '/');
 				if (!p)
@@ -1240,7 +1238,7 @@ void CL_RequestNextDownload (void)
 				case 0: // model
 					Com_sprintf(fn, sizeof(fn), "players/%s/tris.md2", model);
 					if (!CL_CheckOrDownloadFile(fn)) {
-						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 1;
+						precache_check = q_shared.CS_PLAYERSKINS + i * PLAYER_MULT + 1;
 						return; // started a download
 					}
 					n++;
@@ -1249,7 +1247,7 @@ void CL_RequestNextDownload (void)
 				case 1: // weapon model
 					Com_sprintf(fn, sizeof(fn), "players/%s/weapon.md2", model);
 					if (!CL_CheckOrDownloadFile(fn)) {
-						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 2;
+						precache_check = q_shared.CS_PLAYERSKINS + i * PLAYER_MULT + 2;
 						return; // started a download
 					}
 					n++;
@@ -1258,7 +1256,7 @@ void CL_RequestNextDownload (void)
 				case 2: // weapon skin
 					Com_sprintf(fn, sizeof(fn), "players/%s/weapon.pcx", model);
 					if (!CL_CheckOrDownloadFile(fn)) {
-						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 3;
+						precache_check = q_shared.CS_PLAYERSKINS + i * PLAYER_MULT + 3;
 						return; // started a download
 					}
 					n++;
@@ -1267,7 +1265,7 @@ void CL_RequestNextDownload (void)
 				case 3: // skin
 					Com_sprintf(fn, sizeof(fn), "players/%s/%s.pcx", model, skin);
 					if (!CL_CheckOrDownloadFile(fn)) {
-						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 4;
+						precache_check = q_shared.CS_PLAYERSKINS + i * PLAYER_MULT + 4;
 						return; // started a download
 					}
 					n++;
@@ -1276,11 +1274,11 @@ void CL_RequestNextDownload (void)
 				case 4: // skin_i
 					Com_sprintf(fn, sizeof(fn), "players/%s/%s_i.pcx", model, skin);
 					if (!CL_CheckOrDownloadFile(fn)) {
-						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 5;
+						precache_check = q_shared.CS_PLAYERSKINS + i * PLAYER_MULT + 5;
 						return; // started a download
 					}
 					// move on to next model
-					precache_check = CS_PLAYERSKINS + (i + 1) * PLAYER_MULT;
+					precache_check = q_shared.CS_PLAYERSKINS + (i + 1) * PLAYER_MULT;
 				}
 			}
 		}
@@ -1291,11 +1289,11 @@ void CL_RequestNextDownload (void)
 	if (precache_check == ENV_CNT) {
 		precache_check = ENV_CNT + 1;
 
-		CM_LoadMap (cl.configstrings[CS_MODELS+1], true, &map_checksum);
+		CM_LoadMap (cl.configstrings[q_shared.CS_MODELS+1], true, &map_checksum);
 
-		if (map_checksum != atoi(cl.configstrings[CS_MAPCHECKSUM])) {
-			Com_Error (ERR_DROP, "Local map version differs from server: %i != '%s'\n",
-				map_checksum, cl.configstrings[CS_MAPCHECKSUM]);
+		if (map_checksum != atoi(cl.configstrings[q_shared.CS_MAPCHECKSUM])) {
+			Com_Error (q_shared.ERR_DROP, "Local map version differs from server: %i != '%s'\n",
+				map_checksum, cl.configstrings[q_shared.CS_MAPCHECKSUM]);
 			return;
 		}
 	}
@@ -1307,10 +1305,10 @@ void CL_RequestNextDownload (void)
 
 				if (n & 1)
 					Com_sprintf(fn, sizeof(fn), "env/%s%s.pcx", 
-						cl.configstrings[CS_SKY], env_suf[n/2]);
+						cl.configstrings[q_shared.CS_SKY], env_suf[n/2]);
 				else
 					Com_sprintf(fn, sizeof(fn), "env/%s%s.tga", 
-						cl.configstrings[CS_SKY], env_suf[n/2]);
+						cl.configstrings[q_shared.CS_SKY], env_suf[n/2]);
 				if (!CL_CheckOrDownloadFile(fn))
 					return; // started a download
 			}
@@ -1343,7 +1341,7 @@ void CL_RequestNextDownload (void)
 
 //ZOID
 	CL_RegisterSounds ();
-	CL_PrepRefresh ();
+	cl_view.CL_PrepRefresh ();
 
 	MSG_WriteByte (&cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd);
 	MSG_WriteString (&cls.netchan.message, va("begin %i\n", precache_spawncount) );
@@ -1356,30 +1354,32 @@ CL_Precache_f
 The server will send this command right
 before allowing the client into the server
 =================
-*/
-void CL_Precache_f (void)
-{
-	//Yet another hack to let old demos work
-	//the old precache sequence
-	if (Cmd_Argc() < 2) {
-		unsigned	map_checksum;		// for detecting cheater maps
+"""
+def CL_Precache_f ():
 
-		CM_LoadMap (cl.configstrings[CS_MODELS+1], true, &map_checksum);
-		CL_RegisterSounds ();
-		CL_PrepRefresh ();
-		return;
-	}
+	global precache_check, precache_spawncount, precache_tex, precache_model_skin
+	
+	# Yet another hack to let old demos work
+	# the old precache sequence
+	if cmd.Cmd_Argc() < 2:
+		#unsigned	map_checksum;		// for detecting cheater maps
 
-	precache_check = CS_MODELS;
-	precache_spawncount = atoi(Cmd_Argv(1));
-	precache_model = 0;
-	precache_model_skin = 0;
+		map_checksum = cmodel.CM_LoadMap (cl.configstrings[q_shared.CS_MODELS+1], True)
+		cl_parse.CL_RegisterSounds ()
+		cl_view.CL_PrepRefresh ()
+		return
+	
 
-	CL_RequestNextDownload();
-}
+	precache_check = q_shared.CS_MODELS
+	precache_spawncount = int(cmd.Cmd_Argv(1))
+	precache_model = 0
+	precache_model_skin = 0
+
+	CL_RequestNextDownload()
 
 
-/*
+
+"""
 =================
 CL_InitLocal
 =================
@@ -1508,7 +1508,9 @@ def CL_InitLocal ():
 
 	Cmd_AddCommand ("setenv", CL_Setenv_f );
 
-	Cmd_AddCommand ("precache", CL_Precache_f);
+	"""
+	cmd.Cmd_AddCommand ("precache", CL_Precache_f)
+	"""
 
 	Cmd_AddCommand ("download", CL_Download_f);
 	"""
@@ -1608,8 +1610,8 @@ def CL_FixCvarCheats ():
 	int			i;
 	cheatvar_t	*var;
 
-	if ( !strcmp(cl.configstrings[CS_MAXCLIENTS], "1") 
-		|| !cl.configstrings[CS_MAXCLIENTS][0] )
+	if ( !strcmp(cl.configstrings[q_shared.CS_MAXCLIENTS], "1") 
+		|| !cl.configstrings[q_shared.CS_MAXCLIENTS][0] )
 		return;		// single player can cheat
 
 	// find all the cvars if we haven't done it yet

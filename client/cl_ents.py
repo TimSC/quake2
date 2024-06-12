@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import copy
 from qcommon import common, net_chan, qcommon
 from game import q_shared
-from client import cl_main, cl_parse, client, cl_pred
+from client import cl_main, cl_parse, client, cl_pred, cl_scrn, cl_tent
 """
 // cl_ents.c -- entity parsing and management
 
@@ -1412,32 +1412,36 @@ CL_CalcViewValues
 
 Sets cl_main.cl.refdef view values
 ===============
-*/
-void CL_CalcViewValues (void)
-{
+"""
+def CL_CalcViewValues ():
+
+	"""
 	int			i;
 	float		lerp, backlerp;
 	centity_t	*ent;
 	frame_t		*oldframe;
 	player_state_t	*ps, *ops;
+	"""
 
-	// find the previous frame to interpolate from
-	ps = &cl_main.cl.frame.playerstate;
-	i = (cl_main.cl.frame.serverframe - 1) & qcommon.UPDATE_MASK;
-	oldframe = &cl_main.cl.frames[i];
-	if (oldframe.serverframe != cl_main.cl.frame.serverframe-1 or !oldframe.valid)
-		oldframe = &cl_main.cl.frame;		// previous frame was dropped or involid
-	ops = &oldframe.playerstate;
+	
+	# find the previous frame to interpolate from
+	ps = cl_main.cl.frame.playerstate
+	i = (cl_main.cl.frame.serverframe - 1) & qcommon.UPDATE_MASK
+	oldframe = cl_main.cl.frames[i]
+	if oldframe.serverframe != cl_main.cl.frame.serverframe-1 or not oldframe.valid:
+		oldframe = cl_main.cl.frame		# previous frame was dropped or invalid
+	ops = oldframe.playerstate
 
-	// see if the player entity was teleported this frame
-	if ( fabs(ops.pmove.origin[0] - ps.pmove.origin[0]) > 256*8
-		or abs(ops.pmove.origin[1] - ps.pmove.origin[1]) > 256*8
-		or abs(ops.pmove.origin[2] - ps.pmove.origin[2]) > 256*8)
-		ops = ps;		// don't interpolate
+	# see if the player entity was teleported this frame
+	if abs(ops.pmove.origin[0] - ps.pmove.origin[0]) > 256*8 \
+		or abs(ops.pmove.origin[1] - ps.pmove.origin[1]) > 256*8 \
+		or abs(ops.pmove.origin[2] - ps.pmove.origin[2]) > 256*8:
+		ops = ps		# don't interpolate
 
-	ent = &cl_main.cl_entities[cl_main.cl.playernum+1];
-	lerp = cl_main.cl.lerpfrac;
+	ent = cl_main.cl_entities[cl_main.cl.playernum+1]
+	lerp = cl_main.cl.lerpfrac
 
+	"""
 	// calculate the origin
 	if ((cl_predict.value) && !(cl_main.cl.frame.playerstate.pmove.pm_flags & PMF_NO_PREDICTION))
 	{	// use predicted values
@@ -1481,8 +1485,10 @@ void CL_CalcViewValues (void)
 
 	AngleVectors (cl_main.cl.refdef.viewangles, cl_main.cl.v_forward, cl_main.cl.v_right, cl_main.cl.v_up);
 
-	// interpolate field of view
-	cl_main.cl.refdef.fov_x = ops.fov + lerp * (ps.fov - ops.fov);
+	"""
+	# interpolate field of view
+	cl_main.cl.refdef.fov_x = ops.fov + lerp * (ps.fov - ops.fov)
+	"""
 
 	// don't interpolate blend color
 	for (i=0 ; i<4 ; i++)
@@ -1490,9 +1496,9 @@ void CL_CalcViewValues (void)
 
 	// add the weapon
 	CL_AddViewWeapon (ps, ops);
-}
+	"""
 
-/*
+"""
 ===============
 CL_AddEntities
 
@@ -1534,7 +1540,9 @@ def CL_AddEntities ():
 //	CL_AddDLights ();
 //	CL_AddLightStyles ();
 
-	CL_CalcViewValues ();
+	"""
+	CL_CalcViewValues ()
+	"""
 	// PMM - moved this here so the heat beam has the right values for the vieworg, and can lock the beam to the gun
 	CL_AddPacketEntities (&cl_main.cl.frame);
 #if 0

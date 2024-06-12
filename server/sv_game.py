@@ -19,12 +19,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 from game import game
 from linux import sys_linux
+from qcommon import cvar
 """
 // sv_game.c -- interface to the game dll
 
 #include "server.h"
 """
-ge = None #game_export_t	*
+ge = None #game.game_export_t()
 """
 
 /*
@@ -377,7 +378,9 @@ def SV_InitGameProgs ():
 	gimport.TagFree = Z_Free;
 	gimport.FreeTags = Z_FreeTags;
 
-	gimport.cvar = Cvar_Get;
+	"""
+	gimport.cvar = cvar.Cvar_Get
+	"""
 	gimport.cvar_set = Cvar_Set;
 	gimport.cvar_forceset = Cvar_ForceSet;
 

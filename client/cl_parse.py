@@ -21,7 +21,7 @@ import struct
 from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent, console
 from game import q_shared
 from qcommon import net_chan, qcommon, common, cmd, files, cmodel
-from linux import cd_linux
+from linux import cd_linux, sys_linux
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -193,7 +193,7 @@ def CL_RegisterSounds ():
 		if cl_main.cl.configstrings[q_shared.CS_SOUNDS+i] is None:
 			break
 		cl_main.cl.sound_precache[i] = snd_dma.S_RegisterSound (cl_main.cl.configstrings[q_shared.CS_SOUNDS+i])
-		Sys_SendKeyEvents ()	# pump message loop
+		sys_linux.Sys_SendKeyEvents ()	# pump message loop
 	
 	snd_dma.S_EndRegistration ()
 

@@ -162,10 +162,9 @@ class client_state_t(object):
 		"""
 		self.time = 0 						#int, this is the time value that the client
 									# is rendering at.  always <= cls.realtime
-		"""
-		float		lerpfrac;		# between oldframe and frame
 
-		"""		
+		self.lerpfrac: float = 0.0		# between oldframe and frame
+
 		self.refdef = ref.refdef_t()
 		self.v_forward, self.v_right, self.v_up = None, None, None #vec3_t, set when refdef.angles is set
 		"""

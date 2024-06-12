@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from game import g_main, q_shared, game
 """
 #include "g_local.h"
 #include "m_player.h"
@@ -190,7 +191,7 @@ qboolean IsFemale (edict_t *ent)
 	if (!ent->client)
 		return false;
 
-	info = Info_ValueForKey (ent->client->pers.userinfo, "gender");
+	info = q_shared.Info_ValueForKey (ent->client->pers.userinfo, "gender");
 	if (info[0] == 'f' || info[0] == 'F')
 		return true;
 	return false;
@@ -203,7 +204,7 @@ qboolean IsNeutral (edict_t *ent)
 	if (!ent->client)
 		return false;
 
-	info = Info_ValueForKey (ent->client->pers.userinfo, "gender");
+	info = q_shared.Info_ValueForKey (ent->client->pers.userinfo, "gender");
 	if (info[0] != 'f' && info[0] != 'F' && info[0] != 'm' && info[0] != 'M')
 		return true;
 	return false;
@@ -1016,7 +1017,7 @@ void spectator_respawn (edict_t *ent)
 	// exceed max_spectators
 
 	if (ent->client->pers.spectator) {
-		char *value = Info_ValueForKey (ent->client->pers.userinfo, "spectator");
+		char *value = q_shared.Info_ValueForKey (ent->client->pers.userinfo, "spectator");
 		if (*spectator_password->string && 
 			strcmp(spectator_password->string, "none") && 
 			strcmp(spectator_password->string, value)) {
@@ -1045,7 +1046,7 @@ void spectator_respawn (edict_t *ent)
 	} else {
 		// he was a spectator and wants to join the game
 		// he must have the right password
-		char *value = Info_ValueForKey (ent->client->pers.userinfo, "password");
+		char *value = q_shared.Info_ValueForKey (ent->client->pers.userinfo, "password");
 		if (*password->string && strcmp(password->string, "none") && 
 			strcmp(password->string, value)) {
 			gi.cprintf(ent, PRINT_HIGH, "Password incorrect.\n");
@@ -1198,7 +1199,7 @@ void PutClientInServer (edict_t *ent)
 	}
 	else
 	{
-		client->ps.fov = atoi(Info_ValueForKey(client->pers.userinfo, "fov"));
+		client->ps.fov = atoi(q_shared.Info_ValueForKey(client->pers.userinfo, "fov"));
 		if (client->ps.fov < 1)
 			client->ps.fov = 90;
 		else if (client->ps.fov > 160)
@@ -1372,8 +1373,8 @@ The game can override any of the settings in place
 ============
 """
 def ClientUserinfoChanged (ent, userinfo): # edict_t *, char *
+	assert isinstance(ent, game.edict_t)
 
-	pass
 	"""
 	char	*s;
 	int		playernum;
@@ -1385,11 +1386,11 @@ def ClientUserinfoChanged (ent, userinfo): # edict_t *, char *
 	}
 
 	// set name
-	s = Info_ValueForKey (userinfo, "name");
+	s = q_shared.Info_ValueForKey (userinfo, "name");
 	strncpy (ent->client->pers.netname, s, sizeof(ent->client->pers.netname)-1);
 
 	// set spectator
-	s = Info_ValueForKey (userinfo, "spectator");
+	s = q_shared.Info_ValueForKey (userinfo, "spectator");
 	// spectators are only supported in deathmatch
 	if (deathmatch->value && *s && strcmp(s, "0"))
 		ent->client->pers.spectator = true;
@@ -1397,29 +1398,29 @@ def ClientUserinfoChanged (ent, userinfo): # edict_t *, char *
 		ent->client->pers.spectator = false;
 
 	// set skin
-	s = Info_ValueForKey (userinfo, "skin");
+	s = q_shared.Info_ValueForKey (userinfo, "skin");
 
 	playernum = ent-g_edicts-1;
 
 	// combine name and skin into a configstring
 	gi.configstring (CS_PLAYERSKINS+playernum, va("%s\\%s", ent->client->pers.netname, s) );
-
-	// fov
-	if (deathmatch->value && ((int)dmflags->value & DF_FIXED_FOV))
-	{
-		ent->client->ps.fov = 90;
-	}
-	else
-	{
-		ent->client->ps.fov = atoi(Info_ValueForKey(userinfo, "fov"));
-		if (ent->client->ps.fov < 1)
-			ent->client->ps.fov = 90;
-		else if (ent->client->ps.fov > 160)
-			ent->client->ps.fov = 160;
-	}
-
+	"""
+	# fov
+	if int(g_main.deathmatch.value) and (int(dmflags.value) & DF_FIXED_FOV):
+	
+		ent.client.ps.fov = 90
+	
+	else:
+	
+		ent.client.ps.fov = int(q_shared.Info_ValueForKey(userinfo, "fov"))
+		if ent.client.ps.fov < 1:
+			ent.client.ps.fov = 90
+		elif ent.client.ps.fov > 160:
+			ent.client.ps.fov = 160
+	
+	"""
 	// handedness
-	s = Info_ValueForKey (userinfo, "hand");
+	s = q_shared.Info_ValueForKey (userinfo, "hand");
 	if (strlen(s))
 	{
 		ent->client->pers.hand = atoi(s);
@@ -1444,19 +1445,18 @@ loadgames will.
 """
 def ClientConnect (ent, userinfo): #edict_t *, char * (returns qboolean)
 
-	return True
 	"""
 	char	*value;
 
 	// check to see if they are on the banned IP list
-	value = Info_ValueForKey (userinfo, "ip");
+	value = q_shared.Info_ValueForKey (userinfo, "ip");
 	if (SV_FilterPacket(value)) {
 		Info_SetValueForKey(userinfo, "rejmsg", "Banned.");
 		return false;
 	}
 
 	// check for a spectator
-	value = Info_ValueForKey (userinfo, "spectator");
+	value = q_shared.Info_ValueForKey (userinfo, "spectator");
 	if (deathmatch->value && *value && strcmp(value, "0")) {
 		int i, numspec;
 
@@ -1478,7 +1478,7 @@ def ClientConnect (ent, userinfo): #edict_t *, char * (returns qboolean)
 		}
 	} else {
 		// check for a password
-		value = Info_ValueForKey (userinfo, "password");
+		value = q_shared.Info_ValueForKey (userinfo, "password");
 		if (*password->string && strcmp(password->string, "none") && 
 			strcmp(password->string, value)) {
 			Info_SetValueForKey(userinfo, "rejmsg", "Password required or incorrect.");
@@ -1500,17 +1500,20 @@ def ClientConnect (ent, userinfo): #edict_t *, char * (returns qboolean)
 			InitClientPersistant (ent->client);
 	}
 
-	ClientUserinfoChanged (ent, userinfo);
+	"""
+	ClientUserinfoChanged (ent, userinfo)
+	"""
 
 	if (game.maxclients > 1)
 		gi.dprintf ("%s connected\n", ent->client->pers.netname);
 
 	ent->svflags = 0; // make sure we start with known default
 	ent->client->pers.connected = true;
-	return true;
-}
+	"""
+	return True
 
-/*
+
+"""
 ===========
 ClientDisconnect
 

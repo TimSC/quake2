@@ -23,12 +23,12 @@ import numpy as np
 #define __REF_H
 
 #include "../qcommon/qcommon.h"
-
-#define	MAX_DLIGHTS		32
-#define	MAX_ENTITIES	128
-#define	MAX_PARTICLES	4096
-#define	MAX_LIGHTSTYLES	256
-
+"""
+MAX_DLIGHTS		= 32
+MAX_ENTITIES	= 128
+MAX_PARTICLES	= 4096
+MAX_LIGHTSTYLES	= 256
+"""
 #define POWERSUIT_SCALE		4.0F
 
 #define SHELL_RED_COLOR		0xF2
@@ -52,9 +52,9 @@ class entity_t(object):
 
 	def __init__(self):
 
-		"""
-		struct model_s		*model;			// opaque type outside refresh
-		"""
+
+		self.model = None # struct model_s		*;			// opaque type outside refresh
+
 		self.angles = np.zeros((3,), dtype=np.float32) # float[3];
 		"""
 
@@ -81,43 +81,49 @@ class entity_t(object):
 		int		lightstyle;				// for flashing entities
 		float	alpha;					// ignore if RF_TRANSLUCENT isn't set
 
-		struct image_s	*skin;			// NULL for inline skin
-		int		flags;
 		"""
+		self.skin = None # struct image_s	*, NULL for inline skin
+		self.flags = 0 # int
+
 
 """
 #define ENTITY_FLAGS  68
-
-typedef struct
-{
-	vec3_t	origin;
-	vec3_t	color;
-	float	intensity;
-} dlight_t;
-
-typedef struct
-{
-	vec3_t	origin;
-	int		color;
-	float	alpha;
-} particle_t;
-
-typedef struct
-{
-	float		rgb[3];			// 0.0 - 2.0
-	float		white;			// highest of rgb
-} lightstyle_t;
 """
+class dlight_t(object):
+
+	def __init__(self):
+		self.origin = np.zeros((3,), dtype=np.float32) # vec3_t
+		self.color = np.zeros((3,), dtype=np.float32) # vec3_t
+		self.intensity = 0.0 # float
+
+class particle_t(object):
+
+	def __init__(self):
+		self.origin = np.zeros((3,), dtype=np.float32) # vec3_t
+		self.color = 0 # int
+		self.alpha = 0.0 # float
+
+class lightstyle_t(object):
+
+	def __init__(self):
+		self.rgb = np.zeros((3,), dtype=np.float32) # float[3], 0.0 - 2.0
+		self.white = 0.0 # float, highest of rgb
+
 class refdef_t(object):
 
 	def __init__(self):
 
-		"""
-		int			x, y, width, height;# in virtual screen coordinates
-		float		fov_x, fov_y;
-		float		vieworg[3];
-		float		viewangles[3];
-		"""
+
+		self.x = 0 
+		self.y = 0 
+		self.width = 0 
+		self.height = 0 # int, in virtual screen coordinates
+		self.fov_x = 0.0 #float
+		self.fov_y = 0.0
+
+		self.vieworg = np.zeros((3,), dtype=np.float32) # float [3]
+		self.viewangles = np.zeros((3,), dtype=np.float32) #float [3]
+
 		self.blend = np.zeros((4,), dtype=np.float32) #float[4], rgba 0-1 full screen blend
 		"""
 		float		time;				# time is uesed to auto animate

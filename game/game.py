@@ -108,7 +108,6 @@ class game_import_t(object):
 
 	def __init__(self):
 
-		pass
 		"""
 		// special messages
 		void	(*bprintf) (int printlevel, char *fmt, ...);
@@ -168,7 +167,9 @@ class game_import_t(object):
 		void	(*FreeTags) (int tag);
 
 		// console variable interaction
-		cvar_t	*(*cvar) (char *var_name, char *value, int flags);
+		"""
+		self.cvar = None # cvar_t, *(*cvar) (char *var_name, char *value, int flags);
+		"""
 		cvar_t	*(*cvar_set) (char *var_name, char *value);
 		cvar_t	*(*cvar_forceset) (char *var_name, char *value);
 
@@ -191,15 +192,16 @@ class game_export_t(object):
 
 	def __init__(self):
 
-		pass
 		"""
 		int			apiversion;
 
 		// the init function will only be called when a game starts,
 		// not each time a level is loaded.  Persistant data for clients
 		// and the server can be allocated in init
-		void		(*Init) (void);
-		void		(*Shutdown) (void);
+		"""
+		self.Init = None # void (*) (void)
+		self.Shutdown = None # void (*) (void)
+		"""
 
 		// each new level entered will cause a call to SpawnEntities
 		void		(*SpawnEntities) (char *mapname, char *entstring, char *spawnpoint);
@@ -239,7 +241,9 @@ class game_export_t(object):
 		// can vary in size from one game to another.
 		// 
 		// The size will be fixed when ge->Init() is called
-		struct edict_s	*edicts;
+		"""
+		self.edicts = None
+		"""
 		int			edict_size;
 		int			num_edicts;		// current number, <= max_edicts
 		int			max_edicts;

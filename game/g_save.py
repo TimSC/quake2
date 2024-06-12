@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+from game import g_main, q_shared
 """
 #include "g_local.h"
 
@@ -151,59 +152,62 @@ is loaded.
 """
 def InitGame ():
 
-	pass
 	"""
-	gi.dprintf ("==== InitGame ====\n");
+	g_main.gi.dprintf ("==== InitGame ====\n");
 
-	gun_x = gi.cvar ("gun_x", "0", 0);
-	gun_y = gi.cvar ("gun_y", "0", 0);
-	gun_z = gi.cvar ("gun_z", "0", 0);
+	gun_x = g_main.gi.cvar ("gun_x", "0", 0);
+	gun_y = g_main.gi.cvar ("gun_y", "0", 0);
+	gun_z = g_main.gi.cvar ("gun_z", "0", 0);
 
 	//FIXME: sv_ prefix is wrong for these
-	sv_rollspeed = gi.cvar ("sv_rollspeed", "200", 0);
-	sv_rollangle = gi.cvar ("sv_rollangle", "2", 0);
-	sv_maxvelocity = gi.cvar ("sv_maxvelocity", "2000", 0);
-	sv_gravity = gi.cvar ("sv_gravity", "800", 0);
+	sv_rollspeed = g_main.gi.cvar ("sv_rollspeed", "200", 0);
+	sv_rollangle = g_main.gi.cvar ("sv_rollangle", "2", 0);
+	sv_maxvelocity = g_main.gi.cvar ("sv_maxvelocity", "2000", 0);
+	sv_gravity = g_main.gi.cvar ("sv_gravity", "800", 0);
 
 	// noset vars
-	dedicated = gi.cvar ("dedicated", "0", CVAR_NOSET);
+	dedicated = g_main.gi.cvar ("dedicated", "0", CVAR_NOSET);
 
 	// latched vars
-	sv_cheats = gi.cvar ("cheats", "0", CVAR_SERVERINFO|CVAR_LATCH);
-	gi.cvar ("gamename", GAMEVERSION , CVAR_SERVERINFO | CVAR_LATCH);
-	gi.cvar ("gamedate", __DATE__ , CVAR_SERVERINFO | CVAR_LATCH);
+	sv_cheats = g_main.gi.cvar ("cheats", "0", q_shared.CVAR_SERVERINFO|q_shared.CVAR_LATCH);
+	g_main.gi.cvar ("gamename", GAMEVERSION , q_shared.CVAR_SERVERINFO | q_shared.CVAR_LATCH);
+	g_main.gi.cvar ("gamedate", __DATE__ , q_shared.CVAR_SERVERINFO | q_shared.CVAR_LATCH);
 
-	maxclients = gi.cvar ("maxclients", "4", CVAR_SERVERINFO | CVAR_LATCH);
-	maxspectators = gi.cvar ("maxspectators", "4", CVAR_SERVERINFO);
-	deathmatch = gi.cvar ("deathmatch", "0", CVAR_LATCH);
-	coop = gi.cvar ("coop", "0", CVAR_LATCH);
-	skill = gi.cvar ("skill", "1", CVAR_LATCH);
-	maxentities = gi.cvar ("maxentities", "1024", CVAR_LATCH);
+	maxclients = g_main.gi.cvar ("maxclients", "4", q_shared.CVAR_SERVERINFO | q_shared.CVAR_LATCH);
+	maxspectators = g_main.gi.cvar ("maxspectators", "4", q_shared.CVAR_SERVERINFO);	
+	"""
+	g_main.deathmatch = g_main.gi.cvar ("deathmatch", "0", q_shared.CVAR_LATCH)
+	"""
+	coop = g_main.gi.cvar ("coop", "0", q_shared.CVAR_LATCH);
+	skill = g_main.gi.cvar ("skill", "1", q_shared.CVAR_LATCH);
+	maxentities = g_main.gi.cvar ("maxentities", "1024", q_shared.CVAR_LATCH);
 
-	// change anytime vars
-	dmflags = gi.cvar ("dmflags", "0", CVAR_SERVERINFO);
-	fraglimit = gi.cvar ("fraglimit", "0", CVAR_SERVERINFO);
-	timelimit = gi.cvar ("timelimit", "0", CVAR_SERVERINFO);
-	password = gi.cvar ("password", "", CVAR_USERINFO);
-	spectator_password = gi.cvar ("spectator_password", "", CVAR_USERINFO);
-	needpass = gi.cvar ("needpass", "0", CVAR_SERVERINFO);
-	filterban = gi.cvar ("filterban", "1", 0);
+	# change anytime vars
+	"""
+	g_main.dmflags = g_main.gi.cvar ("dmflags", "0", q_shared.CVAR_SERVERINFO);
+	"""
+	fraglimit = g_main.gi.cvar ("fraglimit", "0", q_shared.CVAR_SERVERINFO);
+	timelimit = g_main.gi.cvar ("timelimit", "0", q_shared.CVAR_SERVERINFO);
+	password = g_main.gi.cvar ("password", "", CVAR_USERINFO);
+	spectator_password = g_main.gi.cvar ("spectator_password", "", CVAR_USERINFO);
+	needpass = g_main.gi.cvar ("needpass", "0", q_shared.CVAR_SERVERINFO);
+	filterban = g_main.gi.cvar ("filterban", "1", 0);
 
-	g_select_empty = gi.cvar ("g_select_empty", "0", CVAR_ARCHIVE);
+	g_select_empty = g_main.gi.cvar ("g_select_empty", "0", CVAR_ARCHIVE);
 
-	run_pitch = gi.cvar ("run_pitch", "0.002", 0);
-	run_roll = gi.cvar ("run_roll", "0.005", 0);
-	bob_up  = gi.cvar ("bob_up", "0.005", 0);
-	bob_pitch = gi.cvar ("bob_pitch", "0.002", 0);
-	bob_roll = gi.cvar ("bob_roll", "0.002", 0);
+	run_pitch = g_main.gi.cvar ("run_pitch", "0.002", 0);
+	run_roll = g_main.gi.cvar ("run_roll", "0.005", 0);
+	bob_up  = g_main.gi.cvar ("bob_up", "0.005", 0);
+	bob_pitch = g_main.gi.cvar ("bob_pitch", "0.002", 0);
+	bob_roll = g_main.gi.cvar ("bob_roll", "0.002", 0);
 
 	// flood control
-	flood_msgs = gi.cvar ("flood_msgs", "4", 0);
-	flood_persecond = gi.cvar ("flood_persecond", "4", 0);
-	flood_waitdelay = gi.cvar ("flood_waitdelay", "10", 0);
+	flood_msgs = g_main.gi.cvar ("flood_msgs", "4", 0);
+	flood_persecond = g_main.gi.cvar ("flood_persecond", "4", 0);
+	flood_waitdelay = g_main.gi.cvar ("flood_waitdelay", "10", 0);
 
 	// dm map list
-	sv_maplist = gi.cvar ("sv_maplist", "", 0);
+	sv_maplist = g_main.gi.cvar ("sv_maplist", "", 0);
 
 	// items
 	InitItems ();
@@ -214,13 +218,13 @@ def InitGame ():
 
 	// initialize all entities for this game
 	game.maxentities = maxentities->value;
-	g_edicts =  gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME);
+	g_edicts =  g_main.gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME);
 	globals.edicts = g_edicts;
 	globals.max_edicts = game.maxentities;
 
 	// initialize all clients for this game
 	game.maxclients = maxclients->value;
-	game.clients = gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
+	game.clients = g_main.gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
 	globals.num_edicts = game.maxclients+1;
 }
 
@@ -294,7 +298,7 @@ void WriteField1 (FILE *f, field_t *field, byte *base)
 		break;
 
 	default:
-		gi.error ("WriteEdict: unknown field type");
+		g_main.gi.error ("WriteEdict: unknown field type");
 	}
 }
 
@@ -345,7 +349,7 @@ void ReadField (FILE *f, field_t *field, byte *base)
 			*(char **)p = NULL;
 		else
 		{
-			*(char **)p = gi.TagMalloc (len, TAG_LEVEL);
+			*(char **)p = g_main.gi.TagMalloc (len, TAG_LEVEL);
 			fread (*(char **)p, len, 1, f);
 		}
 		break;
@@ -390,7 +394,7 @@ void ReadField (FILE *f, field_t *field, byte *base)
 		break;
 
 	default:
-		gi.error ("ReadEdict: unknown field type");
+		g_main.gi.error ("ReadEdict: unknown field type");
 	}
 }
 
@@ -471,7 +475,7 @@ void WriteGame (char *filename, qboolean autosave)
 
 	f = fopen (filename, "wb");
 	if (!f)
-		gi.error ("Couldn't open %s", filename);
+		g_main.gi.error ("Couldn't open %s", filename);
 
 	memset (str, 0, sizeof(str));
 	strcpy (str, __DATE__);
@@ -493,24 +497,24 @@ void ReadGame (char *filename)
 	int		i;
 	char	str[16];
 
-	gi.FreeTags (TAG_GAME);
+	g_main.gi.FreeTags (TAG_GAME);
 
 	f = fopen (filename, "rb");
 	if (!f)
-		gi.error ("Couldn't open %s", filename);
+		g_main.gi.error ("Couldn't open %s", filename);
 
 	fread (str, sizeof(str), 1, f);
 	if (strcmp (str, __DATE__))
 	{
 		fclose (f);
-		gi.error ("Savegame from an older version.\n");
+		g_main.gi.error ("Savegame from an older version.\n");
 	}
 
-	g_edicts =  gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME);
+	g_edicts =  g_main.gi.TagMalloc (game.maxentities * sizeof(g_edicts[0]), TAG_GAME);
 	globals.edicts = g_edicts;
 
 	fread (&game, sizeof(game), 1, f);
-	game.clients = gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
+	game.clients = g_main.gi.TagMalloc (game.maxclients * sizeof(game.clients[0]), TAG_GAME);
 	for (i=0 ; i<game.maxclients ; i++)
 		ReadClient (f, &game.clients[i]);
 
@@ -637,7 +641,7 @@ void WriteLevel (char *filename)
 
 	f = fopen (filename, "wb");
 	if (!f)
-		gi.error ("Couldn't open %s", filename);
+		g_main.gi.error ("Couldn't open %s", filename);
 
 	// write out edict size for checking
 	i = sizeof(edict_t);
@@ -692,11 +696,11 @@ void ReadLevel (char *filename)
 
 	f = fopen (filename, "rb");
 	if (!f)
-		gi.error ("Couldn't open %s", filename);
+		g_main.gi.error ("Couldn't open %s", filename);
 
 	// free any dynamic memory allocated by loading the level
 	// base state
-	gi.FreeTags (TAG_LEVEL);
+	g_main.gi.FreeTags (TAG_LEVEL);
 
 	// wipe all the entities
 	memset (g_edicts, 0, game.maxentities*sizeof(g_edicts[0]));
@@ -707,7 +711,7 @@ void ReadLevel (char *filename)
 	if (i != sizeof(edict_t))
 	{
 		fclose (f);
-		gi.error ("ReadLevel: mismatched edict size");
+		g_main.gi.error ("ReadLevel: mismatched edict size");
 	}
 
 	// check function pointer base address
@@ -716,10 +720,10 @@ void ReadLevel (char *filename)
 	if (base != (void *)InitGame)
 	{
 		fclose (f);
-		gi.error ("ReadLevel: function pointers have moved");
+		g_main.gi.error ("ReadLevel: function pointers have moved");
 	}
 #else
-	gi.dprintf("Function offsets %d\n", ((byte *)base) - ((byte *)InitGame));
+	g_main.gi.dprintf("Function offsets %d\n", ((byte *)base) - ((byte *)InitGame));
 #endif
 
 	// load the level locals
@@ -731,7 +735,7 @@ void ReadLevel (char *filename)
 		if (fread (&entnum, sizeof(entnum), 1, f) != 1)
 		{
 			fclose (f);
-			gi.error ("ReadLevel: failed to read entnum");
+			g_main.gi.error ("ReadLevel: failed to read entnum");
 		}
 		if (entnum == -1)
 			break;
@@ -743,7 +747,7 @@ void ReadLevel (char *filename)
 
 		// let the server rebuild world links for this ent
 		memset (&ent->area, 0, sizeof(ent->area));
-		gi.linkentity (ent);
+		g_main.gi.linkentity (ent);
 	}
 
 	fclose (f);

@@ -389,10 +389,9 @@ def SVC_DirectConnect_NewClient(newcl, adr, qport, userinfo, challenge):
 	# this is the only place a client_t is ever initialized
 	#*newcl = temp
 	sv_client = newcl
-	ent = 0 #HACK for porting
-	#edictnum = (newcl-sv_init.svs.clients)+1
-	#ent = EDICT_NUM(edictnum)
-	#newcl.edict = ent
+	edictnum = sv_init.svs.clients.index(newcl)
+	ent = sv_init.EDICT_NUM(edictnum)
+	newcl.edict = ent
 	newcl.challenge = challenge # save challenge for checksumming
 
 	# get the game a chance to reject this connection or modify the userinfo

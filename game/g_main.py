@@ -36,9 +36,13 @@ int meansOfDeath;
 
 edict_t		*g_edicts;
 
-cvar_t	*deathmatch;
+"""
+deathmatch = None #cvar_t	*
+"""
 cvar_t	*coop;
-cvar_t	*dmflags;
+"""
+dmflags = None # cvar_t	*
+"""
 cvar_t	*skill;
 cvar_t	*fraglimit;
 cvar_t	*timelimit;
@@ -94,17 +98,19 @@ void G_RunFrame (void);
 
 //===================================================================
 
+"""
+def ShutdownGame ():
 
-void ShutdownGame (void)
-{
-	gi.dprintf ("==== ShutdownGame ====\n");
+	pass
+	"""
+	gi.dprintf ("==== ShutdownGame ====\n")
 
-	gi.FreeTags (TAG_LEVEL);
-	gi.FreeTags (TAG_GAME);
-}
+	gi.FreeTags (TAG_LEVEL)
+	gi.FreeTags (TAG_GAME)
+	"""
 
 
-/*
+"""
 =================
 GetGameAPI
 
@@ -121,8 +127,8 @@ def GetGameAPI (gimport): #game_import_t * (returns game_export_t *)
 	glob.apiversion = game.GAME_API_VERSION
 	
 	glob.Init = g_save.InitGame
-	"""
 	glob.Shutdown = ShutdownGame
+	"""
 	glob.SpawnEntities = SpawnEntities
 
 	glob.WriteGame = WriteGame

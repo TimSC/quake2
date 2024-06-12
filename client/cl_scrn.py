@@ -577,7 +577,7 @@ def SCR_DrawConsole ():
 	
 	else:
 	
-		if cl_main.cls.key_dest == key_game or cl_main.cls.key_dest == key_message:
+		if cl_main.cls.key_dest == client.keydest_t.key_game or cl_main.cls.key_dest == client.keydest_t.key_message:
 			console.Con_DrawNotify ()	# only draw notify in game
 	
 
@@ -639,22 +639,29 @@ def SCR_Loading_f ():
 ================
 SCR_TimeRefresh_f
 ================
-*/
-int entitycmpfnc( const entity_t *a, const entity_t *b )
-{
-	/*
-	** all other models are sorted by model then skin
-	*/
-	if ( a->model == b->model )
-	{
-		return ( ( int ) a->skin - ( int ) b->skin );
-	}
-	else
-	{
-		return ( ( int ) a->model - ( int ) b->model );
-	}
-}
 """
+def entitycmpfnc( a, b )-> int: #(const entity_t *, const entity_t *)
+
+	#
+	# all other models are sorted by model then skin
+	#
+
+	amid = id(a.model)
+	bmid = id(b.model)
+
+	if amid == bmid:
+		
+		aid = id(a.skin)
+		bid = id(b.skin)
+		if aid == bid: return 0
+
+		if aid > bid: return 1
+		return -1
+	
+	else:
+		if amid > bmid: return 1
+		return -1
+
 def SCR_TimeRefresh_f ():
 
 	#int		i;
@@ -1044,7 +1051,7 @@ void SCR_ExecuteLayoutString (char *s)
 			token = COM_Parse (&s);
 			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
 			if (value >= MAX_IMAGES)
-				Com_Error (ERR_DROP, "Pic >= MAX_IMAGES");
+				Com_Error (q_shared.ERR_DROP, "Pic >= MAX_IMAGES");
 			if (cl_main.cl.configstrings[CS_IMAGES+value])
 			{
 				SCR_AddDirtyPoint (x, y);
@@ -1068,7 +1075,7 @@ void SCR_ExecuteLayoutString (char *s)
 			token = COM_Parse (&s);
 			value = atoi(token);
 			if (value >= MAX_CLIENTS || value < 0)
-				Com_Error (ERR_DROP, "client >= MAX_CLIENTS");
+				Com_Error (q_shared.ERR_DROP, "client >= MAX_CLIENTS");
 			ci = &cl_main.cl.clientinfo[value];
 
 			token = COM_Parse (&s);
@@ -1107,7 +1114,7 @@ void SCR_ExecuteLayoutString (char *s)
 			token = COM_Parse (&s);
 			value = atoi(token);
 			if (value >= MAX_CLIENTS || value < 0)
-				Com_Error (ERR_DROP, "client >= MAX_CLIENTS");
+				Com_Error (q_shared.ERR_DROP, "client >= MAX_CLIENTS");
 			ci = &cl_main.cl.clientinfo[value];
 
 			token = COM_Parse (&s);
@@ -1210,10 +1217,10 @@ void SCR_ExecuteLayoutString (char *s)
 			token = COM_Parse (&s);
 			index = atoi(token);
 			if (index < 0 || index >= MAX_CONFIGSTRINGS)
-				Com_Error (ERR_DROP, "Bad stat_string index");
+				Com_Error (q_shared.ERR_DROP, "Bad stat_string index");
 			index = cl_main.cl.frame.playerstate.stats[index];
 			if (index < 0 || index >= MAX_CONFIGSTRINGS)
-				Com_Error (ERR_DROP, "Bad stat_string index");
+				Com_Error (q_shared.ERR_DROP, "Bad stat_string index");
 			DrawString (x, y, cl_main.cl.configstrings[index]);
 			continue;
 		}
