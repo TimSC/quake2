@@ -337,8 +337,11 @@ static void CD_f (void)
 	}
 }
 
-void CDAudio_Update(void)
-{
+"""
+def CDAudio_Update():
+
+	pass
+	"""
 	struct cdrom_subchnl subchnl;
 	static time_t lastchk;
 

@@ -303,14 +303,10 @@ def S_PaintChannels(endtime): #int
 ##			Com_Printf ("partial stream\n");
 ##		else
 ##			Com_Printf ("full stream\n");
-			underrun = False
 			for i in range(stop, end):
 				# Buffer underrun, so pad paint buffer with zeros
-				underrun = True
 				paintbuffer[i-snd_dma.paintedtime].left = 0
 				paintbuffer[i-snd_dma.paintedtime].right = 0
-		
-			if underrun: print ("underrun")
 
 		"""
 

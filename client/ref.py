@@ -107,33 +107,37 @@ typedef struct
 	float		rgb[3];			// 0.0 - 2.0
 	float		white;			// highest of rgb
 } lightstyle_t;
-
-typedef struct
-{
-	int			x, y, width, height;// in virtual screen coordinates
-	float		fov_x, fov_y;
-	float		vieworg[3];
-	float		viewangles[3];
-	float		blend[4];			// rgba 0-1 full screen blend
-	float		time;				// time is uesed to auto animate
-	int			rdflags;			// RDF_UNDERWATER, etc
-
-	byte		*areabits;			// if not NULL, only areas with set bits will be drawn
-
-	lightstyle_t	*lightstyles;	// [MAX_LIGHTSTYLES]
-
-	int			num_entities;
-	entity_t	*entities;
-
-	int			num_dlights;
-	dlight_t	*dlights;
-
-	int			num_particles;
-	particle_t	*particles;
-} refdef_t;
-
-
 """
+class refdef_t(object):
+
+	def __init__(self):
+
+		"""
+		int			x, y, width, height;# in virtual screen coordinates
+		float		fov_x, fov_y;
+		float		vieworg[3];
+		float		viewangles[3];
+		"""
+		self.blend = np.zeros((4,), dtype=np.float32) #float[4], rgba 0-1 full screen blend
+		"""
+		float		time;				# time is uesed to auto animate
+		int			rdflags;			# RDF_UNDERWATER, etc
+
+		byte		*areabits;			# if not NULL, only areas with set bits will be drawn
+
+		lightstyle_t	*lightstyles;	# [MAX_LIGHTSTYLES]
+
+		int			num_entities;
+		entity_t	*entities;
+
+		int			num_dlights;
+		dlight_t	*dlights;
+
+		int			num_particles;
+		particle_t	*particles;
+
+		"""
+
 
 API_VERSION = 3
 

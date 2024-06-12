@@ -22,7 +22,7 @@ import struct
 from qcommon import cvar, common, cmd, files, net_chan, qcommon
 from game import q_shared
 from client import console, snd_dma, cl_scrn, client, cl_view, menu, cl_input, keys, cl_cin, cl_parse, cl_fx, cl_tent
-from linux import q_shlinux, vid_so, in_linux, net_udp
+from linux import q_shlinux, vid_so, in_linux, net_udp, cd_linux
 
 """
 // cl_main.c  -- client main loop
@@ -604,35 +604,33 @@ def CL_Disconnect ():
 			common.Com_Printf ("{} frames, {:3.1f} seconds: {:3.1f} fps\n".format(cl.timedemo_frames,
 			time/1000.0, cl.timedemo_frames*1000.0 / time))
 	
-	"""
+	q_shared.VectorClear (cl.refdef.blend)
+	vid_so.re.CinematicSetPalette(None)
 
-	VectorClear (cl.refdef.blend);
-	re.CinematicSetPalette(NULL);
+	menu.M_ForceMenuOff ()
 
-	M_ForceMenuOff ();
+	cls.connect_time = 0
 
-	cls.connect_time = 0;
+	cl_cin.SCR_StopCinematic ()
 
-	SCR_StopCinematic ();
+	if cls.demorecording:
+		CL_Stop_f ()
 
-	if (cls.demorecording)
-		CL_Stop_f ();
+	# send a disconnect message to the server
+	final = bytearray()
+	final += struct.pack("B", qcommon.clc_ops_e.clc_stringcmd.value)
+	final += b"disconnect"
+	net_chan.Netchan_Transmit (cls.netchan, final)
+	net_chan.Netchan_Transmit (cls.netchan, final)
+	net_chan.Netchan_Transmit (cls.netchan, final)
 
-	// send a disconnect message to the server
-	final[0] = qcommon.clc_ops_e.clc_stringcmd;
-	strcpy ((char *)final+1, "disconnect");
-	Netchan_Transmit (&cls.netchan, strlen(final), final);
-	Netchan_Transmit (&cls.netchan, strlen(final), final);
-	Netchan_Transmit (&cls.netchan, strlen(final), final);
+	CL_ClearState ()
 
-	CL_ClearState ();
-
-	// stop download
-	if (cls.download) {
-		fclose(cls.download);
-		cls.download = NULL;
-	}
-"""
+	# stop download
+	if cls.download is not None:
+		cls.download.close()
+		cls.download = None
+	
 	cls.state = client.connstate_t.ca_disconnected
 
 
@@ -899,7 +897,7 @@ def CL_ConnectionlessPacket ():
 			return
 		
 		Sys_AppActivate ()
-		s = MSG_ReadString (net_message)
+		s = MSG_ReadString (net_chan.net_message)
 		Cbuf_AddText (s)
 		Cbuf_AddText ("\n")
 		return
@@ -907,7 +905,7 @@ def CL_ConnectionlessPacket ():
 	# print command from somewhere
 	elif c == "print":
 	
-		s = MSG_ReadString (net_message)
+		s = MSG_ReadString (net_chan.net_message)
 		common.Com_Printf ("%s", s)
 		return
 	
@@ -1743,12 +1741,11 @@ def CL_Frame (msec): #int
 	#S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up)
 	snd_dma.S_Update (None, cl.v_forward, cl.v_right, cl.v_up) #FIXME Simplified while porting
 
+	cd_linux.CDAudio_Update()
 	"""	
-	CDAudio_Update();
-
 	// advance local effects for next frame
-	CL_RunDLights ();
-	CL_RunLightStyles ();
+	CL_RunDLights ()
+	CL_RunLightStyles ()
 	"""
 	cl_cin.SCR_RunCinematic ()
 	cl_scrn.SCR_RunConsole ()
@@ -1803,10 +1800,7 @@ def CL_Init ():
 	#endif
 
 	cl_view.V_Init ()
-	"""
-	net_message.data = net_message_buffer;
-	net_message.maxsize = sizeof(net_message_buffer);
-	"""
+	common.SZ_Init(net_chan.net_message, qcommon.MAX_MSGLEN)
 	menu.M_Init ()
 
 	cl_scrn.SCR_Init ()

@@ -160,8 +160,8 @@ extern long Q_ftol( float f );
 #define VectorAdd(a,b,c)		(c[0]=a[0]+b[0],c[1]=a[1]+b[1],c[2]=a[2]+b[2])
 """
 def VectorCopy(a,b): b[:]=a[:]
+def VectorClear(a):	a[0]=0;a[1]=0;a[2]=0
 """
-#define VectorClear(a)			(a[0]=a[1]=a[2]=0)
 #define VectorNegate(a,b)		(b[0]=-a[0],b[1]=-a[1],b[2]=-a[2])
 #define VectorSet(v, x, y, z)	(v[0]=(x), v[1]=(y), v[2]=(z))
 

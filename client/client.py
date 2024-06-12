@@ -22,7 +22,7 @@ from enum import Enum
 from game import q_shared
 from qcommon import qcommon
 from ref_gl import gl_model_h, gl_image
-from client import snd_loc
+from client import snd_loc, ref
 """
 // client.h -- primary header for client
 
@@ -164,9 +164,9 @@ class client_state_t(object):
 									# is rendering at.  always <= cls.realtime
 		"""
 		float		lerpfrac;		# between oldframe and frame
-		
-		refdef = refdef_t()
-		"""
+
+		"""		
+		self.refdef = ref.refdef_t()
 		self.v_forward, self.v_right, self.v_up = None, None, None #vec3_t, set when refdef.angles is set
 		"""
 		//
