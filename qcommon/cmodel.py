@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import struct
 from game import q_shared
 from qcommon import qfiles, files, common, cvar, md4
 """
@@ -112,16 +113,12 @@ for i in range(qfiles.MAX_MAP_BRUSHES):
 	map_brushes.append(cbrush_t())
 
 numvisibility: int = None
-map_visibility = []
-for i in range(qfiles.MAX_MAP_VISIBILITY):
-	map_visibility.append(None) # byte
+map_visibility = None
 
-#dvis_t		*map_vis = (dvis_t *)map_visibility;
+map_vis = qfiles.dvis_t()
 
 numentitychars: int = None
-map_entitystring = []
-for i in range(qfiles.MAX_MAP_ENTSTRING):
-	map_entitystring.append(None)
+map_entitystring = None
 
 numareas: int = 1
 map_areas = []
@@ -169,40 +166,44 @@ CMod_LoadSubmodels
 """
 def CMod_LoadSubmodels (l): #lump_t *
 
+	global numcmodels, map_cmodels, cmod_base
 	print ("CMod_LoadSubmodels", l)
 	"""
 	dmodel_t	*in;
 	cmodel_t	*out;
 	int			i, j, count;
+	"""
 
-	in = (void *)(cmod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		common.Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
-	count = l->filelen / sizeof(*in);
+	#in = (void *)(cmod_base + l->fileofs);
+	if l.filelen % qfiles.dmodel_t.packed_size():
+		common.Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size")
+	count = l.filelen // qfiles.dmodel_t.packed_size()
 
-	if (count < 1)
-		common.Com_Error (q_shared.ERR_DROP, "Map with no models");
-	if (count > MAX_MAP_MODELS)
-		common.Com_Error (q_shared.ERR_DROP, "Map has too many models");
+	if count < 1:
+		common.Com_Error (q_shared.ERR_DROP, "Map with no models")
+	if count > qfiles.MAX_MAP_MODELS:
+		common.Com_Error (q_shared.ERR_DROP, "Map has too many models")
 
-	numcmodels = count;
+	numcmodels = count
+	in_obj = qfiles.dmodel_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		out = &map_cmodels[i];
+	for i in range(count):
+	
+		in_offset = l.fileofs + i * qfiles.dmodel_t.packed_size()
+		in_offset2 = in_offset + qfiles.dmodel_t.packed_size()
+		in_obj.load(cmod_base[in_offset:in_offset2])
 
-		for (j=0 ; j<3 ; j++)
-		{	// spread the mins / maxs by a pixel
-			out->mins[j] = LittleFloat (in->mins[j]) - 1;
-			out->maxs[j] = LittleFloat (in->maxs[j]) + 1;
-			out->origin[j] = LittleFloat (in->origin[j]);
-		}
-		out->headnode = LittleLong (in->headnode);
-	}
-}
+		out = map_cmodels[i]
 
+		for j in range(3):
+			# spread the mins / maxs by a pixel
+			out.mins[j] = in_obj.mins[j] - 1.0
+			out.maxs[j] = in_obj.maxs[j] + 1.0
+			out.origin[j] = in_obj.origin[j]
+		
+		out.headnode = in_obj.headnode
 
-/*
+"""
 =================
 CMod_LoadSurfaces
 =================
@@ -538,107 +539,112 @@ CMod_LoadAreas
 
 def CMod_LoadAreas (l): #lump_t *
 
+	global numareas, map_areas, map_areas
 	print ("CMod_LoadAreas", l)
 	"""
 	int			i;
 	carea_t		*out;
 	darea_t 	*in;
 	int			count;
+	"""
 
-	in = (void *)(cmod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		common.Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
-	count = l->filelen / sizeof(*in);
+	#in = (void *)(cmod_base + l->fileofs);
+	if l.filelen % qfiles.darea_t.packed_size():
+		common.Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size")
+	count = l.filelen // qfiles.darea_t.packed_size()
 
-	if (count > MAX_MAP_AREAS)
-		common.Com_Error (q_shared.ERR_DROP, "Map has too many areas");
+	if count > qfiles.MAX_MAP_AREAS:
+		common.Com_Error (q_shared.ERR_DROP, "Map has too many areas")
 
-	out = map_areas;
-	numareas = count;
+	numareas = count
+	in_obj = qfiles.darea_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		out->numareaportals = LittleLong (in->numareaportals);
-		out->firstareaportal = LittleLong (in->firstareaportal);
-		out->floodvalid = 0;
-		out->floodnum = 0;
-	}
-}
+	for i in range(count):
 
-/*
+		in_offset = l.fileofs + i * qfiles.darea_t.packed_size()
+		in_offset2 = in_offset + qfiles.darea_t.packed_size()
+		in_obj.load(cmod_base[in_offset:in_offset2])
+
+		out = map_areas[i]
+
+		out.numareaportals = in_obj.numareaportals
+		out.firstareaportal = in_obj.firstareaportal
+		out.floodvalid = 0
+		out.floodnum = 0
+
+"""
 =================
 CMod_LoadAreaPortals
 =================
 """
 def CMod_LoadAreaPortals (l): #lump_t *
 
+	global numareaportals, map_areaportals, cmod_base
 	print ("CMod_LoadAreaPortals", l)
 	"""
 	int			i;
 	dareaportal_t		*out;
 	dareaportal_t 	*in;
 	int			count;
+	"""
 
-	in = (void *)(cmod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		common.Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size");
-	count = l->filelen / sizeof(*in);
+	#in = (void *)(cmod_base + l->fileofs)
+	if l.filelen % qfiles.dareaportal_t.packed_size():
+		common.Com_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size")
+	count = l.filelen // qfiles.dareaportal_t.packed_size()
 
-	if (count > MAX_MAP_AREAS)
-		common.Com_Error (q_shared.ERR_DROP, "Map has too many areas");
+	if count > qfiles.dareaportal_t.packed_size():
+		common.Com_Error (q_shared.ERR_DROP, "Map has too many areas")
 
-	out = map_areaportals;
-	numareaportals = count;
+	numareaportals = count
+	in_obj = qfiles.dareaportal_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		out->portalnum = LittleLong (in->portalnum);
-		out->otherarea = LittleLong (in->otherarea);
-	}
-}
+	for i in range(count):
 
-/*
+		in_offset = l.fileofs + i * qfiles.dareaportal_t.packed_size()
+		in_offset2 = in_offset + qfiles.dareaportal_t.packed_size()
+		in_obj.load(cmod_base[in_offset:in_offset2])
+
+		out = map_areaportals[i]
+	
+		out.portalnum = in_obj.portalnum
+		out.otherarea = in_obj.otherarea
+	
+
+"""
 =================
 CMod_LoadVisibility
 =================
 """
 def CMod_LoadVisibility (l): #lump_t *
 
+	global map_vis, map_visibility, numvisibility, cmod_base
 	print ("CMod_LoadVisibility", l)
-	"""
-	int		i;
 
-	numvisibility = l->filelen;
-	if (l->filelen > MAX_MAP_VISIBILITY)
-		common.Com_Error (q_shared.ERR_DROP, "Map has too large visibility lump");
+	numvisibility = l.filelen
+	if l.filelen > qfiles.MAX_MAP_VISIBILITY:
+		common.Com_Error (q_shared.ERR_DROP, "Map has too large visibility lump")
 
-	memcpy (map_visibility, cmod_base + l->fileofs, l->filelen);
+	map_visibility = cmod_base[l.fileofs:l.fileofs+l.filelen]
 
-	map_vis->numclusters = LittleLong (map_vis->numclusters);
-	for (i=0 ; i<map_vis->numclusters ; i++)
-	{
-		map_vis->bitofs[i][0] = LittleLong (map_vis->bitofs[i][0]);
-		map_vis->bitofs[i][1] = LittleLong (map_vis->bitofs[i][1]);
-	}
-}
+	map_vis.load(cmod_base[l.fileofs:l.fileofs+qfiles.dvis_t.packed_size()])
 
-
-/*
+"""
 =================
 CMod_LoadEntityString
 =================
 """
 def CMod_LoadEntityString (l): #lump_t *
+
+	global map_entitystring, numentitychars
 	print ("CMod_LoadEntityString", l)
 	
-	"""
-	numentitychars = l->filelen;
-	if (l->filelen > MAX_MAP_ENTSTRING)
-		common.Com_Error (q_shared.ERR_DROP, "Map has too large entity lump");
+	numentitychars = l.filelen
+	if l.filelen > qfiles.MAX_MAP_ENTSTRING:
+		common.Com_Error (q_shared.ERR_DROP, "Map has too large entity lump")
 
-	memcpy (map_entitystring, cmod_base + l->fileofs, l->filelen);
-	"""
-
+	map_entitystring = cmod_base[l.fileofs: l.fileofs+l.filelen].decode('ascii')
+	
 """
 ==================
 CM_LoadMap
@@ -686,7 +692,7 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 	numcmodels = 0
 	numvisibility = 0
 	numentitychars = 0
-	map_entitystring[0] = None
+	map_entitystring = None
 	map_name = None
 
 	if name is None or len(name) == 0:
@@ -764,21 +770,22 @@ def CM_InlineModel (name): # (cmodel_t	*)
 	return &map_cmodels[num];
 }
 
-int		CM_NumClusters (void)
-{
-	return numclusters;
-}
+"""
+def CM_NumClusters ():
 
-int		CM_NumInlineModels (void)
-{
-	return numcmodels;
-}
+	return numclusters
 
-char	*CM_EntityString (void)
-{
-	return map_entitystring;
-}
 
+def CM_NumInlineModels ():
+
+	return numcmodels
+
+
+def CM_EntityString ():
+
+	return map_entitystring
+
+"""
 int		CM_LeafContents (int leafnum)
 {
 	if (leafnum < 0 || leafnum >= numleafs)
@@ -802,13 +809,13 @@ int		CM_LeafArea (int leafnum)
 
 //=======================================================================
 
+"""
+box_planes = None # cplane_t*
+box_headnode = None # int			
+box_brush = None #cbrush_t *
+box_leaf = None # cleaf_t *
 
-cplane_t	*box_planes;
-int			box_headnode;
-cbrush_t	*box_brush;
-cleaf_t		*box_leaf;
-
-/*
+"""
 ===================
 CM_InitBoxHull
 
@@ -818,16 +825,20 @@ can just be stored out and get a proper clipping hull structure.
 """
 def CM_InitBoxHull ():
 
-	pass
+	global numnodes, box_headnode, box_planes, map_planes
+
 	"""
 	int			i;
 	int			side;
 	cnode_t		*c;
 	cplane_t	*p;
 	cbrushside_t	*s;
+	"""
 
-	box_headnode = numnodes;
-	box_planes = &map_planes[numplanes];
+	box_headnode = numnodes
+	box_planes = map_planes[numplanes]
+
+	"""
 	if (numnodes+6 > MAX_MAP_NODES
 		|| numbrushes+1 > MAX_MAP_BRUSHES
 		|| numleafbrushes+1 > MAX_MAP_LEAFBRUSHES

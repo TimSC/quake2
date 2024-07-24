@@ -411,17 +411,42 @@ class dheader_t(object):
 			self.lumps.append(lump_t(*struct.unpack("<II", buf[cursor:cursor+8])))
 			cursor += 8
 
+
+class dmodel_t(object):
+
+	def __init__(self):
+
+		self.mins = np.zeros((3,), dtype=np.float32) # float[3]
+		self.maxs = np.zeros((3,), dtype=np.float32) # float[3]
+		self.origin = np.zeros((3,), dtype=np.float32) # float[3], for sounds or lights
+		self.headnode = None # int
+		self.firstface = None # int, submodels just draw faces
+				  # without walking the bsp tree
+		self.numfaces = None # int
+
+	@classmethod
+	def packed_size(cls):
+		return 48
+
+	def load(self, buff):
+
+		c = 0
+		for j in range(3):
+			self.mins[j] = q_shared.LittleFloat (buff[c:c+4])
+			c += 4
+
+		for j in range(3):
+			self.maxs[j] = q_shared.LittleFloat (buff[c:c+4])
+			c += 4
+
+		for j in range(3):
+			self.origin[j] = q_shared.LittleFloat (buff[c:c+4])
+			c += 4
+
+		self.headnode = q_shared.LittleSLong (buff[c:c+4])
+		c += 4
+
 """
-typedef struct
-{
-	float		mins[3], maxs[3];
-	float		origin[3];		// for sounds or lights
-	int			headnode;
-	int			firstface, numfaces;	// submodels just draw faces
-										// without walking the bsp tree
-} dmodel_t;
-
-
 typedef struct
 {
 	float	point[3];
@@ -649,19 +674,36 @@ class dbrush_t(object):
 ANGLE_UP   = -1
 ANGLE_DOWN = -2
 
-"""
-// the visibility lump consists of a header with a count, then
-// byte offsets for the PVS and PHS of each cluster, then the raw
-// compressed bit vectors
-#define	DVIS_PVS	0
-#define	DVIS_PHS	1
-typedef struct
-{
-	int			numclusters;
-	int			bitofs[8][2];	// bitofs[numclusters][2]
-} dvis_t;
 
-"""
+# the visibility lump consists of a header with a count, then
+# byte offsets for the PVS and PHS of each cluster, then the raw
+# compressed bit vectors
+DVIS_PVS	= 0
+DVIS_PHS	= 1
+class dvis_t(object):
+
+	def __init__(self):
+
+		self.numclusters = None # int
+		self.bitofs = np.zeros((8,2), dtype=np.int32) # int[8][2], bitofs[numclusters][2]
+
+	@classmethod
+	def packed_size(cls):
+		return 68
+
+	def load(self, buff):
+
+		self.numclusters = q_shared.LittleSLong (buff[:4])
+		if self.numclusters > 8: self.numclusters = 8 # Prevent over-read
+		c = 4
+
+		for i in range(self.numclusters):
+		
+			self.bitofs[i][0] = q_shared.LittleLong (buff[c:c+4])
+			c += 4
+			self.bitofs[i][1] = q_shared.LittleLong (buff[c:c+4])
+			c += 4
+
 # each area has a list of portals that lead into other areas
 # when portals are closed, other areas may not be visible or
 # hearable even if the vis info says that it should be
@@ -671,10 +713,28 @@ class dareaportal_t(object):
 		self.portalnum = 0 # int		
 		self.otherarea = 0 # int
 
-"""
-typedef struct
-{
-	int		numareaportals;
-	int		firstareaportal;
-} darea_t;
-"""
+	@classmethod
+	def packed_size(cls):
+		return 8
+
+	def load(self, buff):
+
+		self.portalnum = q_shared.LittleSLong (buff[:4])
+		self.otherarea = q_shared.LittleSLong (buff[4:])
+
+class darea_t(object):
+
+	def __init__(self):
+
+		self.numareaportals = None # int
+		self.firstareaportal = None # int
+
+	@classmethod
+	def packed_size(cls):
+		return 8
+
+	def load(self, buff):
+
+		self.numareaportals = q_shared.LittleSLong (buff[:4])
+		self.firstareaportal = q_shared.LittleSLong (buff[4:])
+

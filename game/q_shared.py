@@ -435,8 +435,9 @@ class cmodel_t(object):
 
 	def __init__(self):
 
-		self.mins, self.maxs = None, None #vec3_t		
-		self.origin = None #vec3_t, for sounds or lights
+		self.mins = np.zeros((3,), dtype=np.float32)
+		self.maxs = np.zeros((3,), dtype=np.float32) #vec3_t
+		self.origin = np.zeros((3,), dtype=np.float32) #vec3_t, for sounds or lights
 		self.headnode = None # int			
 
 class csurface_t(object):
