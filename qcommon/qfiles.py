@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
+import numpy as np
+from game import q_shared
 """
 
 //
@@ -435,33 +437,45 @@ typedef struct
 #define	PLANE_ANYX		3
 #define	PLANE_ANYY		4
 #define	PLANE_ANYZ		5
+"""
+# planes (x&~1) and (x&~1)+1 are always opposites
 
-// planes (x&~1) and (x&~1)+1 are always opposites
+class dplane_t(object):
 
-typedef struct
-{
-	float	normal[3];
-	float	dist;
-	int		type;		// PLANE_X - PLANE_ANYZ ?remove? trivial to regenerate
-} dplane_t;
+	def __init__(self):
 
+		self.normal = np.zeros((3,), dtype=np.float32) # float[3]
+		self.dist = None # float
+		self.type = None # int, PLANE_X - PLANE_ANYZ ?remove? trivial to regenerate
 
-// contents flags are seperate bits
-// a given brush can contribute multiple content bits
-// multiple brushes can be in a single leaf
+	@classmethod
+	def packed_size(cls):
+		return 20
 
-// these definitions also need to be in q_shared.h!
+	def load(self, buff):
 
-// lower bits are stronger, and will eat weaker brushes completely
-#define	CONTENTS_SOLID			1		// an eye is never valid in a solid
-#define	CONTENTS_WINDOW			2		// translucent, but not watery
-#define	CONTENTS_AUX			4
-#define	CONTENTS_LAVA			8
-#define	CONTENTS_SLIME			16
-#define	CONTENTS_WATER			32
-#define	CONTENTS_MIST			64
-#define	LAST_VISIBLE_CONTENTS	64
+		self.normal[0] = q_shared.LittleFloat(buff[:4])
+		self.normal[1] = q_shared.LittleFloat(buff[4:8])
+		self.normal[2] = q_shared.LittleFloat(buff[8:12])
+		self.dist = q_shared.LittleFloat(buff[12:16])
+		self.type = q_shared.LittleLong(buff[16:])
 
+# contents flags are seperate bits
+# a given brush can contribute multiple content bits
+# multiple brushes can be in a single leaf
+
+# these definitions also need to be in q_shared.h!
+
+# lower bits are stronger, and will eat weaker brushes completely
+CONTENTS_SOLID			= 1		# an eye is never valid in a solid
+CONTENTS_WINDOW			= 2		# translucent, but not watery
+CONTENTS_AUX			= 4
+CONTENTS_LAVA			= 8
+CONTENTS_SLIME			= 16
+CONTENTS_WATER			= 32
+CONTENTS_MIST			= 64
+LAST_VISIBLE_CONTENTS	= 64
+"""
 // remaining contents are non-visible, and don't eat brushes
 
 #define	CONTENTS_AREAPORTAL		0x8000
@@ -498,30 +512,52 @@ typedef struct
 #define	SURF_FLOWING	0x40	// scroll towards angle
 #define	SURF_NODRAW		0x80	// don't bother referencing the texture
 
+"""
 
 
+class dnode_t(object):
 
-typedef struct
-{
-	int			planenum;
-	int			children[2];	// negative numbers are -(leafs+1), not nodes
-	short		mins[3];		// for frustom culling
-	short		maxs[3];
-	unsigned short	firstface;
-	unsigned short	numfaces;	// counting both sides
-} dnode_t;
+	def __init__(self):
+
+		self.planenum: int = None
+		self.children = [None, None] # int[2], negative numbers are -(leafs+1), not nodes
+		self.mins = np.zeros((3,), dtype=np.int16) # short[3]		# for frustom culling
+		self.maxs = np.zeros((3,), dtype=np.int16) # short[3]
+		self.firstface = None # unsigned short
+		self.numfaces = None # unsigned short, counting both sides
+
+	@classmethod
+	def packed_size(cls):
+		return 28
+
+	def load(self, buff):
+
+		self.planenum = q_shared.LittleLong(buff[:4])
+		self.children[0] = q_shared.LittleLong(buff[4:8])
+		self.children[1] = q_shared.LittleLong(buff[8:12])
 
 
-typedef struct texinfo_s
-{
-	float		vecs[2][4];		// [s/t][xyz offset]
-	int			flags;			// miptex flags + overrides
-	int			value;			// light emission, etc
-	char		texture[32];	// texture name (textures/*.wal)
-	int			nexttexinfo;	// for animations, -1 = end of chain
-} texinfo_t;
+class texinfo_t(object):
 
+	def __init__(self):
 
+		self.vecs = np.zeros((2,4), dtype=np.float32) # float[2][4], [s/t][xyz offset]
+		self.flags = None # int, miptex flags + overrides
+		self.value = None # int, light emission, etc
+		self.texture = None # char[32],	texture name (textures/*.wal)
+		self.nexttexinfo = None # int, for animations, -1 = end of chain
+ 
+	@classmethod
+	def packed_size(cls):
+		return 76
+
+	def load(self, buff):
+
+		self.texture = buff[40:72].decode("ascii").rstrip('\x00')
+		self.flags = q_shared.LittleSLong(buff[32:36])
+		self.value = q_shared.LittleSLong(buff[36:40])
+
+"""
 // note that edge 0 is never used, because negative edge nums are used for
 // counterclockwise use of the edge in a face
 typedef struct
@@ -543,41 +579,77 @@ typedef struct
 	byte		styles[MAXLIGHTMAPS];
 	int			lightofs;		// start of [numstyles*surfsize] samples
 } dface_t;
+"""
 
-typedef struct
-{
-	int				contents;			// OR of all brushes (not needed?)
+class dleaf_t(object):
 
-	short			cluster;
-	short			area;
+	def __init__(self):
 
-	short			mins[3];			// for frustum culling
-	short			maxs[3];
+		self.contents = None # int, OR of all brushes (not needed?)
 
-	unsigned short	firstleafface;
-	unsigned short	numleaffaces;
+		self.cluster = None # short
+		self.area = None # short
 
-	unsigned short	firstleafbrush;
-	unsigned short	numleafbrushes;
-} dleaf_t;
+		self.mins = np.zeros((3,), dtype=np.int16) # short[3]			# for frustum culling
+		self.maxs = np.zeros((3,), dtype=np.int16) # short[3]
 
-typedef struct
-{
-	unsigned short	planenum;		// facing out of the leaf
-	short	texinfo;
-} dbrushside_t;
+		self.firstleafface = None # unsigned short
+		self.numleaffaces = None # unsigned short
 
-typedef struct
-{
-	int			firstside;
-	int			numsides;
-	int			contents;
-} dbrush_t;
+		self.firstleafbrush = None # unsigned short
+		self.numleafbrushes = None # unsigned short
 
-#define	ANGLE_UP	-1
-#define	ANGLE_DOWN	-2
+	@classmethod
+	def packed_size(cls):
+		return 28
+
+	def load(self, buff):
+
+		self.contents = q_shared.LittleLong(buff[:4])
+		self.cluster = q_shared.LittleShort (buff[4:6])
+		self.area = q_shared.LittleShort (buff[6:8])
+		self.firstleafbrush = q_shared.LittleShort (buff[24:26])
+		self.numleafbrushes = q_shared.LittleShort (buff[26:])
 
 
+class dbrushside_t(object):
+
+	def __init__(self):
+
+		self.planenum = None # unsigned short, facing out of the leaf
+		self.texinfo = None # short
+
+	@classmethod
+	def packed_size(cls):
+		return 4
+
+	def load(self, buff):
+
+		self.planenum = q_shared.LittleShort (buff[:2])
+		self.texinfo = q_shared.LittleSShort (buff[2:])
+
+class dbrush_t(object):
+
+	def __init__(self):
+
+		self.firstside = None # int
+		self.numsides = None # int
+		self.contents = None # int
+
+	@classmethod
+	def packed_size(cls):
+		return 12
+
+	def load(self, buff):
+
+		self.firstside = q_shared.LittleLong (buff[:4])
+		self.numsides = q_shared.LittleLong (buff[4:8])
+		self.contents = q_shared.LittleLong (buff[8:])
+
+ANGLE_UP   = -1
+ANGLE_DOWN = -2
+
+"""
 // the visibility lump consists of a header with a count, then
 // byte offsets for the PVS and PHS of each cluster, then the raw
 // compressed bit vectors

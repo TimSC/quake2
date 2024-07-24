@@ -2186,9 +2186,12 @@ def BigSLong (l): #int, (returns int)
 def LittleSLong (l): #int, (returns int)
 	return struct.unpack("<i", l)[0]
 
+def BigFloat (l) -> float:
+	return struct.unpack(">f", l)[0]
+def LittleFloat (l) -> float:
+	return struct.unpack("<f", l)[0]
+
 """
-float	BigFloat (float l) {return _BigFloat(l);}
-float	LittleFloat (float l) {return _LittleFloat(l);}
 
 short   ShortSwap (short l)
 {
