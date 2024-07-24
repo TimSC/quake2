@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -19,6 +19,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // GL_RSURF.C: surface-related refresh code
 #include <assert.h>
+
+"""
+from ref_gl import gl_warp
+"""
 
 #include "gl_local.h"
 
@@ -1192,9 +1196,10 @@ void R_RecursiveWorldNode (mnode_t *node)
 =============
 R_DrawWorld
 =============
-*/
-void R_DrawWorld (void)
-{
+"""
+def R_DrawWorld ():
+
+	"""
 	entity_t	ent;
 
 	if (!r_drawworld->value)
@@ -1247,8 +1252,9 @@ void R_DrawWorld (void)
 	DrawTextureChains ();
 	R_BlendLightmaps ();
 	
-	R_DrawSkyBox ();
-
+	"""
+	gl_warp.R_DrawSkyBox ()
+	"""
 	R_DrawTriangleOutlines ();
 }
 
@@ -1659,4 +1665,4 @@ void GL_EndBuildingLightmaps (void)
 	LM_UploadBlock( false );
 	GL_EnableMultitexture( false );
 }
-
+"""

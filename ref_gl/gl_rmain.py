@@ -17,16 +17,19 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import math
 import struct
+import copy
 import OpenGL.GL as GL
 import OpenGL.GLU as GLU
+import numpy as np
 from OpenGL.GL import glGetString
 from enum import Enum
 from client import ref
 from linux import gl_glx, qgl_linux
 from game import q_shared
 from qcommon import cvar, cmd, files, qcommon
-from ref_gl import gl_draw, gl_image, gl_rmisc, gl_model, gl_warp
+from ref_gl import gl_draw, gl_image, gl_rmisc, gl_model, gl_warp, gl_rsurf
 
 REF_VERSION = "GL 0.01"
 
@@ -116,23 +119,23 @@ int			c_brush_polys, c_alias_polys;
 float		v_blend[4];			// final blending color
 
 void GL_Strings_f( void );
+"""
+#
+# view origin
+#
+vup = np.zeros((3,), dtype=np.float32)
+vpn = np.zeros((3,), dtype=np.float32)
+vright = np.zeros((3,), dtype=np.float32)
+r_origin = np.zeros((3,), dtype=np.float32)
 
-//
-// view origin
-//
-vec3_t	vup;
-vec3_t	vpn;
-vec3_t	vright;
-vec3_t	r_origin;
+r_world_matrix = np.zeros((16,), dtype=np.float32)
+r_base_world_matrix = np.zeros((16,), dtype=np.float32)
 
-float	r_world_matrix[16];
-float	r_base_world_matrix[16];
-
-//
-// screen size info
-//
-refdef_t	r_newrefdef;
-
+#
+# screen size info
+#
+r_newrefdef = ref.refdef_t()
+"""
 int		r_viewcluster, r_viewcluster2, r_oldviewcluster, r_oldviewcluster2;
 
 """
@@ -628,9 +631,11 @@ int SignbitsForPlane (cplane_t *out)
 	return bits;
 }
 
+"""
+def R_SetFrustum ():
 
-void R_SetFrustum (void)
-{
+	pass
+	"""
 	int		i;
 
 #if 0
@@ -675,8 +680,12 @@ void R_SetFrustum (void)
 ===============
 R_SetupFrame
 ===============
-*/
-void R_SetupFrame (void)
+"""
+
+def R_SetupFrame ():
+
+	pass
+	"""
 {
 	int i;
 	mleaf_t	*leaf;
@@ -739,134 +748,129 @@ void R_SetupFrame (void)
 	}
 }
 
+"""
+def MYgluPerspective( fovy, aspect, zNear, zFar ): # GLdouble, GLdouble, GLdouble, GLdouble
 
-void MYgluPerspective( GLdouble fovy, GLdouble aspect,
-			 GLdouble zNear, GLdouble zFar )
-{
-   GLdouble xmin, xmax, ymin, ymax;
+   # GLdouble xmin, xmax, ymin, ymax;
 
-   ymax = zNear * tan( fovy * M_PI / 360.0 );
-   ymin = -ymax;
+   ymax = zNear * math.tan( fovy * math.pi / 360.0 )
+   ymin = -ymax
 
-   xmin = ymin * aspect;
-   xmax = ymax * aspect;
+   xmin = ymin * aspect
+   xmax = ymax * aspect
 
-   xmin += -( 2 * gl_state.camera_separation ) / zNear;
-   xmax += -( 2 * gl_state.camera_separation ) / zNear;
+   xmin += -( 2 * gl_state.camera_separation ) / zNear
+   xmax += -( 2 * gl_state.camera_separation ) / zNear
 
-   qglFrustum( xmin, xmax, ymin, ymax, zNear, zFar );
-}
+   GL.glFrustum( xmin, xmax, ymin, ymax, zNear, zFar )
 
 
-/*
+
+"""
 =============
 R_SetupGL
 =============
 """
 def R_SetupGL ():
 
-	pass
 	"""
 	float	screenaspect;
 //	float	yfov;
 	int		x, x2, y2, y, w, h;
+	"""
 
-	//
-	// set up viewport
-	//
-	x = floor(r_newrefdef.x * vid.width / vid.width);
-	x2 = ceil((r_newrefdef.x + r_newrefdef.width) * vid.width / vid.width);
-	y = floor(vid.height - r_newrefdef.y * vid.height / vid.height);
-	y2 = ceil(vid.height - (r_newrefdef.y + r_newrefdef.height) * vid.height / vid.height);
+	#
+	# set up viewport
+	#
+	x = math.floor(r_newrefdef.x * vid.width // vid.width)
+	x2 = math.ceil((r_newrefdef.x + r_newrefdef.width) * vid.width // vid.width)
+	y = math.floor(vid.height - r_newrefdef.y * vid.height // vid.height)
+	y2 = math.ceil(vid.height - (r_newrefdef.y + r_newrefdef.height) * vid.height // vid.height)
 
-	w = x2 - x;
-	h = y - y2;
+	w = x2 - x
+	h = y - y2
 
-	qglViewport (x, y2, w, h);
+	GL.glViewport (x, y2, w, h)
 
-	//
-	// set up projection matrix
-	//
-	screenaspect = (float)r_newrefdef.width/r_newrefdef.height;
-//	yfov = 2*atan((float)r_newrefdef.height/r_newrefdef.width)*180/M_PI;
-	qglMatrixMode(GL_PROJECTION);
-	qglLoadIdentity ();
-	MYgluPerspective (r_newrefdef.fov_y,  screenaspect,  4,  4096);
+	#
+	# set up projection matrix
+	#
+	screenaspect = float(r_newrefdef.width/r_newrefdef.height)
+#	yfov = 2*atan((float)r_newrefdef.height/r_newrefdef.width)*180/M_PI;
+	GL.glMatrixMode(GL.GL_PROJECTION)
+	GL.glLoadIdentity ()
+	MYgluPerspective (r_newrefdef.fov_y, screenaspect,  4,  4096)
 
-	qglCullFace(GL_FRONT);
+	GL.glCullFace(GL.GL_FRONT)
 
-	qglMatrixMode(GL_MODELVIEW);
-	qglLoadIdentity ();
+	GL.glMatrixMode(GL.GL_MODELVIEW)
+	GL.glLoadIdentity ()
 
-	qglRotatef (-90,  1, 0, 0);		// put Z going up
-	qglRotatef (90,  0, 0, 1);		// put Z going up
-	qglRotatef (-r_newrefdef.viewangles[2],  1, 0, 0);
-	qglRotatef (-r_newrefdef.viewangles[0],  0, 1, 0);
-	qglRotatef (-r_newrefdef.viewangles[1],  0, 0, 1);
-	qglTranslatef (-r_newrefdef.vieworg[0],  -r_newrefdef.vieworg[1],  -r_newrefdef.vieworg[2]);
+	GL.glRotatef (-90,  1, 0, 0)		# put Z going up
+	GL.glRotatef (90,  0, 0, 1)		# put Z going up
+	GL.glRotatef (-r_newrefdef.viewangles[2],  1, 0, 0)
+	GL.glRotatef (-r_newrefdef.viewangles[0],  0, 1, 0)
+	GL.glRotatef (-r_newrefdef.viewangles[1],  0, 0, 1)
+	GL.glTranslatef (-r_newrefdef.vieworg[0],  -r_newrefdef.vieworg[1],  -r_newrefdef.vieworg[2]);
 
-//	if ( gl_state.camera_separation != 0 && gl_state.stereo_enabled )
-//		qglTranslatef ( gl_state.camera_separation, 0, 0 );
+#	if ( gl_state.camera_separation != 0 && gl_state.stereo_enabled )
+#		qglTranslatef ( gl_state.camera_separation, 0, 0 );
 
-	qglGetFloatv (GL_MODELVIEW_MATRIX, r_world_matrix);
+	GL.glGetFloatv (GL.GL_MODELVIEW_MATRIX, r_world_matrix)
 
-	//
-	// set drawing parms
-	//
-	if (gl_cull->value)
-		qglEnable(GL_CULL_FACE);
-	else
-		qglDisable(GL_CULL_FACE);
+	#
+	# set drawing parms
+	#
+	if gl_cull.value is not None:
+		GL.glEnable(GL.GL_CULL_FACE)
+	else:
+		GL.glDisable(GL.GL_CULL_FACE)
 
-	qglDisable(GL_BLEND);
-	qglDisable(GL_ALPHA_TEST);
-	qglEnable(GL_DEPTH_TEST);
-}
+	GL.glDisable(GL.GL_BLEND)
+	GL.glDisable(GL.GL_ALPHA_TEST)
+	GL.glEnable(GL.GL_DEPTH_TEST)
 
-/*
+
+"""
 =============
 R_Clear
 =============
 """
 def R_Clear ():
-	pass
 
-	"""
-	if (gl_ztrick->value)
-	{
-		static int trickframe;
+	if gl_ztrick.value:
+	
+		#static int trickframe;
 
-		if (gl_clear->value)
-			qglClear (GL_COLOR_BUFFER_BIT);
+		if gl_clear.value:
+			GL.glClear (GL.GL_COLOR_BUFFER_BIT)
 
-		trickframe++;
-		if (trickframe & 1)
-		{
-			gldepthmin = 0;
-			gldepthmax = 0.49999;
-			qglDepthFunc (GL_LEQUAL);
-		}
-		else
-		{
-			gldepthmin = 1;
-			gldepthmax = 0.5;
-			qglDepthFunc (GL_GEQUAL);
-		}
-	}
-	else
-	{
-		if (gl_clear->value)
-			qglClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		else
-			qglClear (GL_DEPTH_BUFFER_BIT);
-		gldepthmin = 0;
-		gldepthmax = 1;
-		qglDepthFunc (GL_LEQUAL);
-	}
+		trickframe+=1
+		if (trickframe & 1):
+		
+			gldepthmin = 0
+			gldepthmax = 0.49999
+			GL.glDepthFunc (GL.GL_LEQUAL)
+		
+		else:
+		
+			gldepthmin = 1
+			gldepthmax = 0.5
+			GL.glDepthFunc (GL.GL_GEQUAL)
+		
+	else:
+	
+		if gl_clear.value:
+			GL.glClear (GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+		else:
+			GL.glClear (GL.GL_DEPTH_BUFFER_BIT)
+		gldepthmin = 0
+		gldepthmax = 1
+		GL.glDepthFunc (GL.GL_LEQUAL)
+	
+	GL.glDepthRange (gldepthmin, gldepthmax)
 
-	qglDepthRange (gldepthmin, gldepthmax);
-
-}
+"""
 
 void R_Flash( void )
 {
@@ -882,13 +886,13 @@ r_newrefdef must be set before the first call
 """
 def R_RenderView (fd): #refdef_t *
 
-	global r_norefresh
+	global r_norefresh, r_newrefdef
 
 	if r_norefresh.value:
 		return
+	
+	r_newrefdef = copy.deepcopy(fd)
 	"""
-	r_newrefdef = *fd;
-
 	if (!r_worldmodel && !( r_newrefdef.rdflags & RDF_NOWORLDMODEL ) )
 		ri.Sys_Error (ERR_DROP, "R_RenderView: NULL worldmodel");
 
@@ -903,17 +907,19 @@ def R_RenderView (fd): #refdef_t *
 	if (gl_finish->value)
 		qglFinish ();
 
-	R_SetupFrame ();
-
-	R_SetFrustum ();
-
 	"""
+	R_SetupFrame ()
+
+	R_SetFrustum ()
+
 	R_SetupGL ()
 	"""
 
 	R_MarkLeaves ();	// done here so we know if we're in water
 
-	R_DrawWorld ();
+	"""
+	gl_rsurf.R_DrawWorld ()
+	"""
 
 	R_DrawEntitiesOnList ();
 
@@ -1531,11 +1537,10 @@ R_BeginFrame
 """
 def R_BeginFrame( camera_separation ): #float
 
-	global gl_texturemode, gl_texturealphamode, gl_texturesolidmode
+	global gl_state, gl_texturemode, gl_texturealphamode, gl_texturesolidmode
 
+	gl_state.camera_separation = camera_separation
 	"""
-	gl_state.camera_separation = camera_separation;
-
 	/*
 	** change modes if necessary
 	*/

@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "gl_local.h"
 """
 import numpy as np
+import OpenGL.GL as GL
 from game import q_shared
 from linux import qgl_linux
 from ref_gl import gl_rmain, gl_image
@@ -224,10 +225,10 @@ void EmitWaterPolys (msurface_t *fa)
 	int			i;
 	float		s, t, os, ot;
 	float		scroll;
-	float		rdt = r_newrefdef.time;
+	float		rdt = gl_rmain.r_newrefdef.time;
 
 	if (fa->texinfo->flags & SURF_FLOWING)
-		scroll = -64 * ( (r_newrefdef.time*0.5) - (int)(r_newrefdef.time*0.5) );
+		scroll = -64 * ( (gl_rmain.r_newrefdef.time*0.5) - (int)(gl_rmain.r_newrefdef.time*0.5) );
 	else
 		scroll = 0;
 	for (bp=fa->polys ; bp ; bp=bp->next)
@@ -241,7 +242,7 @@ void EmitWaterPolys (msurface_t *fa)
 			ot = v[4];
 
 #if !id386
-			s = os + r_turbsin[(int)((ot*0.125+r_newrefdef.time) * TURBSCALE) & 255];
+			s = os + r_turbsin[(int)((ot*0.125+gl_rmain.r_newrefdef.time) * TURBSCALE) & 255];
 #else
 			s = os + r_turbsin[Q_ftol( ((ot*0.125+rdt) * TURBSCALE) ) & 255];
 #endif
@@ -275,23 +276,23 @@ vec3_t	skyclip[6] = {
 	{-1,0,1} 
 };
 int	c_sky;
+"""
+# 1 = s, 2 = t, 3 = 2048
+st_to_vec = np.array([
 
-// 1 = s, 2 = t, 3 = 2048
-int	st_to_vec[6][3] =
-{
-	{3,-1,2},
-	{-3,1,2},
+	[3,-1,2],
+	[-3,1,2],
 
-	{1,3,2},
-	{-1,-3,2},
+	[1,3,2],
+	[-1,-3,2],
 
-	{-2,-1,3},		// 0 degrees yaw, look straight up
-	{2,-1,-3}		// look straight down
+	[-2,-1,3],		# 0 degrees yaw, look straight up
+	[2,-1,-3]		# look straight down
 
-//	{-1,2,3},
-//	{1,2,-3}
-};
-
+#	{-1,2,3},
+#	{1,2,-3}
+], dtype=np.int8)
+"""
 // s = [0]/[2], t = [1]/[2]
 int	vec_to_st[6][3] =
 {
@@ -528,107 +529,103 @@ void R_ClearSkyBox (void)
 	}
 }
 
+"""
+def MakeSkyVec (s, t, axis): # float, float, int
 
-void MakeSkyVec (float s, float t, int axis)
-{
-	vec3_t		v, b;
-	int			j, k;
+	#vec3_t		v, b;
+	#int			j, k;
+	v = np.zeros((3,), dtype=np.float32)
+	b = np.zeros((3,), dtype=np.float32)
 
-	b[0] = s*2300;
-	b[1] = t*2300;
-	b[2] = 2300;
+	b[0] = s*2300
+	b[1] = t*2300
+	b[2] = 2300
 
-	for (j=0 ; j<3 ; j++)
-	{
-		k = st_to_vec[axis][j];
-		if (k < 0)
-			v[j] = -b[-k - 1];
-		else
-			v[j] = b[k - 1];
-	}
+	for j in range(3):
+	
+		k = st_to_vec[axis,j]
+		if k < 0:
+			v[j] = -b[-k - 1]
+		else:
+			v[j] = b[k - 1]
+	
+	# avoid bilerp seam
+	s = (s+1)*0.5
+	t = (t+1)*0.5
 
-	// avoid bilerp seam
-	s = (s+1)*0.5;
-	t = (t+1)*0.5;
+	if s < sky_min:
+		s = sky_min
+	elif s > sky_max:
+		s = sky_max
+	if t < sky_min:
+		t = sky_min
+	elif t > sky_max:
+		t = sky_max
 
-	if (s < sky_min)
-		s = sky_min;
-	else if (s > sky_max)
-		s = sky_max;
-	if (t < sky_min)
-		t = sky_min;
-	else if (t > sky_max)
-		t = sky_max;
+	t = 1.0 - t
+	GL.glTexCoord2f (s, t)
+	GL.glVertex3fv (v)
 
-	t = 1.0 - t;
-	qglTexCoord2f (s, t);
-	qglVertex3fv (v);
-}
 
-/*
+"""
 ==============
 R_DrawSkyBox
 ==============
-*/
-int	skytexorder[6] = {0,2,1,3,4,5};
-void R_DrawSkyBox (void)
-{
-	int		i;
+"""
+skytexorder = [0,2,1,3,4,5]
+
+def R_DrawSkyBox ():
+
+	#int		i;
 
 #if 0
-qglEnable (GL_BLEND);
-GL_TexEnv( GL_MODULATE );
-qglColor4f (1,1,1,0.5);
-qglDisable (GL_DEPTH_TEST);
+#qglEnable (GL_BLEND);
+#GL_TexEnv( GL_MODULATE );
+#qglColor4f (1,1,1,0.5);
+#qglDisable (GL_DEPTH_TEST);
 #endif
-	if (skyrotate)
-	{	// check for no sky at all
-		for (i=0 ; i<6 ; i++)
-			if (skymins[0][i] < skymaxs[0][i]
-			&& skymins[1][i] < skymaxs[1][i])
-				break;
-		if (i == 6)
-			return;		// nothing visible
-	}
+	if skyrotate:
+		# check for no sky at all
+		for i in range(6):
+			if skymins[0][i] < skymaxs[0][i] and skymins[1][i] < skymaxs[1][i]:
+				break
+		if i == 6:
+			return		# nothing visible
 
-qglPushMatrix ();
-qglTranslatef (r_origin[0], r_origin[1], r_origin[2]);
-qglRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
+	GL.glPushMatrix ()
+	GL.glTranslatef (gl_rmain.r_origin[0], gl_rmain.r_origin[1], gl_rmain.r_origin[2])
+	GL.glRotatef (gl_rmain.r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2])
 
-	for (i=0 ; i<6 ; i++)
-	{
-		if (skyrotate)
-		{	// hack, forces full sky to draw when rotating
-			skymins[0][i] = -1;
-			skymins[1][i] = -1;
-			skymaxs[0][i] = 1;
-			skymaxs[1][i] = 1;
-		}
+	for i in range(6):
+	
+		if skyrotate:
+			# hack, forces full sky to draw when rotating
+			skymins[0][i] = -1.0
+			skymins[1][i] = -1.0
+			skymaxs[0][i] = 1.0
+			skymaxs[1][i] = 1.0
 
-		if (skymins[0][i] >= skymaxs[0][i]
-		|| skymins[1][i] >= skymaxs[1][i])
-			continue;
+		if skymins[0][i] >= skymaxs[0][i] or skymins[1][i] >= skymaxs[1][i]:
+			continue
 
-		GL_Bind (sky_images[skytexorder[i]]->texnum);
+		GL_Bind (sky_images[skytexorder[i]].texnum)
 
-		qglBegin (GL_QUADS);
-		MakeSkyVec (skymins[0][i], skymins[1][i], i);
-		MakeSkyVec (skymins[0][i], skymaxs[1][i], i);
-		MakeSkyVec (skymaxs[0][i], skymaxs[1][i], i);
-		MakeSkyVec (skymaxs[0][i], skymins[1][i], i);
-		qglEnd ();
-	}
-qglPopMatrix ();
+		GL.glBegin (GL.GL_QUADS)
+		MakeSkyVec (skymins[0,i], skymins[1,i], i)
+		MakeSkyVec (skymins[0,i], skymaxs[1,i], i)
+		MakeSkyVec (skymaxs[0,i], skymaxs[1,i], i)
+		MakeSkyVec (skymaxs[0,i], skymins[1,i], i)
+		GL.glEnd ()
+
+	GL.glPopMatrix ()
 #if 0
-glDisable (GL_BLEND);
-glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-glColor4f (1,1,1,0.5);
-glEnable (GL_DEPTH_TEST);
+#glDisable (GL_BLEND);
+#glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+#glColor4f (1,1,1,0.5);
+#glEnable (GL_DEPTH_TEST);
 #endif
-}
 
-
-/*
+"""
 ============
 R_SetSky
 ============
