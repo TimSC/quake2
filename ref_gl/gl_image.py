@@ -1439,9 +1439,9 @@ def GL_FindImage (name, imgType): #char *, imagetype_t (returns image_t *)
 			gl_rmain.ri.Con_Printf (q_shared.PRINT_DEVELOPER, "Bad tga file {}\n".format(name))
 			return
 		
-		pgimg = pygame.image.load(io.BytesIO(raw))
+		pgimg = pygame.image.load(io.BytesIO(raw), "x.tga")
 		width, height = pgimg.get_size()
-		image = bytearray(pgimg.get_view("0"))
+		pgpix = bytearray(pgimg.get_view("0"))
 		image = GL_LoadPic (name, pgpix, width, height, imgType, 8)
 
 		# this is the original quake 2 approach:

@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 import math
 import functools
+import numpy as np
 from qcommon import cvar, common, cmd
 from game import q_shared
 from client import cl_tent, cl_main, client, console, cl_scrn, cl_ents, ref
@@ -271,8 +272,8 @@ def CL_PrepRefresh ():
 	int			i;
 	char		name[MAX_QPATH];
 	float		rotate;
-	vec3_t		axis;
 	"""
+	axis = np.zeros((3,), dtype=np.float32)
 
 	if cl_main.cl.configstrings[q_shared.CS_MODELS+1] is None:
 		return		# no map loaded
@@ -352,16 +353,17 @@ def CL_PrepRefresh ():
 	}
 
 	CL_LoadClientinfo (&cl_main.cl.baseclientinfo, "unnamed\\male/grunt");
-
-	// set sky textures and speed
-	Com_Printf ("sky\r", i); 
-	SCR_UpdateScreen ();
-	rotate = atof (cl_main.cl.configstrings[q_shared.CS_SKYROTATE]);
-	sscanf (cl_main.cl.configstrings[q_shared.CS_SKYAXIS], "%f %f %f", 
-		&axis[0], &axis[1], &axis[2]);
-	vid_so.re.SetSky (cl_main.cl.configstrings[q_shared.CS_SKY], rotate, axis);
-	Com_Printf ("                                     \r");
 	"""
+	i=0 # DEBUG What should this be?
+
+	# set sky textures and speed
+	common.Com_Printf ("sky\r".format(i))
+	cl_scrn.SCR_UpdateScreen ()
+	rotate = float(cl_main.cl.configstrings[q_shared.CS_SKYROTATE])
+	axis[0], axis[1], axis[2] = tuple(map(float, cl_main.cl.configstrings[q_shared.CS_SKYAXIS].split(" ")))
+	vid_so.re.SetSky (cl_main.cl.configstrings[q_shared.CS_SKY], rotate, axis)
+	common.Com_Printf ("                                     \r")
+
 	# the renderer can now free unneeded stuff
 	vid_so.re.EndRegistration ()
 

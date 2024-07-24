@@ -1,4 +1,4 @@
-/*
+"""
 Copyright (C) 1997-2001 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -20,14 +20,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // gl_warp.c -- sky and water polygons
 
 #include "gl_local.h"
+"""
+import numpy as np
+from game import q_shared
+from linux import qgl_linux
+from ref_gl import gl_rmain, gl_image
+"""
+
 
 extern	model_t	*loadmodel;
-
-char	skyname[MAX_QPATH];
-float	skyrotate;
-vec3_t	skyaxis;
-image_t	*sky_images[6];
-
+"""
+skyname = None# char[MAX_QPATH];
+skyrotate = None # float
+skyaxis = np.zeros((3,), dtype=np.float32) # vec3_t
+sky_images = [] #image_t	*[6];
+for i in range(6):
+	sky_images.append(None)
+"""
 msurface_t	*warpface;
 
 #define	SUBDIVIDE_SIZE	64
@@ -298,10 +307,13 @@ int	vec_to_st[6][3] =
 //	{-1,2,3},
 //	{1,2,-3}
 };
+"""
+skymins = np.zeros((2,6), dtype=np.float32)
+skymaxs = np.zeros((2,6), dtype=np.float32)
 
-float	skymins[2][6], skymaxs[2][6];
-float	sky_min, sky_max;
-
+sky_min = None # float
+sky_max = None # float	
+"""
 void DrawSkyPolygon (int nump, vec3_t vecs)
 {
 	int		i,j;
@@ -620,43 +632,44 @@ glEnable (GL_DEPTH_TEST);
 ============
 R_SetSky
 ============
-*/
-// 3dstudio environment map names
-char	*suf[6] = {"rt", "bk", "lf", "ft", "up", "dn"};
-void R_SetSky (char *name, float rotate, vec3_t axis)
-{
+"""
+# 3dstudio environment map names
+suf = ["rt", "bk", "lf", "ft", "up", "dn"]
+def R_SetSky (name, rotate, axis): # char *, float, vec3_t
+
+	global skyname, skyrotate, skyaxis, sky_images, sky_min, sky_max
+	#print ("R_SetSky", name, rotate, axis)
+	"""
 	int		i;
 	char	pathname[MAX_QPATH];
+	"""
 
-	strncpy (skyname, name, sizeof(skyname)-1);
-	skyrotate = rotate;
-	VectorCopy (axis, skyaxis);
+	skyname = name
+	skyrotate = rotate
+	q_shared.VectorCopy (axis, skyaxis)
 
-	for (i=0 ; i<6 ; i++)
-	{
-		// chop down rotating skies for less memory
-		if (gl_skymip->value || skyrotate)
-			gl_picmip->value++;
+	for i in range(6):
+	
+		# chop down rotating skies for less memory
+		if gl_rmain.gl_skymip.value is not None or skyrotate:
+			gl_rmain.gl_picmip.value+=1
 
-		if ( qglColorTableEXT && gl_ext_palettedtexture->value )
-			Com_sprintf (pathname, sizeof(pathname), "env/%s%s.pcx", skyname, suf[i]);
-		else
-			Com_sprintf (pathname, sizeof(pathname), "env/%s%s.tga", skyname, suf[i]);
+		if qgl_linux.qglColorTableEXT and gl_ext_palettedtexture.value:
+			pathname = "env/{}{}.pcx".format(skyname, suf[i])
+		else:
+			pathname  = "env/{}{}.tga".format(skyname, suf[i])
 
-		sky_images[i] = GL_FindImage (pathname, it_sky);
-		if (!sky_images[i])
-			sky_images[i] = r_notexture;
+		sky_images[i] = gl_image.GL_FindImage (pathname, gl_image.imagetype_t.it_sky)
+		if sky_images[i] is None:
+			sky_images[i] = gl_rmain.r_notexture
 
-		if (gl_skymip->value || skyrotate)
-		{	// take less memory
-			gl_picmip->value--;
-			sky_min = 1.0/256;
-			sky_max = 255.0/256;
-		}
-		else	
-		{
-			sky_min = 1.0/512;
-			sky_max = 511.0/512;
-		}
-	}
-}
+		if gl_rmain.gl_skymip.value is not None or skyrotate:
+			# take less memory
+			gl_rmain.gl_picmip.value -= 1
+			sky_min = 1.0/256
+			sky_max = 255.0/256
+		
+		else:
+			sky_min = 1.0/512
+			sky_max = 511.0/512
+		

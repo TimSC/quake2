@@ -26,7 +26,7 @@ from client import ref
 from linux import gl_glx, qgl_linux
 from game import q_shared
 from qcommon import cvar, cmd, files, qcommon
-from ref_gl import gl_draw, gl_image, gl_rmisc, gl_model
+from ref_gl import gl_draw, gl_image, gl_rmisc, gl_model, gl_warp
 
 REF_VERSION = "GL 0.01"
 
@@ -1792,7 +1792,7 @@ def GetRefAPI ( rimp ): #refimport_t (returns refexport_t)
 	re.RegisterModel = gl_model.R_RegisterModel
 	re.RegisterSkin = gl_image.R_RegisterSkin
 	re.RegisterPic = gl_draw.Draw_FindPic
-	#re.SetSky = R_SetSky
+	re.SetSky = gl_warp.R_SetSky
 	re.EndRegistration = gl_model.R_EndRegistration
 
 	re.RenderFrame = R_RenderFrame
