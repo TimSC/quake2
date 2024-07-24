@@ -163,13 +163,14 @@ last_checksum = None
 """
 cmod_base = None # byte*
 """
-/*
 =================
 CMod_LoadSubmodels
 =================
-*/
-void CMod_LoadSubmodels (lump_t *l)
-{
+"""
+def CMod_LoadSubmodels (l): #lump_t *
+
+	print ("CMod_LoadSubmodels", l)
+	"""
 	dmodel_t	*in;
 	cmodel_t	*out;
 	int			i, j, count;
@@ -208,7 +209,7 @@ CMod_LoadSurfaces
 """
 def CMod_LoadSurfaces (l: qfiles.lump_t):
 
-	print ("CMod_LoadSurfaces")
+	print ("CMod_LoadSurfaces", l)
 	"""
 	texinfo_t	*in;
 	mapsurface_t	*out;
@@ -241,9 +242,11 @@ def CMod_LoadSurfaces (l: qfiles.lump_t):
 CMod_LoadNodes
 
 =================
-*/
-void CMod_LoadNodes (lump_t *l)
-{
+"""
+def CMod_LoadNodes (l): #lump_t *
+	
+	print ("CMod_LoadNodes", l)
+	"""
 	dnode_t		*in;
 	int			child;
 	cnode_t		*out;
@@ -280,9 +283,11 @@ void CMod_LoadNodes (lump_t *l)
 CMod_LoadBrushes
 
 =================
-*/
-void CMod_LoadBrushes (lump_t *l)
-{
+"""
+def CMod_LoadBrushes (l): #lump_t *
+
+	print ("CMod_LoadBrushes", l)
+	"""
 	dbrush_t	*in;
 	cbrush_t	*out;
 	int			i, count;
@@ -306,15 +311,17 @@ void CMod_LoadBrushes (lump_t *l)
 		out->contents = LittleLong(in->contents);
 	}
 
-}
 
-/*
+
+
 =================
 CMod_LoadLeafs
 =================
-*/
-void CMod_LoadLeafs (lump_t *l)
-{
+"""
+def CMod_LoadLeafs (l): #lump_t *
+
+	print ("CMod_LoadLeafs", l)
+	"""
 	int			i;
 	cleaf_t		*out;
 	dleaf_t 	*in;
@@ -367,9 +374,11 @@ void CMod_LoadLeafs (lump_t *l)
 =================
 CMod_LoadPlanes
 =================
-*/
-void CMod_LoadPlanes (lump_t *l)
-{
+"""
+def CMod_LoadPlanes (l): #lump_t *
+
+	print ("CMod_LoadPlanes", l)
+	"""
 	int			i, j;
 	cplane_t	*out;
 	dplane_t 	*in;
@@ -410,9 +419,11 @@ void CMod_LoadPlanes (lump_t *l)
 =================
 CMod_LoadLeafBrushes
 =================
-*/
-void CMod_LoadLeafBrushes (lump_t *l)
-{
+"""
+def CMod_LoadLeafBrushes (l): #lump_t *
+
+	print ("CMod_LoadLeafBrushes", l)
+	"""
 	int			i;
 	unsigned short	*out;
 	unsigned short 	*in;
@@ -440,9 +451,11 @@ void CMod_LoadLeafBrushes (lump_t *l)
 =================
 CMod_LoadBrushSides
 =================
-*/
-void CMod_LoadBrushSides (lump_t *l)
-{
+"""
+def CMod_LoadBrushSides (l): #lump_t *
+
+	print ("CMod_LoadBrushSides", l)
+	"""
 	int			i, j;
 	cbrushside_t	*out;
 	dbrushside_t 	*in;
@@ -476,9 +489,12 @@ void CMod_LoadBrushSides (lump_t *l)
 =================
 CMod_LoadAreas
 =================
-*/
-void CMod_LoadAreas (lump_t *l)
-{
+"""
+
+def CMod_LoadAreas (l): #lump_t *
+
+	print ("CMod_LoadAreas", l)
+	"""
 	int			i;
 	carea_t		*out;
 	darea_t 	*in;
@@ -508,9 +524,11 @@ void CMod_LoadAreas (lump_t *l)
 =================
 CMod_LoadAreaPortals
 =================
-*/
-void CMod_LoadAreaPortals (lump_t *l)
-{
+"""
+def CMod_LoadAreaPortals (l): #lump_t *
+
+	print ("CMod_LoadAreaPortals", l)
+	"""
 	int			i;
 	dareaportal_t		*out;
 	dareaportal_t 	*in;
@@ -538,9 +556,11 @@ void CMod_LoadAreaPortals (lump_t *l)
 =================
 CMod_LoadVisibility
 =================
-*/
-void CMod_LoadVisibility (lump_t *l)
-{
+"""
+def CMod_LoadVisibility (l): #lump_t *
+
+	print ("CMod_LoadVisibility", l)
+	"""
 	int		i;
 
 	numvisibility = l->filelen;
@@ -562,19 +582,19 @@ void CMod_LoadVisibility (lump_t *l)
 =================
 CMod_LoadEntityString
 =================
-*/
-void CMod_LoadEntityString (lump_t *l)
-{
+"""
+def CMod_LoadEntityString (l): #lump_t *
+	print ("CMod_LoadEntityString", l)
+	
+	"""
 	numentitychars = l->filelen;
 	if (l->filelen > MAX_MAP_ENTSTRING)
 		Com_Error (q_shared.ERR_DROP, "Map has too large entity lump");
 
 	memcpy (map_entitystring, cmod_base + l->fileofs, l->filelen);
-}
+	"""
 
-
-
-/*
+"""
 ==================
 CM_LoadMap
 
@@ -587,6 +607,7 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 	global numplanes, numnodes, numleafs, numcmodels, numvisibility, numentitychars, map_entitystring, map_name
 	global numclusters, numareas
 	global map_noareas, cmod_base
+	global portalopen
 
 	print ("CM_LoadMap", name, clientload)
 
@@ -653,26 +674,26 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 
 	# load into heap
 	CMod_LoadSurfaces (header.lumps[qfiles.LUMP_TEXINFO])
-	"""
-	CMod_LoadLeafs (&header.lumps[LUMP_LEAFS])
-	CMod_LoadLeafBrushes (&header.lumps[LUMP_LEAFBRUSHES])
-	CMod_LoadPlanes (&header.lumps[LUMP_PLANES])
-	CMod_LoadBrushes (&header.lumps[LUMP_BRUSHES])
-	CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES])
-	CMod_LoadSubmodels (&header.lumps[LUMP_MODELS])
-	CMod_LoadNodes (&header.lumps[LUMP_NODES])
-	CMod_LoadAreas (&header.lumps[LUMP_AREAS])
-	CMod_LoadAreaPortals (&header.lumps[LUMP_AREAPORTALS])
-	CMod_LoadVisibility (&header.lumps[LUMP_VISIBILITY])
-	CMod_LoadEntityString (&header.lumps[LUMP_ENTITIES])
+	CMod_LoadLeafs (header.lumps[qfiles.LUMP_LEAFS])
+	CMod_LoadLeafBrushes (header.lumps[qfiles.LUMP_LEAFBRUSHES])
+	CMod_LoadPlanes (header.lumps[qfiles.LUMP_PLANES])
+	CMod_LoadBrushes (header.lumps[qfiles.LUMP_BRUSHES])
+	CMod_LoadBrushSides (header.lumps[qfiles.LUMP_BRUSHSIDES])
+	CMod_LoadSubmodels (header.lumps[qfiles.LUMP_MODELS])
+	CMod_LoadNodes (header.lumps[qfiles.LUMP_NODES])
+	CMod_LoadAreas (header.lumps[qfiles.LUMP_AREAS])
+	CMod_LoadAreaPortals (header.lumps[qfiles.LUMP_AREAPORTALS])
+	CMod_LoadVisibility (header.lumps[qfiles.LUMP_VISIBILITY])
+	CMod_LoadEntityString (header.lumps[qfiles.LUMP_ENTITIES])
 
-	FS_FreeFile (buf);
+	del buf, cmod_base
 
-	CM_InitBoxHull ();
+	CM_InitBoxHull ()
 
-	memset (portalopen, 0, sizeof(portalopen));
-	FloodAreaConnections ();
-	"""
+	for i in range(len(portalopen)):
+		portalopen[i] = False
+	FloodAreaConnections ()
+
 	map_name = name
 
 	return map_cmodels[0], checksum
@@ -749,9 +770,11 @@ CM_InitBoxHull
 Set up the planes and nodes so that the six floats of a bounding box
 can just be stored out and get a proper clipping hull structure.
 ===================
-*/
-void CM_InitBoxHull (void)
-{
+"""
+def CM_InitBoxHull ():
+
+	pass
+	"""
 	int			i;
 	int			side;
 	cnode_t		*c;
