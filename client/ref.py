@@ -125,10 +125,10 @@ class refdef_t(object):
 		self.viewangles = np.zeros((3,), dtype=np.float32) #float [3]
 
 		self.blend = np.zeros((4,), dtype=np.float32) #float[4], rgba 0-1 full screen blend
-		"""
-		float		time;				# time is uesed to auto animate
-		int			rdflags;			# RDF_UNDERWATER, etc
 
+		self.time = None 				# float, time is uesed to auto animate
+		self.rdflags = 0 				# int, RDF_UNDERWATER, etc
+		"""
 		byte		*areabits;			# if not NULL, only areas with set bits will be drawn
 
 		lightstyle_t	*lightstyles;	# [MAX_LIGHTSTYLES]

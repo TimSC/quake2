@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+from enum import Enum
 """
 
 d*_t structures are on-disk representations
@@ -168,17 +168,24 @@ typedef struct mleaf_s
 //
 // Whole model
 //
-
-typedef enum {mod_bad, mod_brush, mod_sprite, mod_alias } modtype_t;
 """
+
+class modtype_t(Enum):
+	mod_bad = 0
+	mod_brush = 1
+	mod_sprite = 2
+	mod_alias = 3
+
 class model_t(object):
 
 
 	def __init__(self):
-		pass
-		"""
-		char		name[MAX_QPATH];
+		self.reset()
 
+	def reset(self):
+
+		self.name = None #char[MAX_QPATH]
+		"""
 		int			registration_sequence;
 
 		modtype_t	type;
@@ -241,10 +248,9 @@ class model_t(object):
 
 		// for alias models and skins
 		image_t		*skins[MAX_MD2SKINS];
-
-		int			extradatasize;
-		void		*extradata;
 		"""
+		self.extradatasize = 0 #int
+		self.extradata = None #void*
 
 """
 //============================================================================

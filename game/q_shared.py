@@ -627,11 +627,11 @@ RF_SHELL_BLUE		= 4096
 #define	RF_SHELL_HALF_DAM	0x00020000
 #define RF_USE_DISGUISE		0x00040000
 //ROGUE
-
-// player_state_t->refdef flags
-#define	RDF_UNDERWATER		1		// warp the screen as apropriate
-#define RDF_NOWORLDMODEL	2		// used for player configuration screen
-
+"""
+# player_state_t->refdef flags
+RDF_UNDERWATER		= 1		# warp the screen as apropriate
+RDF_NOWORLDMODEL	= 2		# used for player configuration screen
+"""
 //ROGUE
 #define	RDF_IRGOGGLES		4
 #define RDF_UVGOGGLES		8
@@ -1227,7 +1227,7 @@ class player_state_t(object):
 		
 		self.fov = 90.0 #float, horizontal field of view # DEBUG set to 90
 
-		self.rdflags = None # int, refdef flags
+		self.rdflags = 0 # int, refdef flags
 
 		self.stats = [] # short[MAX_STATS], fast status bar updates
 		for i in range(MAX_STATS):

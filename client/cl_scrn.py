@@ -959,11 +959,13 @@ SCR_TouchPics
 
 Allows rendering code to cache all needed sbar graphics
 ===============
-*/
-void SCR_TouchPics (void)
-{
-	int		i, j;
+"""
+def SCR_TouchPics ():
 
+	#int		i, j;
+
+	pass
+	"""
 	for (i=0 ; i<2 ; i++)
 		for (j=0 ; j<11 ; j++)
 			vid_so.re.RegisterPic (sb_nums[i][j]);
@@ -978,9 +980,9 @@ void SCR_TouchPics (void)
 		if (!crosshair_width)
 			crosshair_pic[0] = 0;
 	}
-}
+	"""
 
-/*
+"""
 ================
 SCR_ExecuteLayoutString 
 

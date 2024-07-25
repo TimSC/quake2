@@ -517,19 +517,21 @@ void R_AddSkySurface (msurface_t *fa)
 ==============
 R_ClearSkyBox
 ==============
-*/
-void R_ClearSkyBox (void)
-{
-	int		i;
-
-	for (i=0 ; i<6 ; i++)
-	{
-		skymins[0][i] = skymins[1][i] = 9999;
-		skymaxs[0][i] = skymaxs[1][i] = -9999;
-	}
-}
-
 """
+
+def R_ClearSkyBox ():
+
+	global skymins, skymaxs
+	#int		i;
+
+	for i in range(6):
+	
+		skymins[0][i] = 9999
+		skymins[1][i] = 9999
+		skymaxs[0][i] = -9999
+		skymaxs[1][i] = -9999
+	
+
 def MakeSkyVec (s, t, axis): # float, float, int
 
 	#vec3_t		v, b;
@@ -608,7 +610,7 @@ def R_DrawSkyBox ():
 		if skymins[0][i] >= skymaxs[0][i] or skymins[1][i] >= skymaxs[1][i]:
 			continue
 
-		GL_Bind (sky_images[skytexorder[i]].texnum)
+		gl_image.GL_Bind (sky_images[skytexorder[i]].texnum)
 
 		GL.glBegin (GL.GL_QUADS)
 		MakeSkyVec (skymins[0,i], skymins[1,i], i)

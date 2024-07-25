@@ -190,10 +190,10 @@ class pcx_t (object):
 
 ========================================================================
 */
-
-#define IDALIASHEADER		(('2'<<24)+('P'<<16)+('D'<<8)+'I')
-#define ALIAS_VERSION	8
-
+"""
+IDALIASHEADER = ((ord('2')<<24)+(ord('P')<<16)+(ord('D')<<8)+ord('I'))
+ALIAS_VERSION = 8
+"""
 #define	MAX_TRIANGLES	4096
 #define MAX_VERTS		2048
 #define MAX_FRAMES		512
@@ -274,11 +274,11 @@ typedef struct
 
 ========================================================================
 */
-
-#define IDSPRITEHEADER	(('2'<<24)+('S'<<16)+('D'<<8)+'I')
-		// little-endian "IDS2"
-#define SPRITE_VERSION	2
-
+"""
+IDSPRITEHEADER	= ((ord('2')<<24)+(ord('S')<<16)+(ord('D')<<8)+ord('I'))
+		# little-endian "IDS2"
+SPRITE_VERSION	= 2
+"""
 typedef struct
 {
 	int		width, height;
@@ -323,10 +323,9 @@ typedef struct miptex_s
 
 ==============================================================================
 */
-
-#define IDBSPHEADER	(('P'<<24)+('S'<<16)+('B'<<8)+'I')
-		// little-endian "IBSP"
 """
+IDBSPHEADER	= ((ord('P')<<24)+(ord('S')<<16)+(ord('B')<<8)+ord('I'))
+		# little-endian "IBSP"
 BSPVERSION = 38
 
 
@@ -367,6 +366,10 @@ class lump_t(object):
 		self.fileofs = fileofsIn # int
 		self.filelen = filelenIn
 
+	@classmethod
+	def packed_size(cls):
+		return 8
+
 	def __repr__(self):
 
 		return "lumpt({}, {})".format(self.fileofs, self.filelen)
@@ -400,6 +403,10 @@ class dheader_t(object):
 		self.ident = None #int			
 		self.version = None #int			
 		self.lumps = None # lump_t[HEADER_LUMPS]
+
+	@classmethod
+	def packed_size(cls):
+		return 8 * lump_t.packed_size() * HEADER_LUMPS
 
 	def parse(self, buf: bytes|bytearray):
 		
@@ -446,13 +453,23 @@ class dmodel_t(object):
 		self.headnode = q_shared.LittleSLong (buff[c:c+4])
 		c += 4
 
+
+class dvertex_t(object):
+
+	def __init__(self):
+		self.point = np.zeros((3,), dtype=np.float32) #float[3]
+
+	@classmethod
+	def packed_size(cls):
+		return 12
+
+	def load(self, buff):
+
+		self.point[0] = q_shared.LittleFloat(buff[:4])
+		self.point[1] = q_shared.LittleFloat(buff[4:8])
+		self.point[2] = q_shared.LittleFloat(buff[8:])
+
 """
-typedef struct
-{
-	float	point[3];
-} dvertex_t;
-
-
 // 0-2 are axial planes
 #define	PLANE_X			0
 #define	PLANE_Y			1

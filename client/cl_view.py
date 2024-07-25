@@ -280,23 +280,23 @@ def CL_PrepRefresh ():
 
 	cl_scrn.SCR_AddDirtyPoint (0, 0)
 	cl_scrn.SCR_AddDirtyPoint (vid_so.viddef.width-1, vid_so.viddef.height-1)
-	"""
-	// let the render dll load the map
-	strcpy (mapname, cl_main.cl.configstrings[q_shared.CS_MODELS+1] + 5);	// skip "maps/"
-	mapname[strlen(mapname)-4] = 0;		// cut off ".bsp"
 
-	// register models, pics, and skins
-	Com_Printf ("Map: %s\r", mapname); 
-	SCR_UpdateScreen ();
-	vid_so.re.BeginRegistration (mapname);
-	Com_Printf ("                                     \r");
+	# let the render dll load the map
+	mapname = cl_main.cl.configstrings[q_shared.CS_MODELS+1][5:]	# skip "maps/"
+	mapname = mapname[:-4]		# cut off ".bsp"
 
-	// precache status bar pics
-	Com_Printf ("pics\r"); 
-	SCR_UpdateScreen ();
-	SCR_TouchPics ();
-	Com_Printf ("                                     \r");
-	"""
+	# register models, pics, and skins
+	common.Com_Printf ("Map: {}\r".format(mapname))
+	cl_scrn.SCR_UpdateScreen ()
+	vid_so.re.BeginRegistration (mapname)
+	common.Com_Printf ("                                     \r")
+
+	# precache status bar pics
+	common.Com_Printf ("pics\r")
+	cl_scrn.SCR_UpdateScreen ()
+	cl_scrn.SCR_TouchPics ()
+	common.Com_Printf ("                                     \r")
+
 	cl_tent.CL_RegisterTEntModels ()
 	"""
 	num_cl_weaponmodels = 1;
@@ -307,7 +307,7 @@ def CL_PrepRefresh ():
 		strcpy (name, cl_main.cl.configstrings[q_shared.CS_MODELS+i]);
 		name[37] = 0;	// never go beyond one line
 		if (name[0] != '*')
-			Com_Printf ("%s\r", name); 
+			common.Com_Printf ("%s\r", name); 
 		SCR_UpdateScreen ();
 		Sys_SendKeyEvents ();	// pump message loop
 		if (name[0] == '#')
@@ -329,10 +329,10 @@ def CL_PrepRefresh ():
 				cl_main.cl.model_clip[i] = NULL;
 		}
 		if (name[0] != '*')
-			Com_Printf ("                                     \r");
+			common.Com_Printf ("                                     \r");
 	}
 
-	Com_Printf ("images\r", i); 
+	common.Com_Printf ("images\r", i); 
 	SCR_UpdateScreen ();
 	for (i=1 ; i<MAX_IMAGES && cl_main.cl.configstrings[q_shared.CS_IMAGES+i][0] ; i++)
 	{
@@ -340,16 +340,16 @@ def CL_PrepRefresh ():
 		Sys_SendKeyEvents ();	// pump message loop
 	}
 	
-	Com_Printf ("                                     \r");
+	common.Com_Printf ("                                     \r");
 	for (i=0 ; i<MAX_CLIENTS ; i++)
 	{
 		if (!cl_main.cl.configstrings[q_shared.CS_PLAYERSKINS+i][0])
 			continue;
-		Com_Printf ("client %i\r", i); 
+		common.Com_Printf ("client %i\r", i); 
 		SCR_UpdateScreen ();
 		Sys_SendKeyEvents ();	// pump message loop
 		CL_ParseClientinfo (i);
-		Com_Printf ("                                     \r");
+		common.Com_Printf ("                                     \r");
 	}
 
 	CL_LoadClientinfo (&cl_main.cl.baseclientinfo, "unnamed\\male/grunt");
@@ -408,7 +408,7 @@ def V_Gun_Next_f ():
 	pass
 	"""
 	gun_frame++;
-	Com_Printf ("frame %i\n", gun_frame);
+	common.Com_Printf ("frame %i\n", gun_frame);
 	"""
 
 def V_Gun_Prev_f ():
@@ -417,7 +417,7 @@ def V_Gun_Prev_f ():
 	gun_frame--;
 	if (gun_frame < 0)
 		gun_frame = 0;
-	Com_Printf ("frame %i\n", gun_frame);
+	common.Com_Printf ("frame %i\n", gun_frame);
 	"""
 
 def V_Gun_Model_f ():

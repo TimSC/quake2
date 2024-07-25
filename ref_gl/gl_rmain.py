@@ -94,11 +94,11 @@ vid = viddef_t()
 ri = ref.refimport_t()
 """
 int GL_TEXTURE0, GL_TEXTURE1;
-
-model_t		*r_worldmodel;
-
-float		gldepthmin, gldepthmax;
 """
+r_worldmodel = None #model_t *
+
+gldepthmin, gldepthmax = 0.0, 0.0 #float
+
 gl_config = glconfig_t()
 
 gl_state = glstate_t()
@@ -107,8 +107,9 @@ image_t		*r_notexture;		// use for bad textures
 image_t		*r_particletexture;	// little dot for particles
 
 entity_t	*currententity;
-model_t		*currentmodel;
-
+"""
+currentmodel = None # model_t		*
+"""
 cplane_t	frustum[4];
 
 int			r_visframecount;	// bumped when going to a new PVS
@@ -135,10 +136,9 @@ r_base_world_matrix = np.zeros((16,), dtype=np.float32)
 # screen size info
 #
 r_newrefdef = ref.refdef_t()
-"""
-int		r_viewcluster, r_viewcluster2, r_oldviewcluster, r_oldviewcluster2;
 
-"""
+r_viewcluster, r_viewcluster2, r_oldviewcluster, r_oldviewcluster2 = None, None, None, None #int
+
 r_norefresh = None #cvar_t *
 r_drawentities = None #cvar_t *
 r_drawworld = None #cvar_t *
@@ -838,6 +838,8 @@ R_Clear
 """
 def R_Clear ():
 
+	global gldepthmin, gldepthmax
+
 	if gl_ztrick.value:
 	
 		#static int trickframe;
@@ -892,10 +894,10 @@ def R_RenderView (fd): #refdef_t *
 		return
 	
 	r_newrefdef = copy.deepcopy(fd)
+	
+	if r_worldmodel is None and not ( r_newrefdef.rdflags & q_shared.RDF_NOWORLDMODEL ):
+		ri.Sys_Error (q_shared.ERR_DROP, "R_RenderView: NULL worldmodel")
 	"""
-	if (!r_worldmodel && !( r_newrefdef.rdflags & RDF_NOWORLDMODEL ) )
-		ri.Sys_Error (ERR_DROP, "R_RenderView: NULL worldmodel");
-
 	if (r_speeds->value)
 	{
 		c_brush_polys = 0;
@@ -1485,7 +1487,7 @@ def R_Init( hinstance, hWnd ): #void *, void *
 	## GL_DrawStereoPattern()
 
 	gl_image.GL_InitImages ()
-	#Mod_Init ()
+	gl_model.Mod_Init ()
 	#R_InitParticleTexture ()
 	gl_draw.Draw_InitLocal ()
 

@@ -21,6 +21,7 @@ import io
 import math
 import struct
 import OpenGL.GL as GL
+import OpenGL.GL.ARB.multitexture as GLmt
 import pygame
 from enum import Enum
 from game import q_shared
@@ -96,13 +97,16 @@ gl_filter_max = GL.GL_LINEAR #int
 
 def GL_SetTexturePalette(palette): #unsigned palette[256]
 
-	pass
 	"""
 	int i;
 	unsigned char temptable[768];
+	"""
 
-	if ( qglColorTableEXT && gl_ext_palettedtexture->value )
-	{
+	if qgl_linux.qglColorTableEXT and gl_ext_palettedtexture.value:
+
+		raise NotImplementedError()
+
+		"""	
 		for ( i = 0; i < 256; i++ )
 		{
 			temptable[i*3+0] = ( palette[i] >> 0 ) & 0xff;
@@ -116,76 +120,69 @@ def GL_SetTexturePalette(palette): #unsigned palette[256]
 						   GL_RGB,
 						   GL_UNSIGNED_BYTE,
 						   temptable );
-	}
-	"""
+	
+		"""
 
-"""
-void GL_EnableMultitexture( qboolean enable )
-{
-	if ( !qglSelectTextureSGIS && !qglActiveTextureARB )
-		return;
 
-	if ( enable )
-	{
-		GL_SelectTexture( GL_TEXTURE1 );
-		qglEnable( GL_TEXTURE_2D );
-		GL_TexEnv( GL_REPLACE );
-	}
-	else
-	{
-		GL_SelectTexture( GL_TEXTURE1 );
-		qglDisable( GL_TEXTURE_2D );
-		GL_TexEnv( GL_REPLACE );
-	}
-	GL_SelectTexture( GL_TEXTURE0 );
-	GL_TexEnv( GL_REPLACE );
-}
+def GL_EnableMultitexture( enable ):
 
-void GL_SelectTexture( GLenum texture )
-{
-	int tmu;
+	if not qgl_linux.qglSelectTextureSGIS and not qgl_linux.qglActiveTextureARB:
+		return
 
-	if ( !qglSelectTextureSGIS && !qglActiveTextureARB )
-		return;
+	if enable :
+	
+		GL_SelectTexture( GL.GL_TEXTURE1 )
+		GL.glEnable( GL.GL_TEXTURE_2D )
+		GL_TexEnv( GL.GL_REPLACE )
+	
+	else:
+	
+		GL_SelectTexture( GL.GL_TEXTURE1 )
+		GL.glDisable( GL.GL_TEXTURE_2D )
+		GL_TexEnv( GL.GL_REPLACE )
+	
+	GL_SelectTexture( GL.GL_TEXTURE0 )
+	GL_TexEnv( GL.GL_REPLACE )
 
-	if ( texture == GL_TEXTURE0 )
-	{
-		tmu = 0;
-	}
-	else
-	{
-		tmu = 1;
-	}
 
-	if ( tmu == gl_state.currenttmu )
-	{
-		return;
-	}
+def GL_SelectTexture( texture ): #GLenum
 
-	gl_state.currenttmu = tmu;
+	#int tmu;
 
-	if ( qglSelectTextureSGIS )
-	{
-		qglSelectTextureSGIS( texture );
-	}
-	else if ( qglActiveTextureARB )
-	{
-		qglActiveTextureARB( texture );
-		qglClientActiveTextureARB( texture );
-	}
-}
+	if not qgl_linux.qglSelectTextureSGIS and not qgl_linux.qglActiveTextureARB:
+		return
 
-void GL_TexEnv( GLenum mode )
-{
-	static int lastmodes[2] = { -1, -1 };
+	if texture == GL.GL_TEXTURE0:
+		tmu = 0
+	
+	else:
+		tmu = 1
+	
+	if tmu == gl_rmain.gl_state.currenttmu:
+		return
+	
+	gl_rmain.gl_state.currenttmu = tmu
 
-	if ( mode != lastmodes[gl_state.currenttmu] )
-	{
-		qglTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode );
-		lastmodes[gl_state.currenttmu] = mode;
-	}
-}
-"""
+	if qgl_linux.qglSelectTextureSGIS:
+	
+		GLmt.glSelectTextureSGIS( texture )
+	
+	elif qgl_linux.qglActiveTextureARB:
+	
+		GLmt.glActiveTextureARB( texture )
+		GLmt.glClientActiveTextureARB( texture )
+	
+
+lastmodes = [-1, -1] # int[2]
+
+def GL_TexEnv( mode ): #GLenum
+	global lastmodes
+
+	if mode != lastmodes[gl_rmain.gl_state.currenttmu]:
+	
+		GL.glTexEnvf( GL.GL_TEXTURE_ENV, GL.GL_TEXTURE_ENV_MODE, mode )
+		lastmodes[gl_rmain.gl_state.currenttmu] = mode
+	
 def GL_Bind (texnum): #int
 
 	#extern	image_t	*draw_chars;
@@ -203,12 +200,12 @@ void GL_MBind( GLenum target, int texnum )
 	GL_SelectTexture( target );
 	if ( target == GL_TEXTURE0 )
 	{
-		if ( gl_state.currenttextures[0] == texnum )
+		if ( gl_rmain.gl_state.currenttextures[0] == texnum )
 			return;
 	}
 	else
 	{
-		if ( gl_state.currenttextures[1] == texnum )
+		if ( gl_rmain.gl_state.currenttextures[1] == texnum )
 			return;
 	}
 	GL_Bind( texnum );
@@ -955,7 +952,7 @@ void GL_BuildPalettedTexture( unsigned char *paletted_texture, unsigned char *sc
 
 		c = r | ( g << 5 ) | ( b << 11 );
 
-		paletted_texture[i] = gl_state.d_16to8table[c];
+		paletted_texture[i] = gl_rmain.gl_state.d_16to8table[c];
 
 		scaled += 4;
 	}
@@ -1560,8 +1557,8 @@ def GL_InitImages ():
 	"""
 	if ( qglColorTableEXT )
 	{
-		gl_rmain.ri.FS_LoadFile( "pics/16to8.dat", &gl_state.d_16to8table );
-		if ( !gl_state.d_16to8table )
+		gl_rmain.ri.FS_LoadFile( "pics/16to8.dat", &gl_rmain.gl_state.d_16to8table );
+		if ( !gl_rmain.gl_state.d_16to8table )
 			gl_rmain.ri.Sys_Error( ERR_FATAL, "Couldn't load pics/16to8.pcx");
 	}
 	

@@ -21,7 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <assert.h>
 
 """
-from ref_gl import gl_warp
+import OpenGL.GL as GL
+from ref_gl import gl_warp, gl_image, gl_rmain
+from linux import qgl_linux
 """
 
 #include "gl_local.h"
@@ -493,13 +495,13 @@ void R_RenderBrushPoly (msurface_t *fa)
 		GL_Bind( image->texnum );
 
 		// warp texture, no lightmaps
-		GL_TexEnv( GL_MODULATE );
+		gl_image.GL_TexEnv( GL_MODULATE );
 		qglColor4f( gl_state.inverse_intensity, 
 			        gl_state.inverse_intensity,
 					gl_state.inverse_intensity,
 					1.0F );
 		EmitWaterPolys (fa);
-		GL_TexEnv( GL_REPLACE );
+		gl_image.GL_TexEnv( GL_REPLACE );
 
 		return;
 	}
@@ -507,7 +509,7 @@ void R_RenderBrushPoly (msurface_t *fa)
 	{
 		GL_Bind( image->texnum );
 
-		GL_TexEnv( GL_REPLACE );
+		gl_image.GL_TexEnv( GL_REPLACE );
 	}
 
 //======
@@ -599,7 +601,7 @@ void R_DrawAlphaSurfaces (void)
     qglLoadMatrixf (r_world_matrix);
 
 	qglEnable (GL_BLEND);
-	GL_TexEnv( GL_MODULATE );
+	gl_image.GL_TexEnv( GL_MODULATE );
 
 	// the textures are prescaled up for a better lighting range,
 	// so scale it back down
@@ -623,7 +625,7 @@ void R_DrawAlphaSurfaces (void)
 			DrawGLPoly (s->polys);
 	}
 
-	GL_TexEnv( GL_REPLACE );
+	gl_image.GL_TexEnv( GL_REPLACE );
 	qglColor4f (1,1,1,1);
 	qglDisable (GL_BLEND);
 
@@ -643,7 +645,7 @@ void DrawTextureChains (void)
 
 	c_visible_textures = 0;
 
-//	GL_TexEnv( GL_REPLACE );
+//	gl_image.GL_TexEnv( GL_REPLACE );
 
 	if ( !qglSelectTextureSGIS && !qglActiveTextureARB )
 	{
@@ -699,7 +701,7 @@ void DrawTextureChains (void)
 //		GL_EnableMultitexture( true );
 	}
 
-	GL_TexEnv( GL_REPLACE );
+	gl_image.GL_TexEnv( GL_REPLACE );
 }
 
 
@@ -904,7 +906,7 @@ void R_DrawInlineBModel (void)
 	{
 		qglEnable (GL_BLEND);
 		qglColor4f (1,1,1,0.25);
-		GL_TexEnv( GL_MODULATE );
+		gl_image.GL_TexEnv( GL_MODULATE );
 	}
 
 	//
@@ -948,7 +950,7 @@ void R_DrawInlineBModel (void)
 	{
 		qglDisable (GL_BLEND);
 		qglColor4f (1,1,1,1);
-		GL_TexEnv( GL_REPLACE );
+		gl_image.GL_TexEnv( GL_REPLACE );
 	}
 }
 
@@ -997,7 +999,7 @@ void R_DrawBrushModel (entity_t *e)
 		vec3_t	temp;
 		vec3_t	forward, right, up;
 
-		VectorCopy (modelorg, temp);
+		q_shared.VectorCopy (modelorg, temp);
 		AngleVectors (e->angles, forward, right, up);
 		modelorg[0] = DotProduct (temp, forward);
 		modelorg[1] = -DotProduct (temp, right);
@@ -1013,9 +1015,9 @@ e->angles[2] = -e->angles[2];	// stupid quake bug
 
 	GL_EnableMultitexture( true );
 	GL_SelectTexture( GL_TEXTURE0);
-	GL_TexEnv( GL_REPLACE );
+	gl_image.GL_TexEnv( GL_REPLACE );
 	GL_SelectTexture( GL_TEXTURE1);
-	GL_TexEnv( GL_MODULATE );
+	gl_image.GL_TexEnv( GL_MODULATE );
 
 	R_DrawInlineBModel ();
 	GL_EnableMultitexture( false );
@@ -1035,24 +1037,27 @@ e->angles[2] = -e->angles[2];	// stupid quake bug
 ================
 R_RecursiveWorldNode
 ================
-*/
-void R_RecursiveWorldNode (mnode_t *node)
-{
+"""
+def R_RecursiveWorldNode (node): #mnode_t *
+
+	"""
 	int			c, side, sidebit;
 	cplane_t	*plane;
 	msurface_t	*surf, **mark;
 	mleaf_t		*pleaf;
 	float		dot;
 	image_t		*image;
+	"""
 
-	if (node->contents == CONTENTS_SOLID)
-		return;		// solid
+	if node.contents == CONTENTS_SOLID:
+		return		# solid
 
-	if (node->visframe != r_visframecount)
-		return;
-	if (R_CullBox (node->minmaxs, node->minmaxs+3))
-		return;
+	if node.visframe != r_visframecount:
+		return
+	if R_CullBox (node.minmaxs, node.minmaxs+3):
+		return
 	
+	"""
 // if a leaf node, draw stuff
 	if (node->contents != -1)
 	{
@@ -1188,29 +1193,28 @@ void R_RecursiveWorldNode (mnode_t *node)
 			}
 		}
 	}
-*/
-}
+"""
 
 
-/*
+"""
 =============
 R_DrawWorld
 =============
 """
 def R_DrawWorld ():
 
+	#entity_t	ent;
+
+	if not gl_rmain.r_drawworld.value:
+		return
+
+	if gl_rmain.r_newrefdef.rdflags & q_shared.RDF_NOWORLDMODEL:
+		return
+
+	gl_rmain.currentmodel = gl_rmain.r_worldmodel
+
 	"""
-	entity_t	ent;
-
-	if (!r_drawworld->value)
-		return;
-
-	if ( r_newrefdef.rdflags & RDF_NOWORLDMODEL )
-		return;
-
-	currentmodel = r_worldmodel;
-
-	VectorCopy (r_newrefdef.vieworg, modelorg);
+	q_shared.VectorCopy (r_newrefdef.vieworg, modelorg);
 
 	// auto cycle the world frame for texture animation
 	memset (&ent, 0, sizeof(ent));
@@ -1219,32 +1223,33 @@ def R_DrawWorld ():
 
 	gl_state.currenttextures[0] = gl_state.currenttextures[1] = -1;
 
-	qglColor3f (1,1,1);
-	memset (gl_lms.lightmap_surfaces, 0, sizeof(gl_lms.lightmap_surfaces));
-	R_ClearSkyBox ();
+	"""
+	GL.glColor3f (1.0,1.0,1.0)
+	#memset (gl_lms.lightmap_surfaces, 0, sizeof(gl_lms.lightmap_surfaces));
+	gl_warp.R_ClearSkyBox ()
 
-	if ( qglMTexCoord2fSGIS )
-	{
-		GL_EnableMultitexture( true );
+	if qgl_linux.qglMTexCoord2fSGIS:
+	
+		gl_image.GL_EnableMultitexture( True )
 
-		GL_SelectTexture( GL_TEXTURE0);
-		GL_TexEnv( GL_REPLACE );
-		GL_SelectTexture( GL_TEXTURE1);
+		gl_image.GL_SelectTexture( GL.GL_TEXTURE0)
+		gl_image.GL_TexEnv( GL.GL_REPLACE )
+		gl_image.GL_SelectTexture( GL.GL_TEXTURE1)
 
-		if ( gl_lightmap->value )
-			GL_TexEnv( GL_REPLACE );
-		else 
-			GL_TexEnv( GL_MODULATE );
+		if gl_rmain.gl_lightmap.value:
+			gl_image.GL_TexEnv( GL.GL_REPLACE )
+		else:
+			gl_image.GL_TexEnv( GL.GL_MODULATE )
 
-		R_RecursiveWorldNode (r_worldmodel->nodes);
+		R_RecursiveWorldNode (gl_rmain.r_worldmodel.nodes)
 
-		GL_EnableMultitexture( false );
-	}
-	else
-	{
-		R_RecursiveWorldNode (r_worldmodel->nodes);
-	}
-
+		gl_image.GL_EnableMultitexture( False )
+	
+	else:
+	
+		R_RecursiveWorldNode (gl_rmain.r_worldmodel.nodes)
+	
+	"""
 	/*
 	** theoretically nothing should happen in the next two functions
 	** if multitexture is enabled
@@ -1498,7 +1503,7 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 		t /= fa->texinfo->image->height;
 
 		VectorAdd (total, vec, total);
-		VectorCopy (vec, poly->verts[i]);
+		q_shared.VectorCopy (vec, poly->verts[i]);
 		poly->verts[i][3] = s;
 		poly->verts[i][4] = t;
 

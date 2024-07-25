@@ -1424,7 +1424,6 @@ def CL_CalcViewValues ():
 	player_state_t	*ps, *ops;
 	"""
 
-	
 	# find the previous frame to interpolate from
 	ps = cl_main.cl.frame.playerstate
 	i = (cl_main.cl.frame.serverframe - 1) & qcommon.UPDATE_MASK

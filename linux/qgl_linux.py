@@ -402,10 +402,9 @@ qglPointParameterfEXT = None #void ( APIENTRY * )( GLenum param, GLfloat value )
 qglPointParameterfvEXT = None #void ( APIENTRY * )( GLenum param, const GLfloat *value );
 
 qglColorTableEXT = None #void ( APIENTRY * )( int, int, int, int, int, const void * );
-"""
-void ( APIENTRY * qgl3DfxSetPaletteEXT)( GLuint * );
-void ( APIENTRY * qglSelectTextureSGIS)( GLenum );
-"""
+
+qgl3DfxSetPaletteEXT = None # void ( APIENTRY * qgl3DfxSetPaletteEXT)( GLuint * );
+qglSelectTextureSGIS = None #void ( APIENTRY * qglSelectTextureSGIS)( GLenum );
 qglMTexCoord2fSGIS = None #void ( APIENTRY * )( GLenum, GLfloat, GLfloat );
 qglActiveTextureARB = None #void ( APIENTRY * ) ( GLenum );
 qglClientActiveTextureARB = None #void ( APIENTRY * ) ( GLenum );
