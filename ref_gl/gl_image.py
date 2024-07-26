@@ -1357,31 +1357,34 @@ GL_LoadWal
 ================
 """
 def GL_LoadWal (name): #char * (returns image_t *)
-	pass
+
 	"""
 	miptex_t	*mt;
 	int			width, height, ofs;
 	image_t		*image;
+	"""
 
-	gl_rmain.ri.FS_LoadFile (name, (void **)&mt);
-	if (!mt)
-	{
-		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_FindImage: can't load %s\n", name);
-		return r_notexture;
-	}
+	length, mt = gl_rmain.ri.FS_LoadFile (name);
+	if mt is None:
+	
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "GL_FindImage: can't load {}\n".format(name))
+		return gl_rmain.r_notexture
+	
+	img_header = qfiles.miptex_t()
+	img_header.load(mt)
 
-	width = LittleLong (mt->width);
-	height = LittleLong (mt->height);
-	ofs = LittleLong (mt->offsets[0]);
+	width = img_header.width
+	height = img_header.height
+	ofs = img_header.offsets[0] # First mipmap level
 
-	image = GL_LoadPic (name, (byte *)mt + ofs, width, height, it_wall, 8);
+	image = GL_LoadPic (name, mt[ofs:], width, height, imagetype_t.it_wall, 8)
 
-	gl_rmain.ri.FS_FreeFile ((void *)mt);
+	#gl_rmain.ri.FS_FreeFile ((void *)mt)
 
-	return image;
-}
+	return image
 
-/*
+
+"""
 ===============
 GL_FindImage
 

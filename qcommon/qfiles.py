@@ -299,30 +299,47 @@ typedef struct {
   .WAL texture file format
 
 ==============================================================================
-*/
+"""
 
 
-#define	MIPLEVELS	4
-typedef struct miptex_s
-{
-	char		name[32];
-	unsigned	width, height;
-	unsigned	offsets[MIPLEVELS];		// four mip maps stored
-	char		animname[32];			// next frame in animation chain
-	int			flags;
-	int			contents;
-	int			value;
-} miptex_t;
+MIPLEVELS = 4
+class miptex_t(object):
 
+	def __init__(self):
 
+		self.name = None # char [32]
+		self.width, self.height = None, None # unsigned	
+		self.offsets = None # unsigned [MIPLEVELS], four mip maps stored
+		self.animname = None # char		[32],  next frame in animation chain
+		self.flags = None # int			
+		self.contents = None # int			
+		self.value = None # int			
 
-/*
+	@classmethod
+	def packed_size(cls):
+		return 100
+
+	def load(self, buff):
+
+		self.name = buff[:32].decode('ascii').rstrip('\x00')
+		self.width = q_shared.LittleLong(buff[32:36])
+		self.height = q_shared.LittleLong(buff[36:40])
+		self.offsets = []
+		c = 40
+		for i in range(4):
+			self.offsets.append(q_shared.LittleLong(buff[c:c+4]))
+			c += 4
+		self.animname = buff[56:88].decode('ascii').rstrip('\x00')
+		self.flags = q_shared.LittleSLong(buff[88:92])		
+		self.contents = q_shared.LittleSLong(buff[92:96])
+		self.value = q_shared.LittleSLong(buff[96:100])
+
+"""
 ==============================================================================
 
   .BSP file format
 
 ==============================================================================
-*/
 """
 IDBSPHEADER	= ((ord('P')<<24)+(ord('S')<<16)+(ord('B')<<8)+ord('I'))
 		# little-endian "IBSP"
