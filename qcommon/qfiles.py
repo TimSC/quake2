@@ -595,18 +595,35 @@ class texinfo_t(object):
 
 	def load(self, buff):
 
-		self.texture = buff[40:72].decode("ascii").rstrip('\x00')
+		c = 0
+		for j in range(8):
+			self.vecs[j%2,j//2] = q_shared.LittleFloat (buff[c:c+4])
+			c+=4
+
 		self.flags = q_shared.LittleSLong(buff[32:36])
 		self.value = q_shared.LittleSLong(buff[36:40])
+		self.texture = buff[40:72].decode("ascii").rstrip('\x00')
+		self.nexttexinfo = q_shared.LittleSLong(buff[72:])
+
+
+# note that edge 0 is never used, because negative edge nums are used for
+# counterclockwise use of the edge in a face
+class dedge_t(object):
+
+	def __init__(self):
+
+		self.v = np.zeros((2,), dtype=np.uint16)
+
+	@classmethod
+	def packed_size(cls):
+		return 4
+
+	def load(self, buff):
+
+		self.v[0] = q_shared.LittleShort(buff[:2])
+		self.v[1] = q_shared.LittleShort(buff[2:])
 
 """
-// note that edge 0 is never used, because negative edge nums are used for
-// counterclockwise use of the edge in a face
-typedef struct
-{
-	unsigned short	v[2];		// vertex numbers
-} dedge_t;
-
 #define	MAXLIGHTMAPS	4
 typedef struct
 {

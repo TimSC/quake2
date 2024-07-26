@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import numpy as np
-from ref_gl import gl_rmain, gl_model_h
+from ref_gl import gl_rmain, gl_model_h, gl_image
 from qcommon import qfiles
 from game import q_shared
 """
@@ -290,31 +290,32 @@ def Mod_ForName (name, crash)->gl_model_h.model_t: #char *, qboolean
 */
 """
 mod_base = None #byte *
-"""
 
-/*
+
+"""
 =================
 Mod_LoadLighting
 =================
-*/
-void Mod_LoadLighting (lump_t *l)
-{
-	if (!l->filelen)
-	{
-		loadmodel->lightdata = NULL;
-		return;
-	}
-	loadmodel->lightdata = Hunk_Alloc ( l->filelen);	
-	memcpy (loadmodel->lightdata, mod_base + l->fileofs, l->filelen);
-}
+"""
+def Mod_LoadLighting (l: qfiles.lump_t):
+
+	if not l.filelen:
+	
+		loadmodel.lightdata = None
+		return
+	
+	in_offset = l.fileofs
+	in_offset2 = in_offset + l.filelen
+
+	loadmodel.lightdata = mod_base[in_offset:in_offset2]
 
 
-/*
+"""
 =================
 Mod_LoadVisibility
 =================
 */
-void Mod_LoadVisibility (lump_t *l)
+void Mod_LoadVisibility (qfiles.lump_t *l)
 {
 	int		i;
 
@@ -340,7 +341,7 @@ void Mod_LoadVisibility (lump_t *l)
 Mod_LoadVertexes
 =================
 """
-def Mod_LoadVertexes (l): #lump_t *
+def Mod_LoadVertexes (l): #qfiles.lump_t *
 
 	global mod_base, loadmodel
 	print ("Mod_LoadVertexes", l)
@@ -395,7 +396,7 @@ float RadiusFromBounds (vec3_t mins, vec3_t maxs)
 Mod_LoadSubmodels
 =================
 */
-void Mod_LoadSubmodels (lump_t *l)
+void Mod_LoadSubmodels (qfiles.lump_t *l)
 {
 	dmodel_t	*in;
 	mmodel_t	*out;
@@ -429,83 +430,110 @@ void Mod_LoadSubmodels (lump_t *l)
 =================
 Mod_LoadEdges
 =================
-*/
-void Mod_LoadEdges (lump_t *l)
-{
+"""
+def Mod_LoadEdges (l: qfiles.lump_t):
+
+	print ("Mod_LoadEdges", l)
+	"""
 	dedge_t *in;
 	medge_t *out;
 	int 	i, count;
+	"""
 
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( (count + 1) * sizeof(*out));	
+	#in = (void *)(mod_base + l->fileofs);
+	if l.filelen % qfiles.dedge_t.packed_size():
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
+	count = l.filelen // qfiles.dedge_t.packed_size()
+	out = np.zeros((count, 2), dtype=np.uint16)
 
-	loadmodel->edges = out;
-	loadmodel->numedges = count;
+	loadmodel.edges = out
+	loadmodel.numedges = count
+	in_obj = qfiles.dedge_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		out->v[0] = (unsigned short)LittleShort(in->v[0]);
-		out->v[1] = (unsigned short)LittleShort(in->v[1]);
-	}
-}
+	for i in range(count):
+	
+		in_offset = l.fileofs + i * qfiles.dedge_t.packed_size()
+		in_offset2 = in_offset + qfiles.dedge_t.packed_size()
+		in_obj.load(mod_base[in_offset:in_offset2])
 
-/*
+		out[i, 0] = in_obj.v[0]
+		out[i, 1] = in_obj.v[1]
+	
+
+
+"""
 =================
 Mod_LoadTexinfo
 =================
-*/
-void Mod_LoadTexinfo (lump_t *l)
-{
+"""
+def Mod_LoadTexinfo (l: qfiles.lump_t):
+
+	print ("Mod_LoadTexinfo", l)
+	"""
 	texinfo_t *in;
 	mtexinfo_t *out, *step;
 	int 	i, j, count;
 	char	name[MAX_QPATH];
 	int		next;
+	"""
 
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*sizeof(*out));	
+	#in = (void *)(mod_base + l->fileofs);
+	if l.filelen % qfiles.texinfo_t.packed_size():
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
+	count = l.filelen // qfiles.texinfo_t.packed_size()
+	out = []
 
-	loadmodel->texinfo = out;
-	loadmodel->numtexinfo = count;
+	loadmodel.texinfo = out
+	loadmodel.numtexinfo = count
+	in_obj = qfiles.texinfo_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		for (j=0 ; j<8 ; j++)
-			out->vecs[0][j] = LittleFloat (in->vecs[0][j]);
+	for i in range(count):
+	
+		in_offset = l.fileofs + i * qfiles.texinfo_t.packed_size()
+		in_offset2 = in_offset + qfiles.texinfo_t.packed_size()
+		in_obj.load(mod_base[in_offset:in_offset2])
 
-		out->flags = q_shared.LittleLong (in->flags);
-		next = q_shared.LittleLong (in->nexttexinfo);
-		if (next > 0)
-			out->next = loadmodel->texinfo + next;
-		else
-		    out->next = NULL;
-		Com_sprintf (name, sizeof(name), "textures/%s.wal", in->texture);
+		out_obj = gl_model_h.mtexinfo_t()
 
-		out->image = GL_FindImage (name, it_wall);
-		if (!out->image)
-		{
-			ri.Con_Printf (PRINT_ALL, "Couldn't load %s\n", name);
-			out->image = r_notexture;
-		}
-	}
+		out_obj.vecs = in_obj.vecs.copy()
 
-	// count animation frames
-	for (i=0 ; i<count ; i++)
-	{
-		out = &loadmodel->texinfo[i];
-		out->numframes = 1;
-		for (step = out->next ; step && step != out ; step=step->next)
-			out->numframes++;
-	}
-}
+		out_obj.flags = in_obj.flags
+		next = in_obj.nexttexinfo
 
-/*
+		if next > 0:
+			out_obj.next = next
+		else:
+		    out_obj.next = None
+		name = "textures/{}.wal".format(in_obj.texture)
+
+		out_obj.image = gl_image.GL_FindImage (name, gl_image.imagetype_t.it_wall)
+		if out_obj.image is None:
+		
+			gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Couldn't load {}\n".format(name))
+			out_obj.image = gl_rmain.r_notexture
+		
+		out.append(out_obj)
+
+	
+	# count animation frames
+	for i in range(count):
+	
+		out = loadmodel.texinfo[i]
+		out.numframes = 1
+		step = None
+		if out.next is not None:
+			step = loadmodel.texinfo[out.next]
+
+		while step is not None and id(step) != id(out):
+			out.numframes+=1
+
+			if step.next is not None:
+				step = loadmodel.texinfo[step.next]
+			else:
+				step = None
+
+
+"""
 ================
 CalcSurfaceExtents
 
@@ -570,7 +598,7 @@ void GL_BeginBuildingLightmaps (model_t *m);
 Mod_LoadFaces
 =================
 */
-void Mod_LoadFaces (lump_t *l)
+void Mod_LoadFaces (qfiles.lump_t *l)
 {
 	dface_t		*in;
 	msurface_t 	*out;
@@ -667,7 +695,7 @@ void Mod_SetParent (mnode_t *node, mnode_t *parent)
 Mod_LoadNodes
 =================
 */
-void Mod_LoadNodes (lump_t *l)
+void Mod_LoadNodes (qfiles.lump_t *l)
 {
 	int			i, j, count, p;
 	dnode_t		*in;
@@ -715,7 +743,7 @@ void Mod_LoadNodes (lump_t *l)
 Mod_LoadLeafs
 =================
 */
-void Mod_LoadLeafs (lump_t *l)
+void Mod_LoadLeafs (qfiles.lump_t *l)
 {
 	dleaf_t 	*in;
 	mleaf_t 	*out;
@@ -769,7 +797,7 @@ void Mod_LoadLeafs (lump_t *l)
 Mod_LoadMarksurfaces
 =================
 */
-void Mod_LoadMarksurfaces (lump_t *l)
+void Mod_LoadMarksurfaces (qfiles.lump_t *l)
 {	
 	int		i, j, count;
 	short		*in;
@@ -797,69 +825,83 @@ void Mod_LoadMarksurfaces (lump_t *l)
 =================
 Mod_LoadSurfedges
 =================
-*/
-void Mod_LoadSurfedges (lump_t *l)
-{	
-	int		i, count;
-	int		*in, *out;
+"""
+def Mod_LoadSurfedges (l: qfiles.lump_t):
 	
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	if (count < 1 || count >= MAX_MAP_SURFEDGES)
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: bad surfedges count in %s: %i",
-		loadmodel->name, count);
+	print ("Mod_LoadSurfedges", l)	
+	#int		i, count;
+	#int		*in, *out;
+	
+	#in = (void *)(mod_base + l->fileofs);
+	if l.filelen % 4:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
+	count = l.filelen // 4
+	if count < 1 or count >= qfiles.MAX_MAP_SURFEDGES:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: bad surfedges count in {}: {}".format(
+		loadmodel.name, count))
 
-	out = Hunk_Alloc ( count*sizeof(*out));	
+	out = np.zeros((count,), dtype=np.int32)
 
-	loadmodel->surfedges = out;
-	loadmodel->numsurfedges = count;
+	loadmodel.surfedges = out
+	loadmodel.numsurfedges = count
 
-	for ( i=0 ; i<count ; i++)
-		out[i] = q_shared.LittleLong (in[i]);
-}
+	for i in range(count):
+		in_offset = l.fileofs + i * 4
+		in_offset2 = in_offset + 4
+
+		out[i] = q_shared.LittleSLong (mod_base[in_offset: in_offset2])
 
 
-/*
+
+"""
 =================
 Mod_LoadPlanes
 =================
-*/
-void Mod_LoadPlanes (lump_t *l)
-{
+"""
+def Mod_LoadPlanes (l: qfiles.lump_t):
+
+	print ("Mod_LoadPlanes", l)
+	"""
 	int			i, j;
 	cplane_t	*out;
 	dplane_t 	*in;
 	int			count;
 	int			bits;
+	"""	
+
+	#in = (void *)(mod_base + l->fileofs);
+	if l.filelen % qfiles.dplane_t.packed_size():
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
+	count = l.filelen // qfiles.dplane_t.packed_size()
+	out = []
 	
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*2*sizeof(*out));	
+	loadmodel.planes = out
+	loadmodel.numplanes = count
+	in_obj = qfiles.dplane_t()
+
+	for i in range(count):
 	
-	loadmodel->planes = out;
-	loadmodel->numplanes = count;
+		in_offset = l.fileofs + i * qfiles.dplane_t.packed_size()
+		in_offset2 = in_offset + qfiles.dplane_t.packed_size()
+		in_obj.load(mod_base[in_offset:in_offset2])
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		bits = 0;
-		for (j=0 ; j<3 ; j++)
-		{
-			out->normal[j] = LittleFloat (in->normal[j]);
-			if (out->normal[j] < 0)
-				bits |= 1<<j;
-		}
+		out_obj = q_shared.cplane_t()
 
-		out->dist = LittleFloat (in->dist);
-		out->type = q_shared.LittleLong (in->type);
-		out->signbits = bits;
-	}
-}
+		bits = 0
+		for j in range(3):
+		
+			out_obj.normal[j] = in_obj.normal[j]
+			if out_obj.normal[j] < 0.0:
+				bits |= (1<<j)
+		
+		out_obj.dist = in_obj.dist
+		out_obj.type = in_obj.type
+		out_obj.signbits = bits
+	
+		out.append(out_obj)
 
-/*
+
+"""
 =================
 Mod_LoadBrushModel
 =================
@@ -889,12 +931,12 @@ def Mod_LoadBrushModel (mod, buff): #model_t *, void *
 	# load into heap
 	
 	Mod_LoadVertexes (header.lumps[qfiles.LUMP_VERTEXES])
-	"""
 	Mod_LoadEdges (header.lumps[qfiles.LUMP_EDGES])
 	Mod_LoadSurfedges (header.lumps[qfiles.LUMP_SURFEDGES])
 	Mod_LoadLighting (header.lumps[qfiles.LUMP_LIGHTING])
 	Mod_LoadPlanes (header.lumps[qfiles.LUMP_PLANES])
 	Mod_LoadTexinfo (header.lumps[qfiles.LUMP_TEXINFO])
+	"""
 	Mod_LoadFaces (header.lumps[qfiles.LUMP_FACES])
 	Mod_LoadMarksurfaces (header.lumps[qfiles.LUMP_LEAFFACES])
 	Mod_LoadVisibility (header.lumps[qfiles.LUMP_VISIBILITY])

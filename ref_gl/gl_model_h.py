@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import numpy as np
 from enum import Enum
 """
 
@@ -71,16 +72,18 @@ typedef struct
 	unsigned short	v[2];
 	unsigned int	cachededgeoffset;
 } medge_t;
+"""
+class mtexinfo_t(object):
 
-typedef struct mtexinfo_s
-{
-	float		vecs[2][4];
-	int			flags;
-	int			numframes;
-	struct mtexinfo_s	*next;		// animation chain
-	image_t		*image;
-} mtexinfo_t;
+	def __init__(self):
 
+		self.vecs = np.zeros((2, 4), dtype=np.float32) # float [2][4]
+		self.flags = 0 #int
+		self.numframes = None # int
+		self.next = None # struct mtexinfo_s *, animation chain
+		self.image = None # image_t *
+
+"""
 #define	VERTEXSIZE	7
 
 typedef struct glpoly_s

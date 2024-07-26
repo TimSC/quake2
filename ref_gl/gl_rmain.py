@@ -102,13 +102,13 @@ gldepthmin, gldepthmax = 0.0, 0.0 #float
 gl_config = glconfig_t()
 
 gl_state = glstate_t()
-"""
-image_t		*r_notexture;		// use for bad textures
-image_t		*r_particletexture;	// little dot for particles
 
-entity_t	*currententity;
-"""
-currentmodel = None # model_t		*
+r_notexture = None # image_t *, use for bad textures
+r_particletexture = None # image_t *, little dot for particles
+
+currententity = None # entity_t *
+
+currentmodel = None # model_t *
 """
 cplane_t	frustum[4];
 
