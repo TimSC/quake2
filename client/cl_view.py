@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 import math
 import functools
+import copy
 import numpy as np
 from qcommon import cvar, common, cmd
 from game import q_shared
@@ -88,78 +89,50 @@ def V_ClearScene ():
 
 
 
+def V_AddEntity (ent):
+	global r_numentities
+
+	if r_numentities >= ref.MAX_ENTITIES:
+		return
+	r_entities[r_numentities] = copy.deepcopy(ent)
+	r_numentities += 1
+
+
+def V_AddParticle (org, color, alpha):
+	global r_numparticles
+
+	if r_numparticles >= ref.MAX_PARTICLES:
+		return
+	p = r_particles[r_numparticles]
+	q_shared.VectorCopy(org, p.origin)
+	p.color = color
+	p.alpha = alpha
+	r_numparticles += 1
+
+
+def V_AddLight (org, intensity, r, g, b):
+	global r_numdlights
+
+	if r_numdlights >= ref.MAX_DLIGHTS:
+		return
+	dl = r_dlights[r_numdlights]
+	q_shared.VectorCopy(org, dl.origin)
+	dl.intensity = intensity
+	dl.color[0] = r
+	dl.color[1] = g
+	dl.color[2] = b
+	r_numdlights += 1
+
+
+def V_AddLightStyle (style, r, g, b):
+	if style < 0 or style > ref.MAX_LIGHTSTYLES:
+		common.Com_Error(q_shared.ERR_DROP, "Bad light style %i" % style)
+	ls = r_lightstyles[style]
+	ls.white = r + g + b
+	ls.rgb[0] = r
+	ls.rgb[1] = g
+	ls.rgb[2] = b
 """
-=====================
-V_AddEntity
-
-=====================
-*/
-void V_AddEntity (entity_t *ent)
-{
-	if (r_numentities >= MAX_ENTITIES)
-		return;
-	r_entities[r_numentities++] = *ent;
-}
-
-
-/*
-=====================
-V_AddParticle
-
-=====================
-*/
-void V_AddParticle (vec3_t org, int color, float alpha)
-{
-	particle_t	*p;
-
-	if (r_numparticles >= MAX_PARTICLES)
-		return;
-	p = &r_particles[r_numparticles++];
-	VectorCopy (org, p->origin);
-	p->color = color;
-	p->alpha = alpha;
-}
-
-/*
-=====================
-V_AddLight
-
-=====================
-*/
-void V_AddLight (vec3_t org, float intensity, float r, float g, float b)
-{
-	dlight_t	*dl;
-
-	if (r_numdlights >= MAX_DLIGHTS)
-		return;
-	dl = &r_dlights[r_numdlights++];
-	VectorCopy (org, dl->origin);
-	dl->intensity = intensity;
-	dl->color[0] = r;
-	dl->color[1] = g;
-	dl->color[2] = b;
-}
-
-
-/*
-=====================
-V_AddLightStyle
-
-=====================
-*/
-void V_AddLightStyle (int style, float r, float g, float b)
-{
-	lightstyle_t	*ls;
-
-	if (style < 0 || style > MAX_LIGHTSTYLES)
-		Com_Error (q_shared.ERR_DROP, "Bad light style %i", style);
-	ls = &r_lightstyles[style];
-
-	ls->white = r+g+b;
-	ls->rgb[0] = r;
-	ls->rgb[1] = g;
-	ls->rgb[2] = b;
-}
 
 /*
 ================
@@ -256,15 +229,12 @@ void V_TestLights (void)
 	}
 }
 
-//===================================================================
-
-/*
-=================
-CL_PrepRefresh
-
-Call before entering a new level, or after changing dlls
-=================
 """
+# ===================================================================
+# CL_PrepRefresh
+#
+# Call before entering a new level, or after changing dlls
+# ===================================================================
 def CL_PrepRefresh ():
 	
 	"""
@@ -354,6 +324,7 @@ def CL_PrepRefresh ():
 
 	CL_LoadClientinfo (&cl_main.cl.baseclientinfo, "unnamed\\male/grunt");
 	"""
+	"""
 	i=0 # DEBUG What should this be?
 
 	# set sky textures and speed
@@ -376,13 +347,12 @@ def CL_PrepRefresh ():
 
 	# start the cd track
 	cd_linux.CDAudio_Play (cl_main.cl.configstrings[q_shared.CS_CDTRACK], True)
+	"""
 
 
-"""
-====================
-CalcFov
-====================
-"""
+# ====================
+# CalcFov
+# ====================
 def CalcFov (fov_x: float, width: float, height: float)->float:
 
 	#float	a;
@@ -400,76 +370,32 @@ def CalcFov (fov_x: float, width: float, height: float)->float:
 	return a
 
 
-"""
-//============================================================================
-"""
+# =============================================================================
 # gun frame debugging functions
 def V_Gun_Next_f ():
 	pass
-	"""
-	gun_frame++;
-	common.Com_Printf ("frame %i\n", gun_frame);
-	"""
+	# C implementation is still unported.
 
 def V_Gun_Prev_f ():
 	pass
-	"""
-	gun_frame--;
-	if (gun_frame < 0)
-		gun_frame = 0;
-	common.Com_Printf ("frame %i\n", gun_frame);
-	"""
+	# C implementation is still unported.
 
 def V_Gun_Model_f ():
 
 	pass
-	"""
-	char	name[MAX_QPATH];
+	# C implementation is still unported.
 
-	if (Cmd_Argc() != 2)
-	{
-		gun_model = NULL;
-		return;
-	}
-	Com_sprintf (name, sizeof(name), "models/%s/tris.md2", Cmd_Argv(1));
-	gun_model = vid_so.re.RegisterModel (name);
-	"""
-
-"""
-//============================================================================
-
-
-/*
-=================
-SCR_DrawCrosshair
-=================
-"""
+# =============================================================================
+# SCR_DrawCrosshair
+# =============================================================================
 def SCR_DrawCrosshair ():
 
 	pass
-	"""
-	if (!crosshair->value)
-		return;
+	# C implementation is still unported.
 
-	if (crosshair->modified)
-	{
-		crosshair->modified = false;
-		SCR_TouchPics ();
-	}
-
-	if (!crosshair_pic[0])
-		return;
-
-	vid_so.re.DrawPic (cl_scrn.scr_vrect.x + ((cl_scrn.scr_vrect.width - crosshair_width)>>1)
-	, cl_scrn.scr_vrect.y + ((cl_scrn.scr_vrect.height - crosshair_height)>>1), crosshair_pic);
-	"""
-
-"""
-==================
-V_RenderView
-
-==================
-"""
+# ==================
+# V_RenderView
+# ==================
 def V_RenderView( stereo_separation: float ):
 
 	global r_numdlights, r_numentities, r_numparticles
@@ -574,22 +500,18 @@ def V_RenderView( stereo_separation: float ):
 
 
 
-"""
-=============
-V_Viewpos_f
-=============
-"""
+# =============
+# V_Viewpos_f
+# =============
 def V_Viewpos_f ():
 
 	common.Com_Printf ("({} {} {}) : {}\n".format(int(cl_main.cl.refdef.vieworg[0]),
 		int(cl_main.cl.refdef.vieworg[1]), int(cl_main.cl.refdef.vieworg[2]), 
 		int(cl_main.cl.refdef.viewangles[YAW])))
 
-"""
-=============
-V_Init
-=============
-"""
+# =============
+# V_Init
+# =============
 def V_Init ():
 
 	global crosshair, cl_testparticles, cl_testentities, cl_testlights, cl_testblend, cl_stats

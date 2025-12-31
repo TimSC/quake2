@@ -81,12 +81,21 @@ class centity_t(object):
 
 
 #define MAX_CLIENTWEAPONMODELS		20		// PGM -- upped from 16 to fit the chainfist vwep
+MAX_CLIENTWEAPONMODELS = 20
 
 class clientinfo_t(object):
 
 	def __init__(self):
 
-		pass
+		self.name = ""
+		self.cinfo = ""
+		self.skin = None
+		self.icon = None
+		self.iconname = ""
+		self.model = None
+		self.weaponmodel = []
+		for _ in range(MAX_CLIENTWEAPONMODELS):
+			self.weaponmodel.append(None)
 		"""
 		char	name[MAX_QPATH];
 		char	cinfo[MAX_QPATH];

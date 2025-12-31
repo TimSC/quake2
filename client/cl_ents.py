@@ -18,10 +18,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import copy
+import random
 import numpy as np
 from qcommon import common, net_chan, qcommon
 from game import q_shared
-from client import cl_main, cl_parse, client, cl_pred, cl_scrn, cl_tent
+from client import cl_main, cl_parse, client, cl_pred, cl_scrn, cl_tent, cl_fx, cl_view, ref
 """
 // cl_ents.c -- entity parsing and management
 
@@ -30,9 +31,9 @@ from client import cl_main, cl_parse, client, cl_pred, cl_scrn, cl_tent
 
 extern	struct model_s	*cl_mod_powerscreen;
 
-//PGM
-int	vidref_val;
-//PGM
+# PGM
+vidref_val = q_shared.VIDREF_GL
+cl_mod_powerscreen = None
 
 /*
 =========================================================================
@@ -1407,6 +1408,226 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 }
 
 
+def CL_AddPacketEntities (frame):
+	autorotate = q_shared.anglemod(cl_main.cl.time / 10)
+	autoanim = int(2 * cl_main.cl.time / 1000)
+
+	for pnum in range(frame.num_entities):
+		s1 = cl_main.cl_parse_entities[
+			(frame.parse_entities + pnum) & (client.MAX_PARSE_ENTITIES - 1)
+		]
+		cent = cl_main.cl_entities[s1.number]
+
+		effects = s1.effects
+		renderfx = s1.renderfx
+
+		ent = ref.entity_t()
+		if effects & q_shared.EF_ANIM01:
+			ent.frame = autoanim & 1
+		elif effects & q_shared.EF_ANIM23:
+			ent.frame = 2 + (autoanim & 1)
+		elif effects & q_shared.EF_ANIM_ALL:
+			ent.frame = autoanim
+		elif effects & q_shared.EF_ANIM_ALLFAST:
+			ent.frame = cl_main.cl.time // 100
+		else:
+			ent.frame = s1.frame
+
+		if effects & q_shared.EF_PENT:
+			effects &= ~q_shared.EF_PENT
+			effects |= q_shared.EF_COLOR_SHELL
+			renderfx |= q_shared.RF_SHELL_RED
+		if effects & q_shared.EF_QUAD:
+			effects &= ~q_shared.EF_QUAD
+			effects |= q_shared.EF_COLOR_SHELL
+			renderfx |= q_shared.RF_SHELL_BLUE
+		if effects & q_shared.EF_DOUBLE:
+			effects &= ~q_shared.EF_DOUBLE
+			effects |= q_shared.EF_COLOR_SHELL
+			renderfx |= q_shared.RF_SHELL_DOUBLE
+		if effects & q_shared.EF_HALF_DAMAGE:
+			effects &= ~q_shared.EF_HALF_DAMAGE
+			effects |= q_shared.EF_COLOR_SHELL
+			renderfx |= q_shared.RF_SHELL_HALF_DAM
+
+		ent.oldframe = cent.prev.frame
+		ent.backlerp = 1.0 - cl_main.cl.lerpfrac
+
+		if renderfx & (q_shared.RF_FRAMELERP | q_shared.RF_BEAM):
+			q_shared.VectorCopy(cent.current.origin, ent.origin)
+			q_shared.VectorCopy(cent.current.old_origin, ent.oldorigin)
+		else:
+			for i in range(3):
+				ent.origin[i] = ent.oldorigin[i] = (
+					cent.prev.origin[i]
+					+ cl_main.cl.lerpfrac * (cent.current.origin[i] - cent.prev.origin[i])
+				)
+
+		if renderfx & q_shared.RF_BEAM:
+			ent.alpha = 0.30
+			ent.skinnum = (s1.skinnum >> ((random.randint(0, 3)) * 8)) & 0xff
+			ent.model = None
+		else:
+			if s1.modelindex == 255:
+				ent.skinnum = 0
+				ci = cl_main.cl.clientinfo[s1.skinnum & 0xff]
+				ent.skin = ci.skin
+				ent.model = ci.model
+				if not ent.skin or not ent.model:
+					ent.skin = cl_main.cl.baseclientinfo.skin
+					ent.model = cl_main.cl.baseclientinfo.model
+			else:
+				ent.skinnum = s1.skinnum
+				ent.skin = None
+				ent.model = cl_main.cl.model_draw[s1.modelindex]
+
+		if renderfx == q_shared.RF_TRANSLUCENT:
+			ent.alpha = 0.70
+
+		if effects & q_shared.EF_COLOR_SHELL:
+			ent.flags = 0
+		else:
+			ent.flags = renderfx
+
+		if effects & q_shared.EF_ROTATE:
+			ent.angles[0] = 0
+			ent.angles[1] = autorotate
+			ent.angles[2] = 0
+		elif effects & q_shared.EF_SPINNINGLIGHTS:
+			ent.angles[0] = 0
+			ent.angles[1] = q_shared.anglemod(cl_main.cl.time / 2) + s1.angles[1]
+			ent.angles[2] = 180
+		else:
+			for i in range(3):
+				ent.angles[i] = q_shared.LerpAngle(
+					cent.prev.angles[i], cent.current.angles[i], cl_main.cl.lerpfrac
+				)
+
+		if s1.number == cl_main.cl.playernum + 1:
+			ent.flags |= q_shared.RF_VIEWERMODEL
+			if effects & q_shared.EF_FLAG1:
+				cl_view.V_AddLight(ent.origin, 225, 1.0, 0.1, 0.1)
+			elif effects & q_shared.EF_FLAG2:
+				cl_view.V_AddLight(ent.origin, 225, 0.1, 0.1, 1.0)
+			elif effects & q_shared.EF_TAGTRAIL:
+				cl_view.V_AddLight(ent.origin, 225, 1.0, 1.0, 0.0)
+			elif effects & q_shared.EF_TRACKERTRAIL:
+				cl_view.V_AddLight(ent.origin, 225, -1.0, -1.0, -1.0)
+			continue
+
+		if not s1.modelindex:
+			continue
+
+		if effects & q_shared.EF_BFG:
+			ent.flags |= q_shared.RF_TRANSLUCENT
+			ent.alpha = 0.30
+		if effects & q_shared.EF_PLASMA:
+			ent.flags |= q_shared.RF_TRANSLUCENT
+			ent.alpha = 0.6
+		if effects & q_shared.EF_SPHERETRANS:
+			ent.flags |= q_shared.RF_TRANSLUCENT
+			ent.alpha = 0.6 if (effects & q_shared.EF_TRACKERTRAIL) else 0.3
+
+		cl_view.V_AddEntity(ent)
+
+		if effects & q_shared.EF_COLOR_SHELL:
+			shell_ent = copy.deepcopy(ent)
+			shell_ent.flags = renderfx | q_shared.RF_TRANSLUCENT
+			shell_ent.alpha = 0.30
+			cl_view.V_AddEntity(shell_ent)
+
+		ent.skin = None
+		ent.skinnum = 0
+		ent.flags = 0
+		ent.alpha = 0.0
+
+		if s1.modelindex2:
+			if s1.modelindex2 == 255:
+				ci = cl_main.cl.clientinfo[s1.skinnum & 0xff]
+				i = (s1.skinnum >> 8)
+				if not cl_main.cl_vwep.value or i > client.MAX_CLIENTWEAPONMODELS - 1:
+					i = 0
+				ent.model = ci.weaponmodel[i]
+				if not ent.model:
+					if i != 0:
+						ent.model = ci.weaponmodel[0]
+					if not ent.model:
+						ent.model = cl_main.cl.baseclientinfo.weaponmodel[0]
+			else:
+				ent.model = cl_main.cl.model_draw[s1.modelindex2]
+
+			if cl_main.cl.configstrings[q_shared.CS_MODELS + s1.modelindex2] == "models/items/shell/tris.md2":
+				ent.alpha = 0.32
+				ent.flags = q_shared.RF_TRANSLUCENT
+
+			cl_view.V_AddEntity(ent)
+			ent.flags = 0
+			ent.alpha = 0.0
+
+		if s1.modelindex3:
+			ent.model = cl_main.cl.model_draw[s1.modelindex3]
+			cl_view.V_AddEntity(ent)
+		if s1.modelindex4:
+			ent.model = cl_main.cl.model_draw[s1.modelindex4]
+			cl_view.V_AddEntity(ent)
+
+		if effects & q_shared.EF_POWERSCREEN and cl_mod_powerscreen is not None:
+			ent.model = cl_mod_powerscreen
+			ent.oldframe = 0
+			ent.frame = 0
+			ent.flags |= (q_shared.RF_TRANSLUCENT | q_shared.RF_SHELL_GREEN)
+			ent.alpha = 0.30
+			cl_view.V_AddEntity(ent)
+
+		if (effects & ~q_shared.EF_ROTATE):
+			if effects & q_shared.EF_ROCKET and hasattr(cl_fx, "CL_RocketTrail"):
+				cl_fx.CL_RocketTrail(cent.lerp_origin, ent.origin)
+				cl_view.V_AddLight(ent.origin, 200, 1, 1, 0)
+			elif effects & q_shared.EF_BLASTER and hasattr(cl_fx, "CL_BlasterTrail"):
+				cl_fx.CL_BlasterTrail(cent.lerp_origin, ent.origin)
+				cl_view.V_AddLight(ent.origin, 200, 1, 1, 0)
+			elif effects & q_shared.EF_GIB and hasattr(cl_fx, "CL_DiminishingTrail"):
+				cl_fx.CL_DiminishingTrail(cent.lerp_origin, ent.origin, cent, effects)
+			elif effects & q_shared.EF_GRENADE and hasattr(cl_fx, "CL_DiminishingTrail"):
+				cl_fx.CL_DiminishingTrail(cent.lerp_origin, ent.origin, cent, effects)
+			elif effects & q_shared.EF_FLIES and hasattr(cl_fx, "CL_FlyEffect"):
+				cl_fx.CL_FlyEffect(cent, ent.origin)
+			elif effects & q_shared.EF_BFG:
+				cl_view.V_AddLight(ent.origin, 200, 0, 1, 0)
+
+		q_shared.VectorCopy(ent.origin, cent.lerp_origin)
+
+
+def CL_AddViewWeapon (ps, ops):
+	if not cl_main.cl_gun.value:
+		return
+	if ps.fov > 90:
+		return
+
+	gun = ref.entity_t()
+	gun.model = cl_main.cl.model_draw[ps.gunindex]
+	if gun.model is None:
+		return
+
+	for i in range(3):
+		gun.origin[i] = cl_main.cl.refdef.vieworg[i] + ops.gunoffset[i] + \
+			cl_main.cl.lerpfrac * (ps.gunoffset[i] - ops.gunoffset[i])
+		gun.angles[i] = cl_main.cl.refdef.viewangles[i] + q_shared.LerpAngle(
+			ops.gunangles[i], ps.gunangles[i], cl_main.cl.lerpfrac
+		)
+
+	gun.frame = ps.gunframe
+	if gun.frame == 0:
+		gun.oldframe = 0
+	else:
+		gun.oldframe = ops.gunframe
+
+	gun.flags = q_shared.RF_MINLIGHT | q_shared.RF_DEPTHHACK | q_shared.RF_WEAPONMODEL
+	gun.backlerp = 1.0 - cl_main.cl.lerpfrac
+	q_shared.VectorCopy(gun.origin, gun.oldorigin)
+	cl_view.V_AddEntity(gun)
+
+
 /*
 ===============
 CL_CalcViewValues
@@ -1506,55 +1727,44 @@ Emits all entities, particles, and lights to the refresh
 ===============
 """
 def CL_AddEntities ():
-	print ("CL_AddEntities")
+	if cl_main.cls.state != client.connstate_t.ca_active:
+		return
 
-	pass
-	"""
-
-	if (cls.state != ca_active)
-		return;
-
-	if (cl_main.cl.time > cl_main.cl.frame.servertime)
-	{
-		if (cl_showclamp.value)
-			Com_Printf ("high clamp %i\n", cl_main.cl.time - cl_main.cl.frame.servertime);
-		cl_main.cl.time = cl_main.cl.frame.servertime;
-		cl_main.cl.lerpfrac = 1.0;
-	}
-	else if (cl_main.cl.time < cl_main.cl.frame.servertime - 100)
-	{
-		if (cl_showclamp.value)
-			Com_Printf ("low clamp %i\n", cl_main.cl.frame.servertime-100 - cl_main.cl.time);
-		cl_main.cl.time = cl_main.cl.frame.servertime - 100;
-		cl_main.cl.lerpfrac = 0;
-	}
-	else
-		cl_main.cl.lerpfrac = 1.0 - (cl_main.cl.frame.servertime - cl_main.cl.time) * 0.01;
-	"""
-	if int(cl_main.cl_timedemo.value):
+	if cl_main.cl.time > cl_main.cl.frame.servertime:
+		if cl_main.cl_showclamp and cl_main.cl_showclamp.value:
+			common.Com_Printf(
+				"high clamp %i\n" % (cl_main.cl.time - cl_main.cl.frame.servertime)
+			)
+		cl_main.cl.time = cl_main.cl.frame.servertime
 		cl_main.cl.lerpfrac = 1.0
-	"""
-//	CL_AddPacketEntities (&cl_main.cl.frame);
-//	CL_AddTEnts ();
-//	CL_AddParticles ();
-//	CL_AddDLights ();
-//	CL_AddLightStyles ();
+	elif cl_main.cl.time < cl_main.cl.frame.servertime - 100:
+		if cl_main.cl_showclamp and cl_main.cl_showclamp.value:
+			common.Com_Printf(
+				"low clamp %i\n" % (cl_main.cl.frame.servertime - 100 - cl_main.cl.time)
+			)
+		cl_main.cl.time = cl_main.cl.frame.servertime - 100
+		cl_main.cl.lerpfrac = 0.0
+	else:
+		cl_main.cl.lerpfrac = 1.0 - (cl_main.cl.frame.servertime - cl_main.cl.time) * 0.01
 
-	"""
-	CL_CalcViewValues ()
-	"""
-	// PMM - moved this here so the heat beam has the right values for the vieworg, and can lock the beam to the gun
-	CL_AddPacketEntities (&cl_main.cl.frame);
-#if 0
-	CL_AddProjectiles ();
-#endif
-	"""
-	cl_tent.CL_AddTEnts ()
-	"""
-	CL_AddParticles ();
-	CL_AddDLights ();
-	CL_AddLightStyles ();
-	"""
+	if cl_main.cl_timedemo and int(cl_main.cl_timedemo.value):
+		cl_main.cl.lerpfrac = 1.0
+
+	CL_CalcViewValues()
+
+	add_packet = globals().get("CL_AddPacketEntities")
+	if callable(add_packet):
+		add_packet(cl_main.cl.frame)
+
+	if hasattr(cl_tent, "CL_AddTEnts"):
+		cl_tent.CL_AddTEnts()
+
+	if hasattr(cl_fx, "CL_AddParticles"):
+		cl_fx.CL_AddParticles()
+	if hasattr(cl_fx, "CL_AddDLights"):
+		cl_fx.CL_AddDLights()
+	if hasattr(cl_fx, "CL_AddLightStyles"):
+		cl_fx.CL_AddLightStyles()
 
 
 

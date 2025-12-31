@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
+import math
 from enum import Enum
 import numpy as np
 """
@@ -67,6 +68,9 @@ typedef enum {false, true}	qboolean;
 #define	PITCH				0		// up / down
 #define	YAW					1		// left / right
 #define	ROLL				2		// fall over
+PITCH = 0
+YAW = 1
+ROLL = 2
 """
 MAX_STRING_CHARS = 1024	# max length of a string passed to Cmd_TokenizeString
 
@@ -160,6 +164,73 @@ extern long Q_ftol( float f );
 #define VectorAdd(a,b,c)		(c[0]=a[0]+b[0],c[1]=a[1]+b[1],c[2]=a[2]+b[2])
 """
 def VectorCopy(a,b): b[:]=a[:]
+def VectorAdd(a, b, out): out[:] = a + b
+def VectorSubtract(a, b, out): out[:] = a - b
+def VectorScale(vec, scale, out): out[:] = vec * scale
+def VectorMA(veca, scale, vecb, vecc): vecc[:] = veca + scale * vecb
+
+def DotProduct(v1, v2):
+	return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
+
+def CrossProduct(v1, v2, cross):
+	cross[0] = v1[1]*v2[2] - v1[2]*v2[1]
+	cross[1] = v1[2]*v2[0] - v1[0]*v2[2]
+	cross[2] = v1[0]*v2[1] - v1[1]*v2[0]
+
+def VectorNormalize(v):
+	length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2]
+	length = math.sqrt(length)
+	if length:
+		ilength = 1.0 / length
+		v[0] *= ilength
+		v[1] *= ilength
+		v[2] *= ilength
+	return length
+
+def VectorNormalize2(v, out):
+	length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2]
+	length = math.sqrt(length)
+	if length:
+		ilength = 1.0 / length
+		out[0] = v[0]*ilength
+		out[1] = v[1]*ilength
+		out[2] = v[2]*ilength
+	return length
+
+def LerpAngle(a2, a1, frac):
+	if a1 - a2 > 180:
+		a1 -= 360
+	if a1 - a2 < -180:
+		a1 += 360
+	return a2 + frac * (a1 - a2)
+
+def anglemod(a):
+	return (360.0 / 65536.0) * (int(a * (65536.0 / 360.0)) & 65535)
+
+def AngleVectors(angles, forward, right, up):
+	pitch = math.radians(angles[PITCH])
+	yaw = math.radians(angles[YAW])
+	roll = math.radians(angles[ROLL])
+
+	sp = math.sin(pitch)
+	cp = math.cos(pitch)
+	sy = math.sin(yaw)
+	cy = math.cos(yaw)
+	sr = math.sin(roll)
+	cr = math.cos(roll)
+
+	if forward is not None:
+		forward[0] = cp * cy
+		forward[1] = cp * sy
+		forward[2] = -sp
+	if right is not None:
+		right[0] = (-sr * sp * cy) + (-cr * -sy)
+		right[1] = (-sr * sp * sy) + (-cr * cy)
+		right[2] = -sr * cp
+	if up is not None:
+		up[0] = (cr * sp * cy) + (-sr * -sy)
+		up[1] = (cr * sp * sy) + (-sr * cy)
+		up[2] = cr * cp
 def VectorClear(a):	a[0]=0;a[1]=0;a[2]=0
 """
 #define VectorNegate(a,b)		(b[0]=-a[0],b[1]=-a[1],b[2]=-a[2])
@@ -606,6 +677,38 @@ typedef struct
 #define EF_TRACKERTRAIL		0x80000000
 //ROGUE
 """
+# entity_state_t->effects (Python constants)
+EF_ROTATE = 0x00000001
+EF_GIB = 0x00000002
+EF_BLASTER = 0x00000008
+EF_ROCKET = 0x00000010
+EF_GRENADE = 0x00000020
+EF_HYPERBLASTER = 0x00000040
+EF_BFG = 0x00000080
+EF_COLOR_SHELL = 0x00000100
+EF_POWERSCREEN = 0x00000200
+EF_ANIM01 = 0x00000400
+EF_ANIM23 = 0x00000800
+EF_ANIM_ALL = 0x00001000
+EF_ANIM_ALLFAST = 0x00002000
+EF_FLIES = 0x00004000
+EF_QUAD = 0x00008000
+EF_PENT = 0x00010000
+EF_TELEPORTER = 0x00020000
+EF_FLAG1 = 0x00040000
+EF_FLAG2 = 0x00080000
+EF_IONRIPPER = 0x00100000
+EF_GREENGIB = 0x00200000
+EF_BLUEHYPERBLASTER = 0x00400000
+EF_SPINNINGLIGHTS = 0x00800000
+EF_PLASMA = 0x01000000
+EF_TRAP = 0x02000000
+EF_TRACKER = 0x04000000
+EF_DOUBLE = 0x08000000
+EF_SPHERETRANS = 0x10000000
+EF_TAGTRAIL = 0x20000000
+EF_HALF_DAMAGE = 0x40000000
+EF_TRACKERTRAIL = 0x80000000
 # entity_state_t->renderfx flags
 RF_MINLIGHT			= 1		# allways have some light (viewmodel)
 RF_VIEWERMODEL		= 2		# don't draw through eyes, only mirrors
@@ -620,6 +723,11 @@ RF_GLOW				= 512		# pulse lighting for bonus items
 RF_SHELL_RED		= 1024
 RF_SHELL_GREEN		= 2048
 RF_SHELL_BLUE		= 4096
+# ROGUE renderfx flags
+RF_IR_VISIBLE = 0x00008000
+RF_SHELL_DOUBLE = 0x00010000
+RF_SHELL_HALF_DAM = 0x00020000
+RF_USE_DISGUISE = 0x00040000
 """
 //ROGUE
 #define RF_IR_VISIBLE		0x00008000		// 32768
@@ -1243,6 +1351,9 @@ class player_state_t(object):
 extern int vidref_val;
 // PGM
 // ==================
+VIDREF_GL = 1
+VIDREF_SOFT = 2
+VIDREF_OTHER = 3
 
 #define DEG2RAD( a ) ( a * M_PI ) / 180.0F
 

@@ -63,6 +63,17 @@ class entity_t(object):
 		*/
 		"""
 		self.origin = np.zeros((3,), dtype=np.float32) #float [3], also used as RF_BEAM's "from"
+		self.frame = 0
+
+		# previous data for lerping
+		self.oldorigin = np.zeros((3,), dtype=np.float32) #float [3], also used as RF_BEAM's "to"
+		self.oldframe = 0
+
+		# misc
+		self.backlerp = 0.0
+		self.skinnum = 0
+		self.lightstyle = 0
+		self.alpha = 1.0
 		"""
 		int					frame;			// also used as RF_BEAM's diameter
 

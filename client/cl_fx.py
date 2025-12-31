@@ -17,9 +17,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import numpy as np
+import math
+import random
 from qcommon import common, net_chan
 from game import q_shared
-from client import cl_main
+from client import cl_main, cl_view, ref, snd_dma
 """
 // cl_fx.c -- entity effects parsing and management
 
@@ -40,29 +43,32 @@ LIGHT STYLE MANAGEMENT
 
 ==============================================================
 */
-
-typedef struct
-{
-	int		length;
-	float	value[3];
-	float	map[MAX_QPATH];
-} clightstyle_t;
-
-clightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
-int			lastofs;
-
-/*
-================
-CL_ClearLightStyles
-================
 """
+
+class clightstyle_t(object):
+
+	def __init__(self):
+		self.length = 0
+		self.value = np.ones((3,), dtype=np.float32)
+		self.map = np.zeros((q_shared.MAX_QPATH,), dtype=np.float32)
+
+
+cl_lightstyle = []
+for _ in range(ref.MAX_LIGHTSTYLES):
+	cl_lightstyle.append(clightstyle_t())
+lastofs = -1
+
+# ====================
+# CL_ClearLightStyles
+# ====================
 def CL_ClearLightStyles ():
 
-	print ("CL_ClearLightStyles")
-	"""
-	memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
-	lastofs = -1;
-	"""
+	global lastofs
+	for ls in cl_lightstyle:
+		ls.length = 0
+		ls.value[:] = 0.0
+		ls.map[:] = 0.0
+	lastofs = -1
 
 """
 ================
@@ -95,58 +101,75 @@ void CL_RunLightStyles (void)
 }
 
 """
+def CL_RunLightStyles ():
+	global lastofs
+
+	ofs = cl_main.cl.time // 100
+	if ofs == lastofs:
+		return
+	lastofs = ofs
+
+	for ls in cl_lightstyle:
+		if not ls.length:
+			ls.value[0] = ls.value[1] = ls.value[2] = 1.0
+			continue
+		if ls.length == 1:
+			val = ls.map[0]
+		else:
+			val = ls.map[ofs % ls.length]
+		ls.value[0] = ls.value[1] = ls.value[2] = val
+
+
 def CL_SetLightstyle (i: int):
 
-	print ("CL_SetLightstyle")
-	"""
-	char	*s;
-	int		j, k;
+	s = cl_main.cl.configstrings[i + q_shared.CS_LIGHTS]
+	if s is None:
+		return
 
-	s = cl.configstrings[i+CS_LIGHTS];
+	j = len(s)
+	if j >= q_shared.MAX_QPATH:
+		common.Com_Error(q_shared.ERR_DROP, "svc_lightstyle length=%i" % j)
 
-	j = strlen (s);
-	if (j >= MAX_QPATH)
-		Com_Error (q_shared.ERR_DROP, "svc_lightstyle length=%i", j);
+	ls = cl_lightstyle[i]
+	ls.length = j
+	for k in range(j):
+		ls.map[k] = (ord(s[k]) - ord("a")) / float(ord("m") - ord("a"))
+	# C implementation omitted.
+def CL_AddLightStyles ():
+	for i, ls in enumerate(cl_lightstyle):
+		cl_view.V_AddLightStyle(i, ls.value[0], ls.value[1], ls.value[2])
 
-	cl_lightstyle[i].length = j;
 
-	for (k=0 ; k<j ; k++)
-		cl_lightstyle[i].map[k] = (float)(s[k]-'a')/(float)('m'-'a');
-}
+class cdlight_t(object):
 
-/*
-================
-CL_AddLightStyles
-================
-*/
-void CL_AddLightStyles (void)
-{
-	int		i;
-	clightstyle_t	*ls;
+	def __init__(self):
+		self.key = 0
+		self.color = np.zeros((3,), dtype=np.float32)
+		self.origin = np.zeros((3,), dtype=np.float32)
+		self.radius = 0.0
+		self.die = 0.0
+		self.decay = 0.0
+		self.minlight = 0.0
 
-	for (i=0,ls=cl_lightstyle ; i<MAX_LIGHTSTYLES ; i++, ls++)
-		V_AddLightStyle (i, ls->value[0], ls->value[1], ls->value[2]);
-}
+	def clear(self):
+		self.key = 0
+		self.color[:] = 0.0
+		self.origin[:] = 0.0
+		self.radius = 0.0
+		self.die = 0.0
+		self.decay = 0.0
+		self.minlight = 0.0
 
-/*
-==============================================================
 
-DLIGHT MANAGEMENT
+cl_dlights = []
+for _ in range(ref.MAX_DLIGHTS):
+	cl_dlights.append(cdlight_t())
 
-==============================================================
-*/
 
-cdlight_t		cl_dlights[MAX_DLIGHTS];
-
-/*
-================
-CL_ClearDlights
-================
-"""
 def CL_ClearDlights ():
 
-	print ("CL_ClearDlights")
-	#memset (cl_dlights, 0, sizeof(cl_dlights));
+	for dl in cl_dlights:
+		dl.clear()
 
 
 """
@@ -244,6 +267,55 @@ void CL_RunDLights (void)
 CL_ParseMuzzleFlash
 ==============
 """
+def CL_AllocDlight (key):
+	# first look for exact key match
+	if key:
+		for dl in cl_dlights:
+			if dl.key == key:
+				dl.clear()
+				dl.key = key
+				return dl
+
+	# then look for an expired one
+	for dl in cl_dlights:
+		if dl.die < cl_main.cl.time:
+			dl.clear()
+			dl.key = key
+			return dl
+
+	dl = cl_dlights[0]
+	dl.clear()
+	dl.key = key
+	return dl
+
+
+def CL_NewDlight (key, x, y, z, radius, time):
+	dl = CL_AllocDlight(key)
+	dl.origin[0] = x
+	dl.origin[1] = y
+	dl.origin[2] = z
+	dl.radius = radius
+	dl.die = cl_main.cl.time + time
+
+
+def CL_RunDLights ():
+	for dl in cl_dlights:
+		if not dl.radius:
+			continue
+		if dl.die < cl_main.cl.time:
+			dl.radius = 0.0
+			continue
+		dl.radius -= cl_main.cls.frametime * dl.decay
+		if dl.radius < 0:
+			dl.radius = 0.0
+
+
+def CL_AddDLights ():
+	for dl in cl_dlights:
+		if not dl.radius:
+			continue
+		cl_view.V_AddLight(dl.origin, dl.radius, dl.color[0], dl.color[1], dl.color[2])
+
 def CL_ParseMuzzleFlash ():
 	
 	"""
@@ -440,14 +512,6 @@ CL_ParseMuzzleFlash2
 def CL_ParseMuzzleFlash2 ():
 
 	print ("CL_ParseMuzzleFlash2")
-	"""
-	int			ent;
-	vec3_t		origin;
-	int			flash_number;
-	cdlight_t	*dl;
-	vec3_t		forward, right;
-	char		soundname[64];
-	"""
 
 	ent = common.MSG_ReadShort (net_chan.net_message)
 	if ent < 1 or ent >= q_shared.MAX_EDICTS:
@@ -908,9 +972,45 @@ int			cl_numparticles = MAX_PARTICLES;
 CL_ClearParticles
 ===============
 """
+class cparticle_t(object):
+
+	def __init__(self):
+		self.time = 0.0
+		self.org = np.zeros((3,), dtype=np.float32)
+		self.vel = np.zeros((3,), dtype=np.float32)
+		self.accel = np.zeros((3,), dtype=np.float32)
+		self.color = 0
+		self.colorvel = 0.0
+		self.alpha = 0.0
+		self.alphavel = 0.0
+
+
+PARTICLE_GRAVITY = 40.0
+INSTANT_PARTICLE = 10000.0
+
+cl_numparticles = ref.MAX_PARTICLES
+particles = []
+for _ in range(cl_numparticles):
+	particles.append(cparticle_t())
+active_particles = []
+free_particles = particles[:]
+
+
+def _alloc_particle():
+	if not free_particles:
+		return None
+	return free_particles.pop()
+
+
+def _free_particle(p):
+	free_particles.append(p)
+
+
 def CL_ClearParticles ():
 
-	pass
+	active_particles.clear()
+	free_particles.clear()
+	free_particles.extend(particles)
 	"""
 	int		i;
 	
@@ -932,711 +1032,79 @@ Wall impact puffs
 """
 def CL_ParticleEffect (org, dirIn, color, count): #vec3_t org, vec3_t dir, int color, int count
 
-	pass
+	for _ in range(count):
+		p = _alloc_particle()
+		if p is None:
+			return
+		p.time = cl_main.cl.time
+		p.color = color + (random.randint(0, 7))
+		d = random.randint(0, 31)
+		for j in range(3):
+			p.org[j] = org[j] + (random.randint(0, 7) - 4) + d * dirIn[j]
+			p.vel[j] = (random.random() * 2.0 - 1.0) * 20.0
+		p.accel[0] = 0.0
+		p.accel[1] = 0.0
+		p.accel[2] = -PARTICLE_GRAVITY
+		p.alpha = 1.0
+		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
+		active_particles.append(p)
 	"""
-	int			i, j;
-	cparticle_t	*p;
-	float		d;
 
-	for (i=0 ; i<count ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		p->color = color + (rand()&7);
-
-		d = rand()&31;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = org[j] + ((rand()&7)-4) + d*dir[j];
-			p->vel[j] = crand()*20;
-		}
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -1.0 / (0.5 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_ParticleEffect2
-===============
-*/
-void CL_ParticleEffect2 (vec3_t org, vec3_t dir, int color, int count)
-{
-	int			i, j;
-	cparticle_t	*p;
-	float		d;
-
-	for (i=0 ; i<count ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		p->color = color;
-
-		d = rand()&7;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = org[j] + ((rand()&7)-4) + d*dir[j];
-			p->vel[j] = crand()*20;
-		}
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -1.0 / (0.5 + frand()*0.3);
-	}
-}
-
-
-// RAFAEL
-/*
-===============
-CL_ParticleEffect3
-===============
-*/
-void CL_ParticleEffect3 (vec3_t org, vec3_t dir, int color, int count)
-{
-	int			i, j;
-	cparticle_t	*p;
-	float		d;
-
-	for (i=0 ; i<count ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		p->color = color;
-
-		d = rand()&7;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = org[j] + ((rand()&7)-4) + d*dir[j];
-			p->vel[j] = crand()*20;
-		}
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -1.0 / (0.5 + frand()*0.3);
-	}
-}
-
-/*
-===============
-CL_TeleporterParticles
-===============
-*/
-void CL_TeleporterParticles (entity_state_t *ent)
-{
-	int			i, j;
-	cparticle_t	*p;
-
-	for (i=0 ; i<8 ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		p->color = 0xdb;
-
-		for (j=0 ; j<2 ; j++)
-		{
-			p->org[j] = ent->origin[j] - 16 + (rand()&31);
-			p->vel[j] = crand()*14;
-		}
-
-		p->org[2] = ent->origin[2] - 8 + (rand()&7);
-		p->vel[2] = 80 + (rand()&7);
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -0.5;
-	}
-}
-
-
-/*
-===============
-CL_LogoutEffect
-
-===============
-*/
-void CL_LogoutEffect (vec3_t org, int type)
-{
-	int			i, j;
-	cparticle_t	*p;
-
-	for (i=0 ; i<500 ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
-		if (type == MZ_LOGIN)
-			p->color = 0xd0 + (rand()&7);	// green
-		else if (type == MZ_LOGOUT)
-			p->color = 0x40 + (rand()&7);	// red
-		else
-			p->color = 0xe0 + (rand()&7);	// yellow
-
-		p->org[0] = org[0] - 16 + frand()*32;
-		p->org[1] = org[1] - 16 + frand()*32;
-		p->org[2] = org[2] - 24 + frand()*56;
-
-		for (j=0 ; j<3 ; j++)
-			p->vel[j] = crand()*20;
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -1.0 / (1.0 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_ItemRespawnParticles
-
-===============
-*/
-void CL_ItemRespawnParticles (vec3_t org)
-{
-	int			i, j;
-	cparticle_t	*p;
-
-	for (i=0 ; i<64 ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
-		p->color = 0xd4 + (rand()&3);	// green
-
-		p->org[0] = org[0] + crand()*8;
-		p->org[1] = org[1] + crand()*8;
-		p->org[2] = org[2] + crand()*8;
-
-		for (j=0 ; j<3 ; j++)
-			p->vel[j] = crand()*8;
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY*0.2;
-		p->alpha = 1.0;
-
-		p->alphavel = -1.0 / (1.0 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_ExplosionParticles
-===============
-"""
-def CL_ExplosionParticles (org): #vec3_t
-
-	print ("CL_ExplosionParticles")
-	"""
-	int			i, j;
-	cparticle_t	*p;
-
-	for (i=0 ; i<256 ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		p->color = 0xe0 + (rand()&7);
-
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = org[j] + ((rand()%32)-16);
-			p->vel[j] = (rand()%384)-192;
-		}
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -0.8 / (0.5 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_BigTeleportParticles
-===============
-*/
-void CL_BigTeleportParticles (vec3_t org)
-{
-	int			i;
-	cparticle_t	*p;
-	float		angle, dist;
-	static int colortable[4] = {2*8,13*8,21*8,18*8};
-
-	for (i=0 ; i<4096 ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
-		p->color = colortable[rand()&3];
-
-		angle = M_PI*2*(rand()&1023)/1023.0;
-		dist = rand()&31;
-		p->org[0] = org[0] + cos(angle)*dist;
-		p->vel[0] = cos(angle)*(70+(rand()&63));
-		p->accel[0] = -cos(angle)*100;
-
-		p->org[1] = org[1] + sin(angle)*dist;
-		p->vel[1] = sin(angle)*(70+(rand()&63));
-		p->accel[1] = -sin(angle)*100;
-
-		p->org[2] = org[2] + 8 + (rand()%90);
-		p->vel[2] = -100 + (rand()&31);
-		p->accel[2] = PARTICLE_GRAVITY*4;
-		p->alpha = 1.0;
-
-		p->alphavel = -0.3 / (0.5 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_BlasterParticles
-
-Wall impact puffs
-===============
-"""
+def CL_BigTeleportParticles(org):
+	color_table = [2 * 8, 13 * 8, 21 * 8, 18 * 8]
+	for _ in range(4096):
+		p = _alloc_particle()
+		if p is None:
+			return
+		p.time = cl_main.cl.time
+		p.color = color_table[random.randint(0, 3)]
+
+		angle = math.pi * 2.0 * random.randint(0, 1023) / 1023.0
+		dist = random.randint(0, 31)
+		cos_a = math.cos(angle)
+		sin_a = math.sin(angle)
+
+		p.org[0] = org[0] + cos_a * dist
+		p.vel[0] = cos_a * (70 + random.randint(0, 63))
+		p.accel[0] = -cos_a * 100.0
+
+		p.org[1] = org[1] + sin_a * dist
+		p.vel[1] = sin_a * (70 + random.randint(0, 63))
+		p.accel[1] = -sin_a * 100.0
+
+		p.org[2] = org[2] + 8 + random.randint(0, 89)
+		p.vel[2] = -100 + random.randint(0, 31)
+		p.accel[2] = PARTICLE_GRAVITY * 4.0
+		p.alpha = 1.0
+		p.alphavel = -0.3 / (0.5 + random.random() * 0.3)
+		active_particles.append(p)
+
+# ===============
+# CL_BlasterParticles
+#
+# Wall impact puffs
+# ===============
 def CL_BlasterParticles (org, readdir): # vec3_t, vec3_t
 
-	print ("CL_BlasterParticles")
-	"""
-	int			i, j;
-	cparticle_t	*p;
-	float		d;
-	int			count;
+	dirIn = readdir
+	for _ in range(40):
+		p = _alloc_particle()
+		if p is None:
+			return
+		p.time = cl_main.cl.time
+		p.color = 0xE0 + random.randint(0, 7)
 
-	count = 40;
-	for (i=0 ; i<count ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
+		d = random.randint(0, 15)
+		for j in range(3):
+			p.org[j] = org[j] + (random.randint(0, 7) - 4) + d * dirIn[j]
+			p.vel[j] = dirIn[j] * 30.0 + (random.random() * 2.0 - 1.0) * 40.0
 
-		p->time = cl.time;
-		p->color = 0xe0 + (rand()&7);
-
-		d = rand()&15;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = org[j] + ((rand()&7)-4) + d*dir[j];
-			p->vel[j] = dir[j] * 30 + crand()*40;
-		}
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -1.0 / (0.5 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_BlasterTrail
-
-===============
-*/
-void CL_BlasterTrail (vec3_t start, vec3_t end)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	float		len;
-	int			j;
-	cparticle_t	*p;
-	int			dec;
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	dec = 5;
-	VectorScale (vec, 5, vec);
-
-	// FIXME: this is a really silly way to have a loop
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-		VectorClear (p->accel);
-		
-		p->time = cl.time;
-
-		p->alpha = 1.0;
-		p->alphavel = -1.0 / (0.3+frand()*0.2);
-		p->color = 0xe0;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = move[j] + crand();
-			p->vel[j] = crand()*5;
-			p->accel[j] = 0;
-		}
-
-		VectorAdd (move, vec, move);
-	}
-}
-
-/*
-===============
-CL_QuadTrail
-
-===============
-*/
-void CL_QuadTrail (vec3_t start, vec3_t end)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	float		len;
-	int			j;
-	cparticle_t	*p;
-	int			dec;
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	dec = 5;
-	VectorScale (vec, 5, vec);
-
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-		VectorClear (p->accel);
-		
-		p->time = cl.time;
-
-		p->alpha = 1.0;
-		p->alphavel = -1.0 / (0.8+frand()*0.2);
-		p->color = 115;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = move[j] + crand()*16;
-			p->vel[j] = crand()*5;
-			p->accel[j] = 0;
-		}
-
-		VectorAdd (move, vec, move);
-	}
-}
-
-/*
-===============
-CL_FlagTrail
-
-===============
-*/
-void CL_FlagTrail (vec3_t start, vec3_t end, float color)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	float		len;
-	int			j;
-	cparticle_t	*p;
-	int			dec;
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	dec = 5;
-	VectorScale (vec, 5, vec);
-
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-		VectorClear (p->accel);
-		
-		p->time = cl.time;
-
-		p->alpha = 1.0;
-		p->alphavel = -1.0 / (0.8+frand()*0.2);
-		p->color = color;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = move[j] + crand()*16;
-			p->vel[j] = crand()*5;
-			p->accel[j] = 0;
-		}
-
-		VectorAdd (move, vec, move);
-	}
-}
-
-/*
-===============
-CL_DiminishingTrail
-
-===============
-*/
-void CL_DiminishingTrail (vec3_t start, vec3_t end, centity_t *old, int flags)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	float		len;
-	int			j;
-	cparticle_t	*p;
-	float		dec;
-	float		orgscale;
-	float		velscale;
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	dec = 0.5;
-	VectorScale (vec, dec, vec);
-
-	if (old->trailcount > 900)
-	{
-		orgscale = 4;
-		velscale = 15;
-	}
-	else if (old->trailcount > 800)
-	{
-		orgscale = 2;
-		velscale = 10;
-	}
-	else
-	{
-		orgscale = 1;
-		velscale = 5;
-	}
-
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-
-		// drop less particles as it flies
-		if ((rand()&1023) < old->trailcount)
-		{
-			p = free_particles;
-			free_particles = p->next;
-			p->next = active_particles;
-			active_particles = p;
-			VectorClear (p->accel);
-		
-			p->time = cl.time;
-
-			if (flags & EF_GIB)
-			{
-				p->alpha = 1.0;
-				p->alphavel = -1.0 / (1+frand()*0.4);
-				p->color = 0xe8 + (rand()&7);
-				for (j=0 ; j<3 ; j++)
-				{
-					p->org[j] = move[j] + crand()*orgscale;
-					p->vel[j] = crand()*velscale;
-					p->accel[j] = 0;
-				}
-				p->vel[2] -= PARTICLE_GRAVITY;
-			}
-			else if (flags & EF_GREENGIB)
-			{
-				p->alpha = 1.0;
-				p->alphavel = -1.0 / (1+frand()*0.4);
-				p->color = 0xdb + (rand()&7);
-				for (j=0; j< 3; j++)
-				{
-					p->org[j] = move[j] + crand()*orgscale;
-					p->vel[j] = crand()*velscale;
-					p->accel[j] = 0;
-				}
-				p->vel[2] -= PARTICLE_GRAVITY;
-			}
-			else
-			{
-				p->alpha = 1.0;
-				p->alphavel = -1.0 / (1+frand()*0.2);
-				p->color = 4 + (rand()&7);
-				for (j=0 ; j<3 ; j++)
-				{
-					p->org[j] = move[j] + crand()*orgscale;
-					p->vel[j] = crand()*velscale;
-				}
-				p->accel[2] = 20;
-			}
-		}
-
-		old->trailcount -= 5;
-		if (old->trailcount < 100)
-			old->trailcount = 100;
-		VectorAdd (move, vec, move);
-	}
-}
-
-void MakeNormalVectors (vec3_t forward, vec3_t right, vec3_t up)
-{
-	float		d;
-
-	// this rotate and negat guarantees a vector
-	// not colinear with the original
-	right[1] = -forward[0];
-	right[2] = forward[1];
-	right[0] = forward[2];
-
-	d = DotProduct (right, forward);
-	VectorMA (right, -d, forward, right);
-	VectorNormalize (right);
-	CrossProduct (right, forward, up);
-}
-
-/*
-===============
-CL_RocketTrail
-
-===============
-*/
-void CL_RocketTrail (vec3_t start, vec3_t end, centity_t *old)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	float		len;
-	int			j;
-	cparticle_t	*p;
-	float		dec;
-
-	// smoke
-	CL_DiminishingTrail (start, end, old, EF_ROCKET);
-
-	// fire
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	dec = 1;
-	VectorScale (vec, dec, vec);
-
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-
-		if ( (rand()&7) == 0)
-		{
-			p = free_particles;
-			free_particles = p->next;
-			p->next = active_particles;
-			active_particles = p;
-			
-			VectorClear (p->accel);
-			p->time = cl.time;
-
-			p->alpha = 1.0;
-			p->alphavel = -1.0 / (1+frand()*0.2);
-			p->color = 0xdc + (rand()&3);
-			for (j=0 ; j<3 ; j++)
-			{
-				p->org[j] = move[j] + crand()*5;
-				p->vel[j] = crand()*20;
-			}
-			p->accel[2] = -PARTICLE_GRAVITY;
-		}
-		VectorAdd (move, vec, move);
-	}
-}
-
-/*
-===============
-CL_RailTrail
-
-===============
-"""
-def CL_RailTrail (start, end): # vec3_t, vec3_t
-
-	print ("CL_RailTrail")
-	"""
+		p.accel[0] = 0.0
+		p.accel[1] = 0.0
+		p.accel[2] = -PARTICLE_GRAVITY
+		p.alpha = 1.0
+		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
+		active_particles.append(p)
 	vec3_t		move;
 	vec3_t		vec;
 	float		len;
@@ -1721,554 +1189,58 @@ def CL_RailTrail (start, end): # vec3_t, vec3_t
 }
 
 // RAFAEL
-/*
-===============
-CL_IonripperTrail
-===============
-*/
-void CL_IonripperTrail (vec3_t start, vec3_t ent)
-{
-	vec3_t	move;
-	vec3_t	vec;
-	float	len;
-	int		j;
-	cparticle_t *p;
-	int		dec;
-	int     left = 0;
+def CL_IonripperTrail(start, end):
+	_trail_particles(start, end, 0xE0, 5.0)
 
-	VectorCopy (start, move);
-	VectorSubtract (ent, start, vec);
-	len = VectorNormalize (vec);
 
-	dec = 5;
-	VectorScale (vec, 5, vec);
+def CL_BubbleTrail(start, end):
+	_trail_particles(start, end, 0xFF, 8.0)
 
-	while (len > 0)
-	{
-		len -= dec;
 
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-		VectorClear (p->accel);
+def CL_FlyEffect(ent, origin):
+	_trail_particles(origin, origin, 0xE0, 1.0)
 
-		p->time = cl.time;
-		p->alpha = 0.5;
-		p->alphavel = -1.0 / (0.3 + frand() * 0.2);
-		p->color = 0xe4 + (rand()&3);
 
-		for (j=0; j<3; j++)
-		{
-			p->org[j] = move[j];
-			p->accel[j] = 0;
-		}
-		if (left)
-		{
-			left = 0;
-			p->vel[0] = 10;
-		}
-		else 
-		{
-			left = 1;
-			p->vel[0] = -10;
-		}
+def CL_BfgParticles(ent):
+	_trail_particles(ent.origin, ent.origin, 0xD0, 1.0)
 
-		p->vel[1] = 0;
-		p->vel[2] = 0;
 
-		VectorAdd (move, vec, move);
-	}
-}
+def CL_TrapParticles(ent):
+	_trail_particles(ent.origin, ent.origin, 0xE0, 1.0)
 
+def CL_AddParticles ():
+	active = []
+	for p in list(active_particles):
+		if p.alphavel == INSTANT_PARTICLE:
+			alpha = p.alpha
+			time = 0.0
+		else:
+			time = (cl_main.cl.time - p.time) * 0.001
+			alpha = p.alpha + time * p.alphavel
+		if alpha <= 0:
+			active_particles.remove(p)
+			_free_particle(p)
+			continue
 
-/*
-===============
-CL_BubbleTrail
+		if alpha > 1.0:
+			alpha = 1.0
 
-===============
-*/
-void CL_BubbleTrail (vec3_t start, vec3_t end)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	float		len;
-	int			i, j;
-	cparticle_t	*p;
-	float		dec;
+		time2 = time * time
+		org = np.zeros((3,), dtype=np.float32)
+		org[0] = p.org[0] + p.vel[0] * time + p.accel[0] * time2
+		org[1] = p.org[1] + p.vel[1] * time + p.accel[1] * time2
+		org[2] = p.org[2] + p.vel[2] * time + p.accel[2] * time2
 
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
+		cl_view.V_AddParticle(org, p.color, alpha)
+		if p.alphavel == INSTANT_PARTICLE:
+			p.alphavel = 0.0
+			p.alpha = 0.0
+		active.append(p)
 
-	dec = 32;
-	VectorScale (vec, dec, vec);
+	active_particles[:] = active
 
-	for (i=0 ; i<len ; i+=dec)
-	{
-		if (!free_particles)
-			return;
 
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		VectorClear (p->accel);
-		p->time = cl.time;
-
-		p->alpha = 1.0;
-		p->alphavel = -1.0 / (1+frand()*0.2);
-		p->color = 4 + (rand()&7);
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = move[j] + crand()*2;
-			p->vel[j] = crand()*5;
-		}
-		p->vel[2] += 6;
-
-		VectorAdd (move, vec, move);
-	}
-}
-
-
-/*
-===============
-CL_FlyParticles
-===============
-*/
-
-#define	BEAMLENGTH			16
-void CL_FlyParticles (vec3_t origin, int count)
-{
-	int			i;
-	cparticle_t	*p;
-	float		angle;
-	float		sr, sp, sy, cr, cp, cy;
-	vec3_t		forward;
-	float		dist = 64;
-	float		ltime;
-
-
-	if (count > NUMVERTEXNORMALS)
-		count = NUMVERTEXNORMALS;
-
-	if (!avelocities[0][0])
-	{
-		for (i=0 ; i<NUMVERTEXNORMALS*3 ; i++)
-			avelocities[0][i] = (rand()&255) * 0.01;
-	}
-
-
-	ltime = (float)cl.time / 1000.0;
-	for (i=0 ; i<count ; i+=2)
-	{
-		angle = ltime * avelocities[i][0];
-		sy = sin(angle);
-		cy = cos(angle);
-		angle = ltime * avelocities[i][1];
-		sp = sin(angle);
-		cp = cos(angle);
-		angle = ltime * avelocities[i][2];
-		sr = sin(angle);
-		cr = cos(angle);
-	
-		forward[0] = cp*cy;
-		forward[1] = cp*sy;
-		forward[2] = -sp;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
-		dist = sin(ltime + i)*64;
-		p->org[0] = origin[0] + bytedirs[i][0]*dist + forward[0]*BEAMLENGTH;
-		p->org[1] = origin[1] + bytedirs[i][1]*dist + forward[1]*BEAMLENGTH;
-		p->org[2] = origin[2] + bytedirs[i][2]*dist + forward[2]*BEAMLENGTH;
-
-		VectorClear (p->vel);
-		VectorClear (p->accel);
-
-		p->color = 0;
-		p->colorvel = 0;
-
-		p->alpha = 1;
-		p->alphavel = -100;
-	}
-}
-
-void CL_FlyEffect (centity_t *ent, vec3_t origin)
-{
-	int		n;
-	int		count;
-	int		starttime;
-
-	if (ent->fly_stoptime < cl.time)
-	{
-		starttime = cl.time;
-		ent->fly_stoptime = cl.time + 60000;
-	}
-	else
-	{
-		starttime = ent->fly_stoptime - 60000;
-	}
-
-	n = cl.time - starttime;
-	if (n < 20000)
-		count = n * 162 / 20000.0;
-	else
-	{
-		n = ent->fly_stoptime - cl.time;
-		if (n < 20000)
-			count = n * 162 / 20000.0;
-		else
-			count = 162;
-	}
-
-	CL_FlyParticles (origin, count);
-}
-
-
-/*
-===============
-CL_BfgParticles
-===============
-*/
-
-#define	BEAMLENGTH			16
-void CL_BfgParticles (entity_t *ent)
-{
-	int			i;
-	cparticle_t	*p;
-	float		angle;
-	float		sr, sp, sy, cr, cp, cy;
-	vec3_t		forward;
-	float		dist = 64;
-	vec3_t		v;
-	float		ltime;
-	
-	if (!avelocities[0][0])
-	{
-		for (i=0 ; i<NUMVERTEXNORMALS*3 ; i++)
-			avelocities[0][i] = (rand()&255) * 0.01;
-	}
-
-
-	ltime = (float)cl.time / 1000.0;
-	for (i=0 ; i<NUMVERTEXNORMALS ; i++)
-	{
-		angle = ltime * avelocities[i][0];
-		sy = sin(angle);
-		cy = cos(angle);
-		angle = ltime * avelocities[i][1];
-		sp = sin(angle);
-		cp = cos(angle);
-		angle = ltime * avelocities[i][2];
-		sr = sin(angle);
-		cr = cos(angle);
-	
-		forward[0] = cp*cy;
-		forward[1] = cp*sy;
-		forward[2] = -sp;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
-		dist = sin(ltime + i)*64;
-		p->org[0] = ent->origin[0] + bytedirs[i][0]*dist + forward[0]*BEAMLENGTH;
-		p->org[1] = ent->origin[1] + bytedirs[i][1]*dist + forward[1]*BEAMLENGTH;
-		p->org[2] = ent->origin[2] + bytedirs[i][2]*dist + forward[2]*BEAMLENGTH;
-
-		VectorClear (p->vel);
-		VectorClear (p->accel);
-
-		VectorSubtract (p->org, ent->origin, v);
-		dist = VectorLength(v) / 90.0;
-		p->color = floor (0xd0 + dist * 7);
-		p->colorvel = 0;
-
-		p->alpha = 1.0 - dist;
-		p->alphavel = -100;
-	}
-}
-
-
-/*
-===============
-CL_TrapParticles
-===============
-*/
-// RAFAEL
-void CL_TrapParticles (entity_t *ent)
-{
-	vec3_t		move;
-	vec3_t		vec;
-	vec3_t		start, end;
-	float		len;
-	int			j;
-	cparticle_t	*p;
-	int			dec;
-
-	ent->origin[2]-=14;
-	VectorCopy (ent->origin, start);
-	VectorCopy (ent->origin, end);
-	end[2]+=64;
-
-	VectorCopy (start, move);
-	VectorSubtract (end, start, vec);
-	len = VectorNormalize (vec);
-
-	dec = 5;
-	VectorScale (vec, 5, vec);
-
-	// FIXME: this is a really silly way to have a loop
-	while (len > 0)
-	{
-		len -= dec;
-
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-		VectorClear (p->accel);
-		
-		p->time = cl.time;
-
-		p->alpha = 1.0;
-		p->alphavel = -1.0 / (0.3+frand()*0.2);
-		p->color = 0xe0;
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = move[j] + crand();
-			p->vel[j] = crand()*15;
-			p->accel[j] = 0;
-		}
-		p->accel[2] = PARTICLE_GRAVITY;
-
-		VectorAdd (move, vec, move);
-	}
-
-	{
-
-	
-	int			i, j, k;
-	cparticle_t	*p;
-	float		vel;
-	vec3_t		dir;
-	vec3_t		org;
-
-	
-	ent->origin[2]+=14;
-	VectorCopy (ent->origin, org);
-
-
-	for (i=-2 ; i<=2 ; i+=4)
-		for (j=-2 ; j<=2 ; j+=4)
-			for (k=-2 ; k<=4 ; k+=4)
-			{
-				if (!free_particles)
-					return;
-				p = free_particles;
-				free_particles = p->next;
-				p->next = active_particles;
-				active_particles = p;
-
-				p->time = cl.time;
-				p->color = 0xe0 + (rand()&3);
-
-				p->alpha = 1.0;
-				p->alphavel = -1.0 / (0.3 + (rand()&7) * 0.02);
-				
-				p->org[0] = org[0] + i + ((rand()&23) * crand());
-				p->org[1] = org[1] + j + ((rand()&23) * crand());
-				p->org[2] = org[2] + k + ((rand()&23) * crand());
-	
-				dir[0] = j * 8;
-				dir[1] = i * 8;
-				dir[2] = k * 8;
-	
-				VectorNormalize (dir);						
-				vel = 50 + rand()&63;
-				VectorScale (dir, vel, p->vel);
-
-				p->accel[0] = p->accel[1] = 0;
-				p->accel[2] = -PARTICLE_GRAVITY;
-			}
-	}
-}
-
-
-/*
-===============
-CL_BFGExplosionParticles
-===============
-*/
-//FIXME combined with CL_ExplosionParticles
-void CL_BFGExplosionParticles (vec3_t org)
-{
-	int			i, j;
-	cparticle_t	*p;
-
-	for (i=0 ; i<256 ; i++)
-	{
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-		p->color = 0xd0 + (rand()&7);
-
-		for (j=0 ; j<3 ; j++)
-		{
-			p->org[j] = org[j] + ((rand()%32)-16);
-			p->vel[j] = (rand()%384)-192;
-		}
-
-		p->accel[0] = p->accel[1] = 0;
-		p->accel[2] = -PARTICLE_GRAVITY;
-		p->alpha = 1.0;
-
-		p->alphavel = -0.8 / (0.5 + frand()*0.3);
-	}
-}
-
-
-/*
-===============
-CL_TeleportParticles
-
-===============
-*/
-void CL_TeleportParticles (vec3_t org)
-{
-	int			i, j, k;
-	cparticle_t	*p;
-	float		vel;
-	vec3_t		dir;
-
-	for (i=-16 ; i<=16 ; i+=4)
-		for (j=-16 ; j<=16 ; j+=4)
-			for (k=-16 ; k<=32 ; k+=4)
-			{
-				if (!free_particles)
-					return;
-				p = free_particles;
-				free_particles = p->next;
-				p->next = active_particles;
-				active_particles = p;
-
-				p->time = cl.time;
-				p->color = 7 + (rand()&7);
-
-				p->alpha = 1.0;
-				p->alphavel = -1.0 / (0.3 + (rand()&7) * 0.02);
-				
-				p->org[0] = org[0] + i + (rand()&3);
-				p->org[1] = org[1] + j + (rand()&3);
-				p->org[2] = org[2] + k + (rand()&3);
-	
-				dir[0] = j*8;
-				dir[1] = i*8;
-				dir[2] = k*8;
-	
-				VectorNormalize (dir);						
-				vel = 50 + (rand()&63);
-				VectorScale (dir, vel, p->vel);
-
-				p->accel[0] = p->accel[1] = 0;
-				p->accel[2] = -PARTICLE_GRAVITY;
-			}
-}
-
-
-/*
-===============
-CL_AddParticles
-===============
-*/
-void CL_AddParticles (void)
-{
-	cparticle_t		*p, *next;
-	float			alpha;
-	float			time, time2;
-	vec3_t			org;
-	int				color;
-	cparticle_t		*active, *tail;
-
-	active = NULL;
-	tail = NULL;
-
-	for (p=active_particles ; p ; p=next)
-	{
-		next = p->next;
-
-		// PMM - added INSTANT_PARTICLE handling for heat beam
-		if (p->alphavel != INSTANT_PARTICLE)
-		{
-			time = (cl.time - p->time)*0.001;
-			alpha = p->alpha + time*p->alphavel;
-			if (alpha <= 0)
-			{	// faded out
-				p->next = free_particles;
-				free_particles = p;
-				continue;
-			}
-		}
-		else
-		{
-			alpha = p->alpha;
-		}
-
-		p->next = NULL;
-		if (!tail)
-			active = tail = p;
-		else
-		{
-			tail->next = p;
-			tail = p;
-		}
-
-		if (alpha > 1.0)
-			alpha = 1;
-		color = p->color;
-
-		time2 = time*time;
-
-		org[0] = p->org[0] + p->vel[0]*time + p->accel[0]*time2;
-		org[1] = p->org[1] + p->vel[1]*time + p->accel[1]*time2;
-		org[2] = p->org[2] + p->vel[2]*time + p->accel[2]*time2;
-
-		V_AddParticle (org, color, alpha);
-		// PMM
-		if (p->alphavel == INSTANT_PARTICLE)
-		{
-			p->alphavel = 0.0;
-			p->alpha = 0.0;
-		}
-	}
-
-	active_particles = active;
-}
-
-
+"""
 /*
 ==============
 CL_EntityEvent
@@ -2308,16 +1280,130 @@ void CL_EntityEvent (entity_state_t *ent)
 	}
 }
 
-
-/*
-==============
-CL_ClearEffects
-
-==============
 """
+def CL_EntityEvent(ent):
+	if ent.event == q_shared.EV_ITEM_RESPAWN:
+		snd_dma.S_StartSound(
+			None,
+			ent.number,
+			q_shared.CHAN_WEAPON,
+			snd_dma.S_RegisterSound("items/respawn1.wav"),
+			1,
+			q_shared.ATTN_IDLE,
+			0,
+		)
+		CL_ItemRespawnParticles(ent.origin)
+		return
+
+	if ent.event == q_shared.EV_PLAYER_TELEPORT:
+		snd_dma.S_StartSound(
+			None,
+			ent.number,
+			q_shared.CHAN_WEAPON,
+			snd_dma.S_RegisterSound("misc/tele1.wav"),
+			1,
+			q_shared.ATTN_IDLE,
+			0,
+		)
+		CL_TeleportParticles(ent.origin)
+		return
+
+	if ent.event == q_shared.EV_FOOTSTEP:
+		if cl_main.cl_footsteps and cl_main.cl_footsteps.value:
+			from client import cl_tent
+			sfx = cl_tent.cl_sfx_footsteps[random.randint(0, 3)]
+			if sfx is not None:
+				snd_dma.S_StartSound(
+					None,
+					ent.number,
+					q_shared.CHAN_BODY,
+					sfx,
+					1,
+					q_shared.ATTN_NORM,
+					0,
+				)
+		return
+
+	if ent.event == q_shared.EV_FALLSHORT:
+		snd_dma.S_StartSound(
+			None,
+			ent.number,
+			q_shared.CHAN_AUTO,
+			snd_dma.S_RegisterSound("player/land1.wav"),
+			1,
+			q_shared.ATTN_NORM,
+			0,
+		)
+		return
+
+	if ent.event == q_shared.EV_FALL:
+		snd_dma.S_StartSound(
+			None,
+			ent.number,
+			q_shared.CHAN_AUTO,
+			snd_dma.S_RegisterSound("*fall2.wav"),
+			1,
+			q_shared.ATTN_NORM,
+			0,
+		)
+		return
+
+	if ent.event == q_shared.EV_FALLFAR:
+		snd_dma.S_StartSound(
+			None,
+			ent.number,
+			q_shared.CHAN_AUTO,
+			snd_dma.S_RegisterSound("*fall1.wav"),
+			1,
+			q_shared.ATTN_NORM,
+			0,
+		)
+		return
+
+
+def CL_ParticleEffect2 (org, dirIn, color, count):
+	for _ in range(count):
+		p = _alloc_particle()
+		if p is None:
+			return
+		p.time = cl_main.cl.time
+		p.color = color
+		d = random.randint(0, 7)
+		for j in range(3):
+			p.org[j] = org[j] + (random.randint(0, 7) - 4) + d * dirIn[j]
+			p.vel[j] = (random.random() * 2.0 - 1.0) * 20.0
+		p.accel[0] = 0.0
+		p.accel[1] = 0.0
+		p.accel[2] = -PARTICLE_GRAVITY
+		p.alpha = 1.0
+		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
+		active_particles.append(p)
+
+
+def CL_ParticleEffect3 (org, dirIn, color, count):
+	for _ in range(count):
+		p = _alloc_particle()
+		if p is None:
+			return
+		p.time = cl_main.cl.time
+		p.color = color
+		d = random.randint(0, 7)
+		for j in range(3):
+			p.org[j] = org[j] + (random.randint(0, 7) - 4) + d * dirIn[j]
+			p.vel[j] = (random.random() * 2.0 - 1.0) * 20.0
+		p.accel[0] = 0.0
+		p.accel[1] = 0.0
+		p.accel[2] = PARTICLE_GRAVITY
+		p.alpha = 1.0
+		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
+		active_particles.append(p)
+
+
+# ==============
+# CL_ClearEffects
+# ==============
 def CL_ClearEffects ():
 
 	CL_ClearParticles ()
 	CL_ClearDlights ()
 	CL_ClearLightStyles ()
-
