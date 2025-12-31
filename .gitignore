@@ -1,0 +1,45 @@
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Packaging/build output
+build/
+dist/
+*.egg-info/
+
+# Test/lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor/OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Logs
+*.log
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+
+# Local output artifacts
+out/
+
+# Generated C extension outputs
+*.so
+*.pyd
+*.dll

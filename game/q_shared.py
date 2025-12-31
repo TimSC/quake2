@@ -2408,7 +2408,7 @@ void Com_PageInMemory (byte *buffer, int size)
 # FIXME: replace all Q_stricmp with Q_strcasecmp
 def Q_stricmp (s1, s2): #char *, char* (return int)
 
-	return strcasecmp (s1, s2)
+	return Q_strcasecmp(s1, s2)
 
 """
 
@@ -2440,7 +2440,11 @@ int Q_strncasecmp (char *s1, char *s2, int n)
 """
 def Q_strcasecmp (s1, s2): #char *, char *
 
-	return s1.lower() != s2.lower()
+	if s1 is None or s2 is None:
+		return -1
+	if s1.lower() == s2.lower():
+		return 0
+	return -1
 	##return Q_strncasecmp (s1, s2, 99999);
 
 """

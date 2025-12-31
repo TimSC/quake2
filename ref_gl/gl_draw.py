@@ -286,23 +286,20 @@ Draw_FadeScreen
 """
 def Draw_FadeScreen ():
 
-	pass
-	"""
-	qglEnable (GL_BLEND);
-	qglDisable (GL_TEXTURE_2D);
-	qglColor4f (0, 0, 0, 0.8);
-	qglBegin (GL_QUADS);
+	GL.glEnable(GL.GL_BLEND)
+	GL.glDisable(GL.GL_TEXTURE_2D)
+	GL.glColor4f(0, 0, 0, 0.8)
+	GL.glBegin(GL.GL_QUADS)
 
-	qglVertex2f (0,0);
-	qglVertex2f (vid.width, 0);
-	qglVertex2f (vid.width, vid.height);
-	qglVertex2f (0, vid.height);
+	GL.glVertex2f(0, 0)
+	GL.glVertex2f(gl_rmain.vid.width, 0)
+	GL.glVertex2f(gl_rmain.vid.width, gl_rmain.vid.height)
+	GL.glVertex2f(0, gl_rmain.vid.height)
 
-	qglEnd ();
-	qglColor4f (1,1,1,1);
-	qglEnable (GL_TEXTURE_2D);
-	qglDisable (GL_BLEND);
-	"""
+	GL.glEnd()
+	GL.glColor4f(1, 1, 1, 1)
+	GL.glEnable(GL.GL_TEXTURE_2D)
+	GL.glDisable(GL.GL_BLEND)
 
 """
 //====================================================================

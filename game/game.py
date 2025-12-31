@@ -75,6 +75,7 @@ class edict_t(object):
 		"""
 		entity_state_t	s;
 		"""
+		self.s = q_shared.entity_state_t()
 		self.client = gclient_s() # struct gclient_s *
 		"""
 		qboolean	inuse;
@@ -100,6 +101,8 @@ class edict_t(object):
 		# the game dll can add anything it wants after
 		# this point in the structure
 		"""
+		self.inuse = False
+		self.linkcount = 0
 """
 #endif		// GAME_INCLUDE
 

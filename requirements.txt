@@ -2,3 +2,4 @@ pygame
 pyopengl
 cython
 numpy
+pillow

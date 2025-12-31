@@ -238,21 +238,16 @@ def GL_SetDefaultState( ):
 }
 """
 def GL_UpdateSwapInterval():
-	pass
-	"""
+	gl_swapinterval = getattr(gl_rmain, "gl_swapinterval", None)
+	if gl_swapinterval is None:
+		return
+	if not gl_swapinterval.modified:
+		return
 
+	gl_swapinterval.modified = False
+	if gl_rmain.gl_state.stereo_enabled:
+		return
 
-	if ( gl_swapinterval->modified )
-	{
-		gl_swapinterval->modified = false;
-
-		if ( !gl_state.stereo_enabled ) 
-		{
-#ifdef _WIN32
-			if ( qwglSwapIntervalEXT )
-				qwglSwapIntervalEXT( gl_swapinterval->value );
-#endif
-		}
-	}
-"""
+	# No platform-specific swap interval hooks in this port.
+	return
 

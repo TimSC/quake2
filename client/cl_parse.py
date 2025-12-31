@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
-from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent, console
+from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent, console, cl_inv
 from game import q_shared
 from qcommon import net_chan, qcommon, common, cmd, files, cmodel
 from linux import cd_linux, sys_linux
@@ -788,7 +788,7 @@ def CL_ParseServerMessage ():
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_inventory:
-			CL_ParseInventory ()
+			cl_inv.CL_ParseInventory ()
 
 
 		elif cmdval == qcommon.svc_ops_e.svc_layout:

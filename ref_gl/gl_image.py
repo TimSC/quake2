@@ -218,6 +218,13 @@ class glmode_t(object):
 		self.name = nameIn #char *
 		self.minimize, self.maximize = minimizeIn, maximizeIn #int
 
+
+class gltmode_t(object):
+	def __init__(self, nameIn=None, modeIn=None):
+
+		self.name = nameIn #char *
+		self.mode = modeIn #int
+
 modes = [
 	glmode_t("GL_NEAREST", GL.GL_NEAREST, GL.GL_NEAREST),
 	glmode_t("GL_LINEAR", GL.GL_LINEAR, GL.GL_LINEAR),
@@ -228,6 +235,28 @@ modes = [
 ] #glmode_t[]
 
 NUM_GL_MODES = len(modes)
+
+gl_alpha_modes = [
+	gltmode_t("default", 4),
+	gltmode_t("GL_RGBA", GL.GL_RGBA),
+	gltmode_t("GL_RGBA8", GL.GL_RGBA8),
+	gltmode_t("GL_RGB5_A1", GL.GL_RGB5_A1),
+	gltmode_t("GL_RGBA4", GL.GL_RGBA4),
+	gltmode_t("GL_RGBA2", GL.GL_RGBA2),
+]
+NUM_GL_ALPHA_MODES = len(gl_alpha_modes)
+
+gl_solid_modes = [
+	gltmode_t("default", 3),
+	gltmode_t("GL_RGB", GL.GL_RGB),
+	gltmode_t("GL_RGB8", GL.GL_RGB8),
+	gltmode_t("GL_RGB5", GL.GL_RGB5),
+	gltmode_t("GL_RGB4", GL.GL_RGB4),
+	gltmode_t("GL_R3_G3_B2", GL.GL_R3_G3_B2),
+]
+if hasattr(GL, "GL_RGB2_EXT"):
+	gl_solid_modes.append(gltmode_t("GL_RGB2", GL.GL_RGB2_EXT))
+NUM_GL_SOLID_MODES = len(gl_solid_modes)
 """
 typedef struct
 {
@@ -302,55 +331,28 @@ GL_TextureAlphaMode
 """
 def GL_TextureAlphaMode( string ): #char *
 
-	pass
-	"""
-	int		i;
+	global gl_tex_alpha_format
 
-	for (i=0 ; i< NUM_GL_ALPHA_MODES ; i++)
-	{
-		if ( !Q_stricmp( gl_alpha_modes[i].name, string ) )
-			break;
-	}
+	for i, mode in enumerate(gl_alpha_modes):
+		if not q_shared.Q_stricmp(mode.name, string):
+			gl_tex_alpha_format = mode.mode
+			return
 
-	if (i == NUM_GL_ALPHA_MODES)
-	{
-		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad alpha texture mode name\n");
-		return;
-	}
+	gl_rmain.ri.Con_Printf(q_shared.PRINT_ALL, "bad alpha texture mode name\n")
 
-	gl_tex_alpha_format = gl_alpha_modes[i].mode;
-
-
-
-===============
-GL_TextureSolidMode
-===============
-"""
+# GL_TextureSolidMode
 def GL_TextureSolidMode( string ): #char *
 
-	pass
-	"""
-	int		i;
+	global gl_tex_solid_format
 
-	for (i=0 ; i< NUM_GL_SOLID_MODES ; i++)
-	{
-		if ( !Q_stricmp( gl_solid_modes[i].name, string ) )
-			break;
-	}
+	for i, mode in enumerate(gl_solid_modes):
+		if not q_shared.Q_stricmp(mode.name, string):
+			gl_tex_solid_format = mode.mode
+			return
 
-	if (i == NUM_GL_SOLID_MODES)
-	{
-		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "bad solid texture mode name\n");
-		return;
-	}
+	gl_rmain.ri.Con_Printf(q_shared.PRINT_ALL, "bad solid texture mode name\n")
 
-	gl_tex_solid_format = gl_solid_modes[i].mode;
-
-
-===============
-GL_ImageList_f
-===============
-"""
+# GL_ImageList_f
 def GL_ImageList_f ():
 
 	"""

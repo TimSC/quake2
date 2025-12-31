@@ -361,29 +361,24 @@ Called after an q_shared.ERR_DROP was thrown
 ================
 """
 def CL_Drop ():
-	pass
-	"""
-	if (cls.state == client.connstate_t.ca_uninitialized)
-		return;
-	if (cls.state == client.connstate_t.ca_disconnected)
-		return;
+	if cls.state == client.connstate_t.ca_uninitialized:
+		return
+	if cls.state == client.connstate_t.ca_disconnected:
+		return
 
-	CL_Disconnect ();
+	CL_Disconnect()
 
-	// drop loading plaque unless this is the initial game start
-	if (cls.disable_servercount != -1)
-		SCR_EndLoadingPlaque ();	// get rid of loading plaque
-}
+	# drop loading plaque unless this is the initial game start
+	if cls.disable_servercount != -1:
+		cl_scrn.SCR_EndLoadingPlaque()
 
 
-/*
-=======================
-CL_SendConnectPacket
-
-We have gotten a challenge from the server, so try and
-connect.
-======================
-"""
+# =======================
+# CL_SendConnectPacket
+#
+# We have gotten a challenge from the server, so try and
+# connect.
+# ======================
 def CL_SendConnectPacket ():
 
 	#netadr_t	adr;
@@ -427,38 +422,34 @@ def CL_CheckForResend ():
 		CL_SendConnectPacket ()
 		return
 		##cls.connect_time = -99999;	// CL_CheckForResend() will fire immediately
-	
-	"""
-	// resend if we haven't gotten a reply yet
-	if (cls.state != client.connstate_t.ca_connecting)
-		return;
 
-	if (cls.realtime - cls.connect_time < 3000)
-		return;
+	# resend if we haven't gotten a reply yet
+	if cls.state != client.connstate_t.ca_connecting:
+		return
 
-	if (!NET_StringToAdr (cls.servername, &adr))
-	{
-		Com_Printf ("Bad server address\n");
-		cls.state = client.connstate_t.ca_disconnected;
-		return;
-	}
-	if (adr.port == 0)
-		adr.port = BigShort (qcommon.PORT_SERVER);
+	if cls.realtime - cls.connect_time < 3000:
+		return
 
-	cls.connect_time = cls.realtime;	# for retransmit requests
+	adr = net_udp.NET_StringToAdr(cls.servername)
+	if adr is None:
+		common.Com_Printf("Bad server address\n")
+		cls.state = client.connstate_t.ca_disconnected
+		return
 
-	Com_Printf ("Connecting to %s...\n", cls.servername);
+	if adr.port == 0 or adr.port is None:
+		adr.port = struct.pack(">H", qcommon.PORT_SERVER)
 
-	Netchan_OutOfBandPrint (qcommon.netsrc_t.NS_CLIENT, adr, "getchallenge\n");
+	cls.connect_time = cls.realtime
 
+	common.Com_Printf("Connecting to {}...\n".format(cls.servername))
+
+	net_chan.Netchan_OutOfBandPrint(qcommon.netsrc_t.NS_CLIENT, adr, b"getchallenge\n")
 
 
-/*
-================
-CL_Connect_f
 
-================
-"""
+# ================
+# CL_Connect_f
+# ================
 def CL_Connect_f ():
 
 	print ("CL_Connect_f")
@@ -490,8 +481,10 @@ def CL_Connect_f ():
 	strncpy (cls.servername, server, sizeof(cls.servername)-1);
 	cls.connect_time = -99999;	// CL_CheckForResend() will fire immediately
 }
+	"""
 
 
+"""
 /*
 =====================
 CL_Rcon_f
@@ -551,14 +544,12 @@ void CL_Rcon_f (void)
 	
 	NET_SendPacket (qcommon.netsrc_t.NS_CLIENT, strlen(message)+1, message, to);
 }
-
-
-/*
-=====================
-CL_ClearState
-
-=====================
 """
+
+
+# =====================
+# CL_ClearState
+# =====================
 def CL_ClearState ():
 
 	snd_dma.S_StopAllSounds ()
@@ -1025,37 +1016,34 @@ CL_FixUpGender_f
 """
 def CL_FixUpGender():
 
-	pass
-	"""
-	char *p;
-	char sk[80];
+	if not gender_auto.value:
+		return
 
-	if (gender_auto->value) {
+	if gender.modified:
+		# was set directly, don't override the user
+		gender.modified = False
+		return
 
-		if (gender->modified) {
-			// was set directly, don't override the user
-			gender->modified = false;
-			return;
-		}
+	skin_name = skin.string
+	if "/" in skin_name:
+		skin_dir = skin_name.split("/", 1)[0]
+	elif "\\" in skin_name:
+		skin_dir = skin_name.split("\\", 1)[0]
+	else:
+		skin_dir = skin_name
 
-		strncpy(sk, skin->string, sizeof(sk) - 1);
-		if ((p = strchr(sk, '/')) != NULL)
-			*p = 0;
-		if (Q_stricmp(sk, "male") == 0 || Q_stricmp(sk, "cyborg") == 0)
-			Cvar_Set ("gender", "male");
-		else if (Q_stricmp(sk, "female") == 0 || Q_stricmp(sk, "crackhor") == 0)
-			Cvar_Set ("gender", "female");
-		else
-			Cvar_Set ("gender", "none");
-		gender->modified = false;
-	}
+	if q_shared.Q_stricmp(skin_dir, "male") == 0 or q_shared.Q_stricmp(skin_dir, "cyborg") == 0:
+		cvar.Cvar_Set("gender", "male")
+	elif q_shared.Q_stricmp(skin_dir, "female") == 0 or q_shared.Q_stricmp(skin_dir, "crackhor") == 0:
+		cvar.Cvar_Set("gender", "female")
+	else:
+		cvar.Cvar_Set("gender", "none")
+	gender.modified = False
 
 
-/*
-==============
-CL_Userinfo_f
-==============
-"""
+# ==============
+# CL_Userinfo_f
+# ==============
 def CL_Userinfo_f ():
 
 	common.Com_Printf ("User info settings:\n")
@@ -1072,9 +1060,8 @@ new parameters and flush all sounds
 """
 def CL_Snd_Restart_f ():
 
-	pass
-	#S_Shutdown ();
-	#S_Init ();
+	snd_dma.S_Shutdown()
+	snd_dma.S_Init()
 	cl_parse.CL_RegisterSounds ()
 
 
@@ -1603,46 +1590,45 @@ cheatvar_t	cheatvars[] = {
 
 int		numcheatvars;
 """
+cheatvars = [
+	{"name": "timescale", "value": "1", "var": None},
+	{"name": "timedemo", "value": "0", "var": None},
+	{"name": "r_drawworld", "value": "1", "var": None},
+	{"name": "cl_testlights", "value": "0", "var": None},
+	{"name": "r_fullbright", "value": "0", "var": None},
+	{"name": "r_drawflat", "value": "0", "var": None},
+	{"name": "paused", "value": "0", "var": None},
+	{"name": "fixedtime", "value": "0", "var": None},
+	{"name": "sw_draworder", "value": "0", "var": None},
+	{"name": "gl_lightmap", "value": "0", "var": None},
+	{"name": "gl_saturatelighting", "value": "0", "var": None},
+]
+
+numcheatvars = 0
+
 def CL_FixCvarCheats ():
 
-	pass
-	"""
-	int			i;
-	cheatvar_t	*var;
+	maxclients = cl.configstrings[q_shared.CS_MAXCLIENTS]
+	if not maxclients or maxclients == "1":
+		return
 
-	if ( !strcmp(cl.configstrings[q_shared.CS_MAXCLIENTS], "1") 
-		|| !cl.configstrings[q_shared.CS_MAXCLIENTS][0] )
-		return;		// single player can cheat
+	global numcheatvars
+	if numcheatvars == 0:
+		for cheat in cheatvars:
+			cheat["var"] = cvar.Cvar_Get(cheat["name"], cheat["value"], 0)
+			numcheatvars += 1
 
-	// find all the cvars if we haven't done it yet
-	if (!numcheatvars)
-	{
-		while (cheatvars[numcheatvars].name)
-		{
-			cheatvars[numcheatvars].var = Cvar_Get (cheatvars[numcheatvars].name,
-					cheatvars[numcheatvars].value, 0);
-			numcheatvars++;
-		}
-	}
+	for cheat in cheatvars:
+		if cheat["var"] is None:
+			continue
+		if cheat["var"].string != cheat["value"]:
+			cvar.Cvar_Set(cheat["name"], cheat["value"])
 
-	// make sure they are all set to the proper values
-	for (i=0, var = cheatvars ; i<numcheatvars ; i++, var++)
-	{
-		if ( strcmp (var->var->string, var->value) )
-		{
-			Cvar_Set (var->name, var->value);
-		}
-	}
-}
+# =============================================================================
 
-//============================================================================
-
-/*
-==================
-CL_SendCommand
-
-==================
-"""
+# ==================
+# CL_SendCommand
+# ==================
 def CL_SendCommand ():
 	
 	"""
@@ -1694,7 +1680,7 @@ def CL_Frame (msec): #int
 			return			# framerate is too high
 	
 	"""
-	// let the mouse activate or deactivate
+# let the mouse activate or deactivate
 	IN_Frame ();
 	"""
 
@@ -1745,7 +1731,7 @@ def CL_Frame (msec): #int
 
 	cd_linux.CDAudio_Update()
 	"""	
-	// advance local effects for next frame
+# advance local effects for next frame
 	CL_RunDLights ()
 	CL_RunLightStyles ()
 	"""
@@ -1754,9 +1740,9 @@ def CL_Frame (msec): #int
 
 	cls.framecount+=1
 	"""
-	if ( log_stats->value )
-	{
-		if ( cls.state == client.connstate_t.ca_active )
+		if ( log_stats->value )
+		{
+			if ( cls.state == client.connstate_t.ca_active )
 		{
 			if ( !lasttimecalled )
 			{
@@ -1772,18 +1758,15 @@ def CL_Frame (msec): #int
 					fprintf( log_stats_file, "%d\n", now - lasttimecalled );
 				lasttimecalled = now;
 			}
+			}
 		}
-	}
+		"""
 
 
 
-//============================================================================
-
-/*
-====================
-CL_Init
-====================
-"""
+	# =============================================================================
+# CL_Init
+# =============================================================================
 def CL_Init ():
 
 	if common.dedicated.value:
@@ -1817,14 +1800,12 @@ def CL_Init ():
 	cmd.Cbuf_Execute ()
 
 
-"""
-===============
-CL_Shutdown
-
-FIXME: this is a callback from Sys_Quit and Com_Error.  It would be better
-to run quit through here before the final handoff to the sys code.
-===============
-"""
+# ===============
+# CL_Shutdown
+#
+# FIXME: this is a callback from Sys_Quit and Com_Error.  It would be better
+# to run quit through here before the final handoff to the sys code.
+# ===============
 isdown = False
 
 def CL_Shutdown():

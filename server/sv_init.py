@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import copy
 import random
 from enum import Enum
 from server import sv_main, sv_send, sv_game, sv_world, sv_game
@@ -270,34 +271,31 @@ baseline will be transmitted
 """
 def SV_CreateBaseline ():
 
-	pass
-	"""
-	edict_t			*svent;
-	int				entnum;	
+	num_edicts = getattr(sv_game.ge, "num_edicts", None)
+	if num_edicts is None:
+		if getattr(sv_game.ge, "edicts", None) is not None:
+			num_edicts = len(sv_game.ge.edicts)
+		else:
+			num_edicts = q_shared.MAX_EDICTS
 
-	for (entnum = 1; entnum < ge->num_edicts ; entnum++)
-	{
-		svent = EDICT_NUM(entnum);
-		if (!svent->inuse)
-			continue;
-		if (!svent->s.modelindex && !svent->s.sound && !svent->s.effects)
-			continue;
-		svent->s.number = entnum;
+	for entnum in range(1, num_edicts):
+		svent = EDICT_NUM(entnum)
+		if not svent.inuse:
+			continue
+		if not svent.s.modelindex and not svent.s.sound and not svent.s.effects:
+			continue
+		svent.s.number = entnum
 
-		//
-		// take current state as baseline
-		//
-		q_shared.VectorCopy (svent->s.origin, svent->s.old_origin);
-		sv.baselines[entnum] = svent->s;
-	}
-}
+		# take current state as baseline
+		q_shared.VectorCopy(svent.s.origin, svent.s.old_origin)
+		if entnum >= len(sv.baselines):
+			sv.baselines.extend([None] * (entnum + 1 - len(sv.baselines)))
+		sv.baselines[entnum] = copy.deepcopy(svent.s)
 
 
-/*
-=================
-SV_CheckForSavegame
-=================
-"""
+# =================
+# SV_CheckForSavegame
+# =================
 def SV_CheckForSavegame ():
 
 	pass
@@ -340,18 +338,16 @@ def SV_CheckForSavegame ():
 
 		sv.state = previousState;				// PGM
 	}
-}
+	"""
 
 
-/*
-================
-SV_SpawnServer
-
-Change the server to a new map, taking all connected
-clients along with it.
-
-================
-"""
+# =================
+# SV_SpawnServer
+#
+# Change the server to a new map, taking all connected
+# clients along with it.
+#
+# =================
 def SV_SpawnServer (server, spawnpoint, serverstate, attractloop, loadgame): #char *, char *, server_state_t, qboolean, qboolean
 
 	#int			i;

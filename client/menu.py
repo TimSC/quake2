@@ -17,9 +17,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, cmd, common
-from client import cl_main, client, cl_scrn, snd_dma, keys, qmenu, cl_view
-from linux import vid_so, in_linux
+import os
+from qcommon import cvar, cmd, common, files
+from client import cl_main, client, cl_scrn, snd_dma, keys, qmenu, cl_view, ref
+from linux import vid_so, in_linux, q_shlinux, net_udp
 from game import q_shared
 
 """
@@ -349,33 +350,39 @@ void M_DrawCharacter (int cx, int cy, int num)
 	vid_so.re.DrawChar ( cx + ((vid_so.viddef.width - 320)>>1), cy + ((vid_so.viddef.height - 240)>>1), num);
 }
 """
-def M_Print (cx, cy, strIn): #int, int, char *
-	pass
-	"""
-	while (*str)
-	{
-		M_DrawCharacter (cx, cy, (*str)+128);
-		str++;
-		cx += 8;
-	}
-}
+def M_DrawCharacter(cx, cy, num): #int, int, int
 
-void M_PrintWhite (int cx, int cy, char *str)
-{
-	while (*str)
-	{
-		M_DrawCharacter (cx, cy, *str);
-		str++;
-		cx += 8;
-	}
-}
-
-void M_DrawPic (int x, int y, char *pic)
-{
-	vid_so.re.DrawPic (x + ((vid_so.viddef.width - 320)>>1), y + ((vid_so.viddef.height - 240)>>1), pic);
-}
+	vid_so.re.DrawChar(
+		cx + ((vid_so.viddef.width - 320) >> 1),
+		cy + ((vid_so.viddef.height - 240) >> 1),
+		num,
+	)
 
 
+def M_Print(cx, cy, strIn): #int, int, char *
+
+	for ch in strIn:
+		M_DrawCharacter(cx, cy, ord(ch) + 128)
+		cx += 8
+
+
+def M_PrintWhite(cx, cy, strIn): #int, int, char *
+
+	for ch in strIn:
+		M_DrawCharacter(cx, cy, ord(ch))
+		cx += 8
+
+
+def M_DrawPic(x, y, pic): #int, int, char *
+
+	vid_so.re.DrawPic(
+		x + ((vid_so.viddef.width - 320) >> 1),
+		y + ((vid_so.viddef.height - 240) >> 1),
+		pic,
+	)
+
+
+"""
 /*
 =============
 M_DrawCursor
@@ -407,51 +414,39 @@ def M_DrawCursor( x, y, f ): #int, int, int
 
 
 
-def M_DrawTextBox (x, y, width, lines): #int, int, int, int
-	pass
-	"""
-	int		cx, cy;
-	int		n;
+def M_DrawTextBox(x, y, width, lines): #int, int, int, int
 
-	// draw left side
-	cx = x;
-	cy = y;
-	M_DrawCharacter (cx, cy, 1);
-	for (n = 0; n < lines; n++)
-	{
-		cy += 8;
-		M_DrawCharacter (cx, cy, 4);
-	}
-	M_DrawCharacter (cx, cy+8, 7);
+	# draw left side
+	cx = x
+	cy = y
+	M_DrawCharacter(cx, cy, 1)
+	for _ in range(lines):
+		cy += 8
+		M_DrawCharacter(cx, cy, 4)
+	M_DrawCharacter(cx, cy + 8, 7)
 
-	// draw middle
-	cx += 8;
-	while (width > 0)
-	{
-		cy = y;
-		M_DrawCharacter (cx, cy, 2);
-		for (n = 0; n < lines; n++)
-		{
-			cy += 8;
-			M_DrawCharacter (cx, cy, 5);
-		}
-		M_DrawCharacter (cx, cy+8, 8);
-		width -= 1;
-		cx += 8;
-	}
+	# draw middle
+	cx += 8
+	while width > 0:
+		cy = y
+		M_DrawCharacter(cx, cy, 2)
+		for _ in range(lines):
+			cy += 8
+			M_DrawCharacter(cx, cy, 5)
+		M_DrawCharacter(cx, cy + 8, 8)
+		width -= 1
+		cx += 8
 
-	// draw right side
-	cy = y;
-	M_DrawCharacter (cx, cy, 3);
-	for (n = 0; n < lines; n++)
-	{
-		cy += 8;
-		M_DrawCharacter (cx, cy, 6);
-	}
-	M_DrawCharacter (cx, cy+8, 9);
-}
+	# draw right side
+	cy = y
+	M_DrawCharacter(cx, cy, 3)
+	for _ in range(lines):
+		cy += 8
+		M_DrawCharacter(cx, cy, 6)
+	M_DrawCharacter(cx, cy + 8, 9)
 
-		
+
+"""
 /*
 =======================================================================
 
@@ -634,11 +629,78 @@ const char *Multiplayer_MenuKey( int key )
 	return Default_MenuKey( &s_multiplayer_menu, key );
 }
 """
+## Multiplayer menu
+s_multiplayer_menu = menuframework_s()
+s_join_network_server_action = menuaction_s()
+s_start_network_server_action = menuaction_s()
+s_player_setup_action = menuaction_s()
+
+
+def Multiplayer_MenuDraw():
+
+	M_Banner("m_banner_multiplayer")
+	qmenu.Menu_AdjustCursor(s_multiplayer_menu, 1)
+	qmenu.Menu_Draw(s_multiplayer_menu)
+
+
+def PlayerSetupFunc(unused):
+
+	M_Menu_PlayerConfig_f()
+
+
+def JoinNetworkServerFunc(unused):
+
+	M_Menu_JoinServer_f()
+
+
+def StartNetworkServerFunc(unused):
+
+	M_Menu_StartServer_f()
+
+
+def Multiplayer_MenuInit():
+
+	s_multiplayer_menu.x = vid_so.viddef.width * 0.50 - 64
+	s_multiplayer_menu.nitems = 0
+
+	s_join_network_server_action.type = MTYPE_ACTION
+	s_join_network_server_action.flags = QMF_LEFT_JUSTIFY
+	s_join_network_server_action.x = 0
+	s_join_network_server_action.y = 0
+	s_join_network_server_action.name = " join network server"
+	s_join_network_server_action.callback = JoinNetworkServerFunc
+
+	s_start_network_server_action.type = MTYPE_ACTION
+	s_start_network_server_action.flags = QMF_LEFT_JUSTIFY
+	s_start_network_server_action.x = 0
+	s_start_network_server_action.y = 10
+	s_start_network_server_action.name = " start network server"
+	s_start_network_server_action.callback = StartNetworkServerFunc
+
+	s_player_setup_action.type = MTYPE_ACTION
+	s_player_setup_action.flags = QMF_LEFT_JUSTIFY
+	s_player_setup_action.x = 0
+	s_player_setup_action.y = 20
+	s_player_setup_action.name = " player setup"
+	s_player_setup_action.callback = PlayerSetupFunc
+
+	qmenu.Menu_AddItem(s_multiplayer_menu, s_join_network_server_action)
+	qmenu.Menu_AddItem(s_multiplayer_menu, s_start_network_server_action)
+	qmenu.Menu_AddItem(s_multiplayer_menu, s_player_setup_action)
+
+	qmenu.Menu_SetStatusBar(s_multiplayer_menu, None)
+	qmenu.Menu_Center(s_multiplayer_menu)
+
+
+def Multiplayer_MenuKey(key): #int (returns const char *)
+
+	return Default_MenuKey(s_multiplayer_menu, key)
+
+
 def M_Menu_Multiplayer_f():
 
-	pass
-	#Multiplayer_MenuInit()
-	#M_PushMenu( Multiplayer_MenuDraw, Multiplayer_MenuKey )
+	Multiplayer_MenuInit()
+	M_PushMenu(Multiplayer_MenuDraw, Multiplayer_MenuKey)
 
 """
 =======================================================================
@@ -1067,11 +1129,460 @@ static const char *Keys_MenuKey( int key )
 	}
 }
 """
+bindnames = [
+	["+attack", "attack"],
+	["weapnext", "next weapon"],
+	["+forward", "walk forward"],
+	["+back", "backpedal"],
+	["+left", "turn left"],
+	["+right", "turn right"],
+	["+speed", "run"],
+	["+moveleft", "step left"],
+	["+moveright", "step right"],
+	["+strafe", "sidestep"],
+	["+lookup", "look up"],
+	["+lookdown", "look down"],
+	["centerview", "center view"],
+	["+mlook", "mouse look"],
+	["+klook", "keyboard look"],
+	["+moveup", "up / jump"],
+	["+movedown", "down / crouch"],
+	["inven", "inventory"],
+	["invuse", "use item"],
+	["invdrop", "drop item"],
+	["invprev", "prev item"],
+	["invnext", "next item"],
+	["cmd help", "help computer"],
+]
+
+keys_cursor = 0
+bind_grab = False
+
+s_keys_menu = menuframework_s()
+s_keys_attack_action = menuaction_s()
+s_keys_change_weapon_action = menuaction_s()
+s_keys_walk_forward_action = menuaction_s()
+s_keys_backpedal_action = menuaction_s()
+s_keys_turn_left_action = menuaction_s()
+s_keys_turn_right_action = menuaction_s()
+s_keys_run_action = menuaction_s()
+s_keys_step_left_action = menuaction_s()
+s_keys_step_right_action = menuaction_s()
+s_keys_sidestep_action = menuaction_s()
+s_keys_look_up_action = menuaction_s()
+s_keys_look_down_action = menuaction_s()
+s_keys_center_view_action = menuaction_s()
+s_keys_mouse_look_action = menuaction_s()
+s_keys_keyboard_look_action = menuaction_s()
+s_keys_move_up_action = menuaction_s()
+s_keys_move_down_action = menuaction_s()
+s_keys_inventory_action = menuaction_s()
+s_keys_inv_use_action = menuaction_s()
+s_keys_inv_drop_action = menuaction_s()
+s_keys_inv_prev_action = menuaction_s()
+s_keys_inv_next_action = menuaction_s()
+s_keys_help_computer_action = menuaction_s()
+
+
+def M_UnbindCommand(command):
+
+	command_len = len(command)
+	for j in range(256):
+		binding = keys.keybindings[j]
+		if binding is None:
+			continue
+		if binding[:command_len] == command:
+			keys.Key_SetBinding(j, "")
+
+
+def M_FindKeysForCommand(command, twokeys):
+
+	count = 0
+	command_len = len(command)
+	twokeys[0] = -1
+	twokeys[1] = -1
+
+	for j in range(256):
+		binding = keys.keybindings[j]
+		if binding is None:
+			continue
+		if binding[:command_len] == command:
+			twokeys[count] = j
+			count += 1
+			if count == 2:
+				break
+
+
+def KeyCursorDrawFunc(menu):
+
+	if bind_grab:
+		vid_so.re.DrawChar(menu.x, menu.y + menu.cursor * 9, ord("="))
+	else:
+		blink = int(q_shlinux.Sys_Milliseconds() / 250) & 1
+		vid_so.re.DrawChar(menu.x, menu.y + menu.cursor * 9, 12 + blink)
+
+
+def DrawKeyBindingFunc(self):
+
+	keys_found = [-1, -1]
+	M_FindKeysForCommand(bindnames[self.localdata[0]][0], keys_found)
+
+	if keys_found[0] == -1:
+		qmenu.Menu_DrawString(self.x + self.parent.x + 16, self.y + self.parent.y, "???")
+		return
+
+	name = keys.Key_KeynumToString(keys_found[0])
+	qmenu.Menu_DrawString(self.x + self.parent.x + 16, self.y + self.parent.y, name)
+
+	x = len(name) * 8
+	if keys_found[1] != -1:
+		qmenu.Menu_DrawString(self.x + self.parent.x + 24 + x, self.y + self.parent.y, "or")
+		qmenu.Menu_DrawString(
+			self.x + self.parent.x + 48 + x,
+			self.y + self.parent.y,
+			keys.Key_KeynumToString(keys_found[1]),
+		)
+
+
+def KeyBindingFunc(self):
+
+	keys_found = [-1, -1]
+	M_FindKeysForCommand(bindnames[self.localdata[0]][0], keys_found)
+
+	if keys_found[1] != -1:
+		M_UnbindCommand(bindnames[self.localdata[0]][0])
+
+	global bind_grab
+	bind_grab = True
+
+	qmenu.Menu_SetStatusBar(s_keys_menu, "press a key or button for this action")
+
+
+def Keys_MenuInit():
+
+	y = 0
+	i = 0
+
+	s_keys_menu.x = vid_so.viddef.width * 0.50
+	s_keys_menu.nitems = 0
+	s_keys_menu.cursordraw = KeyCursorDrawFunc
+
+	s_keys_attack_action.type = MTYPE_ACTION
+	s_keys_attack_action.flags = QMF_GRAYED
+	s_keys_attack_action.x = 0
+	s_keys_attack_action.y = y
+	s_keys_attack_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_attack_action.localdata[0] = i
+	s_keys_attack_action.name = bindnames[s_keys_attack_action.localdata[0]][1]
+
+	s_keys_change_weapon_action.type = MTYPE_ACTION
+	s_keys_change_weapon_action.flags = QMF_GRAYED
+	s_keys_change_weapon_action.x = 0
+	s_keys_change_weapon_action.y = y + 9
+	s_keys_change_weapon_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_change_weapon_action.localdata[0] = i + 1
+	s_keys_change_weapon_action.name = bindnames[s_keys_change_weapon_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_walk_forward_action.type = MTYPE_ACTION
+	s_keys_walk_forward_action.flags = QMF_GRAYED
+	s_keys_walk_forward_action.x = 0
+	s_keys_walk_forward_action.y = y + 9
+	s_keys_walk_forward_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_walk_forward_action.localdata[0] = i + 1
+	s_keys_walk_forward_action.name = bindnames[s_keys_walk_forward_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_backpedal_action.type = MTYPE_ACTION
+	s_keys_backpedal_action.flags = QMF_GRAYED
+	s_keys_backpedal_action.x = 0
+	s_keys_backpedal_action.y = y + 9
+	s_keys_backpedal_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_backpedal_action.localdata[0] = i + 1
+	s_keys_backpedal_action.name = bindnames[s_keys_backpedal_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_turn_left_action.type = MTYPE_ACTION
+	s_keys_turn_left_action.flags = QMF_GRAYED
+	s_keys_turn_left_action.x = 0
+	s_keys_turn_left_action.y = y + 9
+	s_keys_turn_left_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_turn_left_action.localdata[0] = i + 1
+	s_keys_turn_left_action.name = bindnames[s_keys_turn_left_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_turn_right_action.type = MTYPE_ACTION
+	s_keys_turn_right_action.flags = QMF_GRAYED
+	s_keys_turn_right_action.x = 0
+	s_keys_turn_right_action.y = y + 9
+	s_keys_turn_right_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_turn_right_action.localdata[0] = i + 1
+	s_keys_turn_right_action.name = bindnames[s_keys_turn_right_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_run_action.type = MTYPE_ACTION
+	s_keys_run_action.flags = QMF_GRAYED
+	s_keys_run_action.x = 0
+	s_keys_run_action.y = y + 9
+	s_keys_run_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_run_action.localdata[0] = i + 1
+	s_keys_run_action.name = bindnames[s_keys_run_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_step_left_action.type = MTYPE_ACTION
+	s_keys_step_left_action.flags = QMF_GRAYED
+	s_keys_step_left_action.x = 0
+	s_keys_step_left_action.y = y + 9
+	s_keys_step_left_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_step_left_action.localdata[0] = i + 1
+	s_keys_step_left_action.name = bindnames[s_keys_step_left_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_step_right_action.type = MTYPE_ACTION
+	s_keys_step_right_action.flags = QMF_GRAYED
+	s_keys_step_right_action.x = 0
+	s_keys_step_right_action.y = y + 9
+	s_keys_step_right_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_step_right_action.localdata[0] = i + 1
+	s_keys_step_right_action.name = bindnames[s_keys_step_right_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_sidestep_action.type = MTYPE_ACTION
+	s_keys_sidestep_action.flags = QMF_GRAYED
+	s_keys_sidestep_action.x = 0
+	s_keys_sidestep_action.y = y + 9
+	s_keys_sidestep_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_sidestep_action.localdata[0] = i + 1
+	s_keys_sidestep_action.name = bindnames[s_keys_sidestep_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_look_up_action.type = MTYPE_ACTION
+	s_keys_look_up_action.flags = QMF_GRAYED
+	s_keys_look_up_action.x = 0
+	s_keys_look_up_action.y = y + 9
+	s_keys_look_up_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_look_up_action.localdata[0] = i + 1
+	s_keys_look_up_action.name = bindnames[s_keys_look_up_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_look_down_action.type = MTYPE_ACTION
+	s_keys_look_down_action.flags = QMF_GRAYED
+	s_keys_look_down_action.x = 0
+	s_keys_look_down_action.y = y + 9
+	s_keys_look_down_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_look_down_action.localdata[0] = i + 1
+	s_keys_look_down_action.name = bindnames[s_keys_look_down_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_center_view_action.type = MTYPE_ACTION
+	s_keys_center_view_action.flags = QMF_GRAYED
+	s_keys_center_view_action.x = 0
+	s_keys_center_view_action.y = y + 9
+	s_keys_center_view_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_center_view_action.localdata[0] = i + 1
+	s_keys_center_view_action.name = bindnames[s_keys_center_view_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_mouse_look_action.type = MTYPE_ACTION
+	s_keys_mouse_look_action.flags = QMF_GRAYED
+	s_keys_mouse_look_action.x = 0
+	s_keys_mouse_look_action.y = y + 9
+	s_keys_mouse_look_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_mouse_look_action.localdata[0] = i + 1
+	s_keys_mouse_look_action.name = bindnames[s_keys_mouse_look_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_keyboard_look_action.type = MTYPE_ACTION
+	s_keys_keyboard_look_action.flags = QMF_GRAYED
+	s_keys_keyboard_look_action.x = 0
+	s_keys_keyboard_look_action.y = y + 9
+	s_keys_keyboard_look_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_keyboard_look_action.localdata[0] = i + 1
+	s_keys_keyboard_look_action.name = bindnames[s_keys_keyboard_look_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_move_up_action.type = MTYPE_ACTION
+	s_keys_move_up_action.flags = QMF_GRAYED
+	s_keys_move_up_action.x = 0
+	s_keys_move_up_action.y = y + 9
+	s_keys_move_up_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_move_up_action.localdata[0] = i + 1
+	s_keys_move_up_action.name = bindnames[s_keys_move_up_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_move_down_action.type = MTYPE_ACTION
+	s_keys_move_down_action.flags = QMF_GRAYED
+	s_keys_move_down_action.x = 0
+	s_keys_move_down_action.y = y + 9
+	s_keys_move_down_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_move_down_action.localdata[0] = i + 1
+	s_keys_move_down_action.name = bindnames[s_keys_move_down_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_inventory_action.type = MTYPE_ACTION
+	s_keys_inventory_action.flags = QMF_GRAYED
+	s_keys_inventory_action.x = 0
+	s_keys_inventory_action.y = y + 9
+	s_keys_inventory_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_inventory_action.localdata[0] = i + 1
+	s_keys_inventory_action.name = bindnames[s_keys_inventory_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_inv_use_action.type = MTYPE_ACTION
+	s_keys_inv_use_action.flags = QMF_GRAYED
+	s_keys_inv_use_action.x = 0
+	s_keys_inv_use_action.y = y + 9
+	s_keys_inv_use_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_inv_use_action.localdata[0] = i + 1
+	s_keys_inv_use_action.name = bindnames[s_keys_inv_use_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_inv_drop_action.type = MTYPE_ACTION
+	s_keys_inv_drop_action.flags = QMF_GRAYED
+	s_keys_inv_drop_action.x = 0
+	s_keys_inv_drop_action.y = y + 9
+	s_keys_inv_drop_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_inv_drop_action.localdata[0] = i + 1
+	s_keys_inv_drop_action.name = bindnames[s_keys_inv_drop_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_inv_prev_action.type = MTYPE_ACTION
+	s_keys_inv_prev_action.flags = QMF_GRAYED
+	s_keys_inv_prev_action.x = 0
+	s_keys_inv_prev_action.y = y + 9
+	s_keys_inv_prev_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_inv_prev_action.localdata[0] = i + 1
+	s_keys_inv_prev_action.name = bindnames[s_keys_inv_prev_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_inv_next_action.type = MTYPE_ACTION
+	s_keys_inv_next_action.flags = QMF_GRAYED
+	s_keys_inv_next_action.x = 0
+	s_keys_inv_next_action.y = y + 9
+	s_keys_inv_next_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_inv_next_action.localdata[0] = i + 1
+	s_keys_inv_next_action.name = bindnames[s_keys_inv_next_action.localdata[0]][1]
+
+	y += 9
+	i += 1
+
+	s_keys_help_computer_action.type = MTYPE_ACTION
+	s_keys_help_computer_action.flags = QMF_GRAYED
+	s_keys_help_computer_action.x = 0
+	s_keys_help_computer_action.y = y + 9
+	s_keys_help_computer_action.ownerdraw = DrawKeyBindingFunc
+	s_keys_help_computer_action.localdata[0] = i + 1
+	s_keys_help_computer_action.name = bindnames[s_keys_help_computer_action.localdata[0]][1]
+
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_attack_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_change_weapon_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_walk_forward_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_backpedal_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_turn_left_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_turn_right_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_run_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_step_left_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_step_right_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_sidestep_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_look_up_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_look_down_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_center_view_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_mouse_look_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_keyboard_look_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_move_up_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_move_down_action)
+
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_inventory_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_inv_use_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_inv_drop_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_inv_prev_action)
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_inv_next_action)
+
+	qmenu.Menu_AddItem(s_keys_menu, s_keys_help_computer_action)
+
+	qmenu.Menu_SetStatusBar(s_keys_menu, "enter to change, backspace to clear")
+	qmenu.Menu_Center(s_keys_menu)
+
+
+def Keys_MenuDraw():
+
+	qmenu.Menu_AdjustCursor(s_keys_menu, 1)
+	qmenu.Menu_Draw(s_keys_menu)
+
+
+def Keys_MenuKey(key): #int (returns const char *)
+
+	global bind_grab
+
+	item = qmenu.Menu_ItemAtCursor(s_keys_menu)
+
+	if bind_grab:
+		if key not in (keys.K_ESCAPE, ord("`")):
+			cmd.Cbuf_InsertText(
+				"bind \"{}\" \"{}\"\n".format(
+					keys.Key_KeynumToString(key),
+					bindnames[item.localdata[0]][0],
+				)
+			)
+
+		qmenu.Menu_SetStatusBar(s_keys_menu, "enter to change, backspace to clear")
+		bind_grab = False
+		return menu_out_sound
+
+	if key in (keys.K_KP_ENTER, keys.K_ENTER):
+		KeyBindingFunc(item)
+		return menu_in_sound
+	if key in (keys.K_BACKSPACE, keys.K_DEL, keys.K_KP_DEL):
+		M_UnbindCommand(bindnames[item.localdata[0]][0])
+		return menu_out_sound
+
+	return Default_MenuKey(s_keys_menu, key)
+
+
 def M_Menu_Keys_f ():
 
-	pass
-	#Keys_MenuInit();
-	#M_PushMenu( Keys_MenuDraw, Keys_MenuKey );
+	Keys_MenuInit()
+	M_PushMenu(Keys_MenuDraw, Keys_MenuKey)
 
 
 
@@ -1435,9 +1946,12 @@ VIDEO MENU
 
 def M_Menu_Video_f ():
 
-	pass
-	#VID_MenuInit()
-	#M_PushMenu( VID_MenuDraw, VID_MenuKey )
+	if "VID_MenuInit" not in globals():
+		common.Com_Printf("VID menu not available.\n")
+		return
+
+	VID_MenuInit()
+	M_PushMenu(VID_MenuDraw, VID_MenuKey)
 
 
 """
@@ -1859,61 +2373,423 @@ const char *M_Credits_Key( int key )
 extern int Developer_searchpath (int who);
 
 """
+credits_start_time = 0
+credits = []
+credits_index = []
+credits_buffer = None
+
+idcredits = [
+	"+QUAKE II BY ID SOFTWARE",
+	"",
+	"+PROGRAMMING",
+	"John Carmack",
+	"John Cash",
+	"Brian Hook",
+	"",
+	"+ART",
+	"Adrian Carmack",
+	"Kevin Cloud",
+	"Paul Steed",
+	"",
+	"+LEVEL DESIGN",
+	"Tim Willits",
+	"American McGee",
+	"Christian Antkow",
+	"Paul Jaquays",
+	"Brandon James",
+	"",
+	"+BIZ",
+	"Todd Hollenshead",
+	"Barrett (Bear) Alexander",
+	"Donna Jackson",
+	"",
+	"",
+	"+SPECIAL THANKS",
+	"Ben Donges for beta testing",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"+ADDITIONAL SUPPORT",
+	"",
+	"+LINUX PORT AND CTF",
+	"Dave \"Zoid\" Kirsch",
+	"",
+	"+CINEMATIC SEQUENCES",
+	"Ending Cinematic by Blur Studio - ",
+	"Venice, CA",
+	"",
+	"Environment models for Introduction",
+	"Cinematic by Karl Dolgener",
+	"",
+	"Assistance with environment design",
+	"by Cliff Iwai",
+	"",
+	"+SOUND EFFECTS AND MUSIC",
+	"Sound Design by Soundelux Media Labs.",
+	"Music Composed and Produced by",
+	"Soundelux Media Labs.  Special thanks",
+	"to Bill Brown, Tom Ozanich, Brian",
+	"Celano, Jeff Eisner, and The Soundelux",
+	"Players.",
+	"",
+	"\"Level Music\" by Sonic Mayhem",
+	"www.sonicmayhem.com",
+	"",
+	"\"Quake II Theme Song\"",
+	"(C) 1997 Rob Zombie. All Rights",
+	"Reserved.",
+	"",
+	"Track 10 (\"Climb\") by Jer Sypult",
+	"",
+	"Voice of computers by",
+	"Carly Staehlin-Taylor",
+	"",
+	"+THANKS TO ACTIVISION",
+	"+IN PARTICULAR:",
+	"",
+	"John Tam",
+	"Steve Rosenthal",
+	"Marty Stratton",
+	"Henk Hartong",
+	"",
+	"Quake II(tm) (C)1997 Id Software, Inc.",
+	"All Rights Reserved.  Distributed by",
+	"Activision, Inc. under license.",
+	"Quake II(tm), the Id Software name,",
+	"the \"Q II\"(tm) logo and id(tm)",
+	"logo are trademarks of Id Software,",
+	"Inc. Activision(R) is a registered",
+	"trademark of Activision, Inc. All",
+	"other trademarks and trade names are",
+	"properties of their respective owners.",
+]
+
+xatcredits = [
+	"+QUAKE II MISSION PACK: THE RECKONING",
+	"+BY",
+	"+XATRIX ENTERTAINMENT, INC.",
+	"",
+	"+DESIGN AND DIRECTION",
+	"Drew Markham",
+	"",
+	"+PRODUCED BY",
+	"Greg Goodrich",
+	"",
+	"+PROGRAMMING",
+	"Rafael Paiz",
+	"",
+	"+LEVEL DESIGN / ADDITIONAL GAME DESIGN",
+	"Alex Mayberry",
+	"",
+	"+LEVEL DESIGN",
+	"Mal Blackwell",
+	"Dan Koppel",
+	"",
+	"+ART DIRECTION",
+	"Michael \"Maxx\" Kaufman",
+	"",
+	"+COMPUTER GRAPHICS SUPERVISOR AND",
+	"+CHARACTER ANIMATION DIRECTION",
+	"Barry Dempsey",
+	"",
+	"+SENIOR ANIMATOR AND MODELER",
+	"Jason Hoover",
+	"",
+	"+CHARACTER ANIMATION AND",
+	"+MOTION CAPTURE SPECIALIST",
+	"Amit Doron",
+	"",
+	"+ART",
+	"Claire Praderie-Markham",
+	"Viktor Antonov",
+	"Corky Lehmkuhl",
+	"",
+	"+INTRODUCTION ANIMATION",
+	"Dominique Drozdz",
+	"",
+	"+ADDITIONAL LEVEL DESIGN",
+	"Aaron Barber",
+	"Rhett Baldwin",
+	"",
+	"+3D CHARACTER ANIMATION TOOLS",
+	"Gerry Tyra, SA Technology",
+	"",
+	"+ADDITIONAL EDITOR TOOL PROGRAMMING",
+	"Robert Duffy",
+	"",
+	"+ADDITIONAL PROGRAMMING",
+	"Ryan Feltrin",
+	"",
+	"+PRODUCTION COORDINATOR",
+	"Victoria Sylvester",
+	"",
+	"+SOUND DESIGN",
+	"Gary Bradfield",
+	"",
+	"+MUSIC BY",
+	"Sonic Mayhem",
+	"",
+	"",
+	"",
+	"+SPECIAL THANKS",
+	"+TO",
+	"+OUR FRIENDS AT ID SOFTWARE",
+	"",
+	"John Carmack",
+	"John Cash",
+	"Brian Hook",
+	"Adrian Carmack",
+	"Kevin Cloud",
+	"Paul Steed",
+	"Tim Willits",
+	"Christian Antkow",
+	"Paul Jaquays",
+	"Brandon James",
+	"Todd Hollenshead",
+	"Barrett (Bear) Alexander",
+	"Dave \"Zoid\" Kirsch",
+	"Donna Jackson",
+	"",
+	"",
+	"",
+	"+THANKS TO ACTIVISION",
+	"+IN PARTICULAR:",
+	"",
+	"Marty Stratton",
+	"Henk \"The Original Ripper\" Hartong",
+	"Kevin Kraff",
+	"Jamey Gottlieb",
+	"Chris Hepburn",
+	"",
+	"+AND THE GAME TESTERS",
+	"",
+	"Tim Vanlaw",
+	"Doug Jacobs",
+	"Steven Rosenthal",
+	"David Baker",
+	"Chris Campbell",
+	"Aaron Casillas",
+	"Steve Elwell",
+	"Derek Johnstone",
+	"Igor Krinitskiy",
+	"Samantha Lee",
+	"Michael Spann",
+	"Chris Toft",
+	"Juan Valdes",
+	"",
+	"+THANKS TO INTERGRAPH COMPUTER SYTEMS",
+	"+IN PARTICULAR:",
+	"",
+	"Michael T. Nicolaou",
+	"",
+	"",
+	"Quake II Mission Pack: The Reckoning",
+	"(tm) (C)1998 Id Software, Inc. All",
+	"Rights Reserved. Developed by Xatrix",
+	"Entertainment, Inc. for Id Software,",
+	"Inc. Distributed by Activision Inc.",
+	"under license. Quake(R) is a",
+	"registered trademark of Id Software,",
+	"Inc. Quake II Mission Pack: The",
+	"Reckoning(tm), Quake II(tm), the Id",
+	"Software name, the \"Q II\"(tm) logo",
+	"and id(tm) logo are trademarks of Id",
+	"Software, Inc. Activision(R) is a",
+	"registered trademark of Activision,",
+	"Inc. Xatrix(R) is a registered",
+	"trademark of Xatrix Entertainment,",
+	"Inc. All other trademarks and trade",
+	"names are properties of their",
+	"respective owners.",
+]
+
+roguecredits = [
+	"+QUAKE II MISSION PACK 2: GROUND ZERO",
+	"+BY",
+	"+ROGUE ENTERTAINMENT, INC.",
+	"",
+	"+PRODUCED BY",
+	"Jim Molinets",
+	"",
+	"+PROGRAMMING",
+	"Peter Mack",
+	"Patrick Magruder",
+	"",
+	"+LEVEL DESIGN",
+	"Jim Molinets",
+	"Cameron Lamprecht",
+	"Berenger Fish",
+	"Robert Selitto",
+	"Steve Tietze",
+	"Steve Thoms",
+	"",
+	"+ART DIRECTION",
+	"Rich Fleider",
+	"",
+	"+ART",
+	"Rich Fleider",
+	"Steve Maines",
+	"Won Choi",
+	"",
+	"+ANIMATION SEQUENCES",
+	"Creat Studios",
+	"Steve Maines",
+	"",
+	"+ADDITIONAL LEVEL DESIGN",
+	"Rich Fleider",
+	"Steve Maines",
+	"Peter Mack",
+	"",
+	"+SOUND",
+	"James Grunke",
+	"",
+	"+GROUND ZERO THEME",
+	"+AND",
+	"+MUSIC BY",
+	"Sonic Mayhem",
+	"",
+	"+VWEP MODELS",
+	"Brent \"Hentai\" Dill",
+	"",
+	"",
+	"",
+	"+SPECIAL THANKS",
+	"+TO",
+	"+OUR FRIENDS AT ID SOFTWARE",
+	"",
+	"John Carmack",
+	"John Cash",
+	"Brian Hook",
+	"Adrian Carmack",
+	"Kevin Cloud",
+	"Paul Steed",
+	"Tim Willits",
+	"Christian Antkow",
+	"Paul Jaquays",
+	"Brandon James",
+	"Todd Hollenshead",
+	"Barrett (Bear) Alexander",
+	"Katherine Anna Kang",
+	"Donna Jackson",
+	"Dave \"Zoid\" Kirsch",
+	"",
+	"",
+	"",
+	"+THANKS TO ACTIVISION",
+	"+IN PARTICULAR:",
+	"",
+	"Marty Stratton",
+	"Henk Hartong",
+	"Mitch Lasky",
+	"Steve Rosenthal",
+	"Steve Elwell",
+	"",
+	"+AND THE GAME TESTERS",
+	"",
+	"The Ranger Clan",
+	"Dave \"Zoid\" Kirsch",
+	"Nihilistic Software",
+	"Robert Duffy",
+	"",
+	"And Countless Others",
+	"",
+	"",
+	"",
+	"Quake II Mission Pack 2: Ground Zero",
+	"(tm) (C)1998 Id Software, Inc. All",
+	"Rights Reserved. Developed by Rogue",
+	"Entertainment, Inc. for Id Software,",
+	"Inc. Distributed by Activision Inc.",
+	"under license. Quake(R) is a",
+	"registered trademark of Id Software,",
+	"Inc. Quake II Mission Pack 2: Ground",
+	"Zero(tm), Quake II(tm), the Id",
+	"Software name, the \"Q II\"(tm) logo",
+	"and id(tm) logo are trademarks of Id",
+	"Software, Inc. Activision(R) is a",
+	"registered trademark of Activision,",
+	"Inc. Rogue(R) is a registered",
+	"trademark of Rogue Entertainment,",
+	"Inc. All other trademarks and trade",
+	"names are properties of their",
+	"respective owners.",
+]
+
+
+def M_Credits_MenuDraw():
+
+	global credits_start_time
+
+	i = 0
+	y = vid_so.viddef.height - ((cl_main.cls.realtime - credits_start_time) / 40.0)
+
+	while i < len(credits) and y < vid_so.viddef.height:
+		line = credits[i]
+		if y <= -8:
+			y += 10
+			i += 1
+			continue
+
+		bold = False
+		stringoffset = 0
+		if line.startswith("+"):
+			bold = True
+			stringoffset = 1
+
+		for j, ch in enumerate(line[stringoffset:]):
+			x = (
+				(vid_so.viddef.width - len(line) * 8 - stringoffset * 8) / 2
+				+ (j + stringoffset) * 8
+			)
+			if bold:
+				vid_so.re.DrawChar(int(x), int(y), ord(ch) + 128)
+			else:
+				vid_so.re.DrawChar(int(x), int(y), ord(ch))
+
+		y += 10
+		i += 1
+
+	if y < 0:
+		credits_start_time = cl_main.cls.realtime
+
+
+def M_Credits_Key(key): #int (returns const char *)
+
+	if key == keys.K_ESCAPE:
+		global credits_buffer
+		if credits_buffer is not None:
+			files.FS_FreeFile(credits_buffer)
+			credits_buffer = None
+		M_PopMenu()
+
+	return menu_out_sound
+
+
 def M_Menu_Credits_f():
 
-	pass
-	"""
+	global credits_start_time, credits, credits_buffer, credits_index
 
-	int		n;
-	int		count;
-	char	*p;
-	int		isdeveloper = 0;
+	credits_buffer = None
+	count, credits_buffer = files.FS_LoadFile("credits")
+	if count != -1 and credits_buffer is not None:
+		text = credits_buffer.decode("utf-8", errors="replace")
+		lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+		credits_index = lines[:255]
+		credits = credits_index
+	else:
+		isdeveloper = files.Developer_searchpath(1)
+		if isdeveloper == 1:
+			credits = xatcredits
+		elif isdeveloper == 2:
+			credits = roguecredits
+		else:
+			credits = idcredits
 
-	creditsBuffer = NULL;
-	count = FS_LoadFile ("credits", &creditsBuffer);
-	if (count != -1)
-	{
-		p = creditsBuffer;
-		for (n = 0; n < 255; n++)
-		{
-			creditsIndex[n] = p;
-			while (*p != '\r' && *p != '\n')
-			{
-				p++;
-				if (--count == 0)
-					break;
-			}
-			if (*p == '\r')
-			{
-				*p++ = 0;
-				if (--count == 0)
-					break;
-			}
-			*p++ = 0;
-			if (--count == 0)
-				break;
-		}
-		creditsIndex[++n] = 0;
-		credits = creditsIndex;
-	}
-	else
-	{
-		isdeveloper = Developer_searchpath (1);
-		
-		if (isdeveloper == 1)			// xatrix
-			credits = xatcredits;
-		else if (isdeveloper == 2)		// ROGUE
-			credits = roguecredits;
-		else
-		{
-			credits = idcredits;	
-		}
-
-	}
-
-	credits_start_time = cl_main.cls.realtime;
-	"""
-	#M_PushMenu( M_Credits_MenuDraw, M_Credits_Key)
+	credits_start_time = cl_main.cls.realtime
+	M_PushMenu(M_Credits_MenuDraw, M_Credits_Key)
 
 
 """
@@ -2163,11 +3039,83 @@ const char *LoadGame_MenuKey( int key )
 }
 
 """
+MAX_SAVEGAMES = 15
+
+s_savegame_menu = menuframework_s()
+s_loadgame_menu = menuframework_s()
+s_loadgame_actions = [menuaction_s() for _ in range(MAX_SAVEGAMES)]
+s_savegame_actions = [menuaction_s() for _ in range(MAX_SAVEGAMES)]
+
+m_savestrings = [""] * MAX_SAVEGAMES
+m_savevalid = [False] * MAX_SAVEGAMES
+
+
+def Create_Savestrings():
+
+	for i in range(MAX_SAVEGAMES):
+		name = "{}/save/save{}/server.ssv".format(files.FS_Gamedir(), i)
+		try:
+			with open(name, "rb") as f:
+				data = files.FS_Read(32, f)
+			m_savestrings[i] = data.decode("utf-8", errors="replace").split("\x00", 1)[0]
+			m_savevalid[i] = True
+		except FileNotFoundError:
+			m_savestrings[i] = "<EMPTY>"
+			m_savevalid[i] = False
+
+
+def LoadGameCallback(self):
+
+	if m_savevalid[self.localdata[0]]:
+		cmd.Cbuf_AddText("load save{}\n".format(self.localdata[0]))
+	M_ForceMenuOff()
+
+
+def LoadGame_MenuInit():
+
+	s_loadgame_menu.x = vid_so.viddef.width // 2 - 120
+	s_loadgame_menu.y = vid_so.viddef.height // 2 - 58
+	s_loadgame_menu.nitems = 0
+
+	Create_Savestrings()
+
+	for i in range(MAX_SAVEGAMES):
+		action = s_loadgame_actions[i]
+		action.name = m_savestrings[i]
+		action.flags = QMF_LEFT_JUSTIFY
+		action.localdata[0] = i
+		action.callback = LoadGameCallback
+
+		action.x = 0
+		action.y = i * 10
+		if i > 0:
+			action.y += 10
+
+		action.type = MTYPE_ACTION
+
+		qmenu.Menu_AddItem(s_loadgame_menu, action)
+
+
+def LoadGame_MenuDraw():
+
+	M_Banner("m_banner_load_game")
+	qmenu.Menu_Draw(s_loadgame_menu)
+
+
+def LoadGame_MenuKey(key): #int (returns const char *)
+
+	if key in (keys.K_ESCAPE, keys.K_ENTER):
+		s_savegame_menu.cursor = s_loadgame_menu.cursor - 1
+		if s_savegame_menu.cursor < 0:
+			s_savegame_menu.cursor = 0
+
+	return Default_MenuKey(s_loadgame_menu, key)
+
+
 def M_Menu_LoadGame_f ():
 
-	pass
-	#LoadGame_MenuInit()
-	#M_PushMenu( LoadGame_MenuDraw, LoadGame_MenuKey )
+	LoadGame_MenuInit()
+	M_PushMenu(LoadGame_MenuDraw, LoadGame_MenuKey)
 
 """
 =============================================================================
@@ -2233,15 +3181,59 @@ const char *SaveGame_MenuKey( int key )
 }
 
 """
+def SaveGameCallback(self):
+
+	cmd.Cbuf_AddText("save save{}\n".format(self.localdata[0]))
+	M_ForceMenuOff()
+
+
+def SaveGame_MenuDraw():
+
+	M_Banner("m_banner_save_game")
+	qmenu.Menu_AdjustCursor(s_savegame_menu, 1)
+	qmenu.Menu_Draw(s_savegame_menu)
+
+
+def SaveGame_MenuInit():
+
+	s_savegame_menu.x = vid_so.viddef.width // 2 - 120
+	s_savegame_menu.y = vid_so.viddef.height // 2 - 58
+	s_savegame_menu.nitems = 0
+
+	Create_Savestrings()
+
+	for i in range(MAX_SAVEGAMES - 1):
+		action = s_savegame_actions[i]
+		action.name = m_savestrings[i + 1]
+		action.localdata[0] = i + 1
+		action.flags = QMF_LEFT_JUSTIFY
+		action.callback = SaveGameCallback
+
+		action.x = 0
+		action.y = i * 10
+		action.type = MTYPE_ACTION
+
+		qmenu.Menu_AddItem(s_savegame_menu, action)
+
+
+def SaveGame_MenuKey(key): #int (returns const char *)
+
+	if key in (keys.K_ENTER, keys.K_ESCAPE):
+		s_loadgame_menu.cursor = s_savegame_menu.cursor - 1
+		if s_loadgame_menu.cursor < 0:
+			s_loadgame_menu.cursor = 0
+
+	return Default_MenuKey(s_savegame_menu, key)
+
+
 def M_Menu_SaveGame_f ():
 
-	pass
-	#if (!Com_ServerState())
-	#	return;		# not playing a game
+	if not common.Com_ServerState():
+		return
 
-	#SaveGame_MenuInit();
-	#M_PushMenu( SaveGame_MenuDraw, SaveGame_MenuKey )
-	#Create_Savestrings ();
+	SaveGame_MenuInit()
+	M_PushMenu(SaveGame_MenuDraw, SaveGame_MenuKey)
+	Create_Savestrings()
 
 
 
@@ -2409,6 +3401,157 @@ void M_Menu_JoinServer_f (void)
 	JoinServer_MenuInit();
 	M_PushMenu( JoinServer_MenuDraw, JoinServer_MenuKey );
 }
+
+MAX_LOCAL_SERVERS = 8
+NO_SERVER_STRING = "<no server>"
+
+s_joinserver_menu = menuframework_s()
+s_joinserver_server_title = menuseparator_s()
+s_joinserver_search_action = menuaction_s()
+s_joinserver_address_book_action = menuaction_s()
+s_joinserver_server_actions = [menuaction_s() for _ in range(MAX_LOCAL_SERVERS)]
+
+m_num_servers = 0
+local_server_names = [NO_SERVER_STRING for _ in range(MAX_LOCAL_SERVERS)]
+local_server_netadr = [None for _ in range(MAX_LOCAL_SERVERS)]
+
+
+def M_AddToServerList(adr, info):
+
+	global m_num_servers
+
+	if m_num_servers == MAX_LOCAL_SERVERS:
+		return
+
+	info = info.lstrip(" ")
+
+	for i in range(m_num_servers):
+		if q_shared.Q_stricmp(info, local_server_names[i]) == 0:
+			return
+
+	local_server_netadr[m_num_servers] = adr
+	local_server_names[m_num_servers] = info[:79]
+	if m_num_servers < len(s_joinserver_server_actions):
+		s_joinserver_server_actions[m_num_servers].name = local_server_names[m_num_servers]
+	m_num_servers += 1
+
+
+def JoinServerFunc(self):
+
+	index = s_joinserver_server_actions.index(self)
+
+	if q_shared.Q_stricmp(local_server_names[index], NO_SERVER_STRING) == 0:
+		return
+
+	if index >= m_num_servers:
+		return
+
+	address = net_udp.NET_AdrToString(local_server_netadr[index])
+	cmd.Cbuf_AddText("connect {}\n".format(address))
+	M_ForceMenuOff()
+
+
+def AddressBookFunc(unused):
+
+	M_Menu_AddressBook_f()
+
+
+def NullCursorDraw(unused):
+	pass
+
+
+def SearchLocalGames():
+
+	global m_num_servers, local_server_names, local_server_netadr
+
+	m_num_servers = 0
+	local_server_names = [NO_SERVER_STRING for _ in range(MAX_LOCAL_SERVERS)]
+	local_server_netadr = [None for _ in range(MAX_LOCAL_SERVERS)]
+	for i in range(MAX_LOCAL_SERVERS):
+		s_joinserver_server_actions[i].name = local_server_names[i]
+
+	M_DrawTextBox(8, 120 - 48, 36, 3)
+	M_Print(16 + 16, 120 - 48 + 8, "Searching for local servers, this")
+	M_Print(16 + 16, 120 - 48 + 16, "could take up to a minute, so")
+	M_Print(16 + 16, 120 - 48 + 24, "please be patient.")
+
+	# the text box won't show up unless we do a buffer swap
+	vid_so.re.EndFrame()
+
+	# send out info packets
+	if hasattr(cl_main, "CL_PingServers_f"):
+		cl_main.CL_PingServers_f()
+	else:
+		common.Com_Printf("CL_PingServers_f not available.\n")
+
+
+def SearchLocalGamesFunc(unused):
+
+	SearchLocalGames()
+
+
+def JoinServer_MenuInit():
+
+	s_joinserver_menu.x = vid_so.viddef.width * 0.50 - 120
+	s_joinserver_menu.nitems = 0
+
+	s_joinserver_address_book_action.type = MTYPE_ACTION
+	s_joinserver_address_book_action.name = "address book"
+	s_joinserver_address_book_action.flags = QMF_LEFT_JUSTIFY
+	s_joinserver_address_book_action.x = 0
+	s_joinserver_address_book_action.y = 0
+	s_joinserver_address_book_action.callback = AddressBookFunc
+
+	s_joinserver_search_action.type = MTYPE_ACTION
+	s_joinserver_search_action.name = "refresh server list"
+	s_joinserver_search_action.flags = QMF_LEFT_JUSTIFY
+	s_joinserver_search_action.x = 0
+	s_joinserver_search_action.y = 10
+	s_joinserver_search_action.callback = SearchLocalGamesFunc
+	s_joinserver_search_action.statusbar = "search for servers"
+
+	s_joinserver_server_title.type = MTYPE_SEPARATOR
+	s_joinserver_server_title.name = "connect to..."
+	s_joinserver_server_title.x = 80
+	s_joinserver_server_title.y = 30
+
+	for i in range(MAX_LOCAL_SERVERS):
+		action = s_joinserver_server_actions[i]
+		action.type = MTYPE_ACTION
+		local_server_names[i] = NO_SERVER_STRING
+		action.name = local_server_names[i]
+		action.flags = QMF_LEFT_JUSTIFY
+		action.x = 0
+		action.y = 40 + i * 10
+		action.callback = JoinServerFunc
+		action.statusbar = "press ENTER to connect"
+
+	qmenu.Menu_AddItem(s_joinserver_menu, s_joinserver_address_book_action)
+	qmenu.Menu_AddItem(s_joinserver_menu, s_joinserver_server_title)
+	qmenu.Menu_AddItem(s_joinserver_menu, s_joinserver_search_action)
+
+	for i in range(MAX_LOCAL_SERVERS):
+		qmenu.Menu_AddItem(s_joinserver_menu, s_joinserver_server_actions[i])
+
+	qmenu.Menu_Center(s_joinserver_menu)
+	SearchLocalGames()
+
+
+def JoinServer_MenuDraw():
+
+	M_Banner("m_banner_join_server")
+	qmenu.Menu_Draw(s_joinserver_menu)
+
+
+def JoinServer_MenuKey(key): #int (returns const char *)
+
+	return Default_MenuKey(s_joinserver_menu, key)
+
+
+def M_Menu_JoinServer_f():
+
+	JoinServer_MenuInit()
+	M_PushMenu(JoinServer_MenuDraw, JoinServer_MenuKey)
 
 
 /*
@@ -2780,6 +3923,279 @@ void M_Menu_StartServer_f (void)
 	StartServer_MenuInit();
 	M_PushMenu( StartServer_MenuDraw, StartServer_MenuKey );
 }
+
+mapnames = []
+nummaps = 0
+
+s_startserver_menu = menuframework_s()
+s_startserver_start_action = menuaction_s()
+s_startserver_dmoptions_action = menuaction_s()
+s_timelimit_field = menufield_s()
+s_fraglimit_field = menufield_s()
+s_maxclients_field = menufield_s()
+s_hostname_field = menufield_s()
+s_startmap_list = menuspincontrol_s()
+s_rules_box = menuspincontrol_s()
+
+
+def DMOptionsFunc(unused):
+
+	if s_rules_box.curvalue == 1:
+		return
+	M_Menu_DMOptions_f()
+
+
+def RulesChangeFunc(unused):
+
+	if s_rules_box.curvalue == 0:
+		s_maxclients_field.statusbar = None
+		s_startserver_dmoptions_action.statusbar = None
+	elif s_rules_box.curvalue == 1:
+		s_maxclients_field.statusbar = "4 maximum for cooperative"
+		try:
+			current_max = int(s_maxclients_field.buffer)
+		except (TypeError, ValueError):
+			current_max = 4
+		if current_max > 4:
+			s_maxclients_field.buffer = "4"
+		s_startserver_dmoptions_action.statusbar = "N/A for cooperative"
+	elif files.Developer_searchpath(2) == 2:
+		if s_rules_box.curvalue == 2:
+			s_maxclients_field.statusbar = None
+			s_startserver_dmoptions_action.statusbar = None
+
+
+def _parse_int_buffer(value, default=0):
+
+	try:
+		return int(value)
+	except (TypeError, ValueError):
+		return default
+
+
+def StartServerActionFunc(unused):
+
+	if not mapnames:
+		return
+
+	entry = mapnames[s_startmap_list.curvalue]
+	if "\n" in entry:
+		startmap = entry.split("\n", 1)[1]
+	else:
+		startmap = entry
+
+	maxclients = _parse_int_buffer(s_maxclients_field.buffer)
+	timelimit = _parse_int_buffer(s_timelimit_field.buffer)
+	fraglimit = _parse_int_buffer(s_fraglimit_field.buffer)
+
+	cvar.Cvar_SetValue("maxclients", ClampCvar(0, maxclients, maxclients))
+	cvar.Cvar_SetValue("timelimit", ClampCvar(0, timelimit, timelimit))
+	cvar.Cvar_SetValue("fraglimit", ClampCvar(0, fraglimit, fraglimit))
+	cvar.Cvar_Set("hostname", s_hostname_field.buffer)
+
+	if (s_rules_box.curvalue < 2) or (files.Developer_searchpath(2) != 2):
+		cvar.Cvar_SetValue("deathmatch", int(not s_rules_box.curvalue))
+		cvar.Cvar_SetValue("coop", int(s_rules_box.curvalue))
+		cvar.Cvar_SetValue("gamerules", 0)
+	else:
+		cvar.Cvar_SetValue("deathmatch", 1)
+		cvar.Cvar_SetValue("coop", 0)
+		cvar.Cvar_SetValue("gamerules", int(s_rules_box.curvalue))
+
+	spot = None
+	if s_rules_box.curvalue == 1:
+		if q_shared.Q_stricmp(startmap, "bunk1") == 0:
+			spot = "start"
+		elif q_shared.Q_stricmp(startmap, "mintro") == 0:
+			spot = "start"
+		elif q_shared.Q_stricmp(startmap, "fact1") == 0:
+			spot = "start"
+		elif q_shared.Q_stricmp(startmap, "power1") == 0:
+			spot = "pstart"
+		elif q_shared.Q_stricmp(startmap, "biggun") == 0:
+			spot = "bstart"
+		elif q_shared.Q_stricmp(startmap, "hangar1") == 0:
+			spot = "unitstart"
+		elif q_shared.Q_stricmp(startmap, "city1") == 0:
+			spot = "unitstart"
+		elif q_shared.Q_stricmp(startmap, "boss1") == 0:
+			spot = "bosstart"
+
+	if spot:
+		if common.Com_ServerState():
+			cmd.Cbuf_AddText("disconnect\n")
+		cmd.Cbuf_AddText("gamemap \"*{}${}\"\n".format(startmap, spot))
+	else:
+		cmd.Cbuf_AddText("map {}\n".format(startmap))
+
+	M_ForceMenuOff()
+
+
+def _load_maps_list():
+
+	path = os.path.join(files.FS_Gamedir(), "maps.lst")
+	data = None
+	if os.path.exists(path):
+		with open(path, "rb") as fp:
+			data = fp.read()
+	else:
+		length, data = files.FS_LoadFile("maps.lst")
+		if length == -1 or data is None:
+			common.Com_Error(q_shared.ERR_DROP, "couldn't find maps.lst\n")
+			return ""
+
+	return data.decode("utf-8", errors="replace")
+
+
+def StartServer_MenuInit():
+
+	global mapnames, nummaps
+
+	dm_coop_names = [
+		"deathmatch",
+		"cooperative",
+	]
+
+	dm_coop_names_rogue = [
+		"deathmatch",
+		"cooperative",
+		"tag",
+	]
+
+	buffer = _load_maps_list()
+	cursor = 0
+	mapnames = []
+	while True:
+		shortname, cursor = q_shared.COM_Parse(buffer, cursor)
+		if not shortname:
+			break
+		longname, cursor = q_shared.COM_Parse(buffer, cursor)
+		if not longname:
+			break
+		mapnames.append("{}\n{}".format(longname, shortname.upper()))
+
+	nummaps = len(mapnames)
+	if nummaps == 0:
+		common.Com_Error(q_shared.ERR_DROP, "no maps in maps.lst\n")
+		return
+
+	s_startserver_menu.x = vid_so.viddef.width * 0.50
+	s_startserver_menu.nitems = 0
+
+	s_startmap_list.type = MTYPE_SPINCONTROL
+	s_startmap_list.x = 0
+	s_startmap_list.y = 0
+	s_startmap_list.name = "initial map"
+	s_startmap_list.itemnames = mapnames
+
+	s_rules_box.type = MTYPE_SPINCONTROL
+	s_rules_box.x = 0
+	s_rules_box.y = 20
+	s_rules_box.name = "rules"
+
+	if files.Developer_searchpath(2) == 2:
+		s_rules_box.itemnames = dm_coop_names_rogue
+	else:
+		s_rules_box.itemnames = dm_coop_names
+
+	if cvar.Cvar_VariableValue("coop"):
+		s_rules_box.curvalue = 1
+	else:
+		s_rules_box.curvalue = 0
+	s_rules_box.callback = RulesChangeFunc
+
+	s_timelimit_field.type = MTYPE_FIELD
+	s_timelimit_field.name = "time limit"
+	s_timelimit_field.flags = QMF_NUMBERSONLY
+	s_timelimit_field.x = 0
+	s_timelimit_field.y = 36
+	s_timelimit_field.statusbar = "0 = no limit"
+	s_timelimit_field.length = 3
+	s_timelimit_field.visible_length = 3
+	s_timelimit_field.buffer = cvar.Cvar_VariableString("timelimit")
+
+	s_fraglimit_field.type = MTYPE_FIELD
+	s_fraglimit_field.name = "frag limit"
+	s_fraglimit_field.flags = QMF_NUMBERSONLY
+	s_fraglimit_field.x = 0
+	s_fraglimit_field.y = 54
+	s_fraglimit_field.statusbar = "0 = no limit"
+	s_fraglimit_field.length = 3
+	s_fraglimit_field.visible_length = 3
+	s_fraglimit_field.buffer = cvar.Cvar_VariableString("fraglimit")
+
+	s_maxclients_field.type = MTYPE_FIELD
+	s_maxclients_field.name = "max players"
+	s_maxclients_field.flags = QMF_NUMBERSONLY
+	s_maxclients_field.x = 0
+	s_maxclients_field.y = 72
+	s_maxclients_field.statusbar = None
+	s_maxclients_field.length = 3
+	s_maxclients_field.visible_length = 3
+	if cvar.Cvar_VariableValue("maxclients") == 1:
+		s_maxclients_field.buffer = "8"
+	else:
+		s_maxclients_field.buffer = cvar.Cvar_VariableString("maxclients")
+
+	s_hostname_field.type = MTYPE_FIELD
+	s_hostname_field.name = "hostname"
+	s_hostname_field.flags = 0
+	s_hostname_field.x = 0
+	s_hostname_field.y = 90
+	s_hostname_field.statusbar = None
+	s_hostname_field.length = 12
+	s_hostname_field.visible_length = 12
+	s_hostname_field.buffer = cvar.Cvar_VariableString("hostname")
+
+	s_startserver_dmoptions_action.type = MTYPE_ACTION
+	s_startserver_dmoptions_action.name = " deathmatch flags"
+	s_startserver_dmoptions_action.flags = QMF_LEFT_JUSTIFY
+	s_startserver_dmoptions_action.x = 24
+	s_startserver_dmoptions_action.y = 108
+	s_startserver_dmoptions_action.statusbar = None
+	s_startserver_dmoptions_action.callback = DMOptionsFunc
+
+	s_startserver_start_action.type = MTYPE_ACTION
+	s_startserver_start_action.name = " begin"
+	s_startserver_start_action.flags = QMF_LEFT_JUSTIFY
+	s_startserver_start_action.x = 24
+	s_startserver_start_action.y = 128
+	s_startserver_start_action.callback = StartServerActionFunc
+
+	qmenu.Menu_AddItem(s_startserver_menu, s_startmap_list)
+	qmenu.Menu_AddItem(s_startserver_menu, s_rules_box)
+	qmenu.Menu_AddItem(s_startserver_menu, s_timelimit_field)
+	qmenu.Menu_AddItem(s_startserver_menu, s_fraglimit_field)
+	qmenu.Menu_AddItem(s_startserver_menu, s_maxclients_field)
+	qmenu.Menu_AddItem(s_startserver_menu, s_hostname_field)
+	qmenu.Menu_AddItem(s_startserver_menu, s_startserver_dmoptions_action)
+	qmenu.Menu_AddItem(s_startserver_menu, s_startserver_start_action)
+
+	qmenu.Menu_Center(s_startserver_menu)
+
+	RulesChangeFunc(None)
+
+
+def StartServer_MenuDraw():
+
+	qmenu.Menu_Draw(s_startserver_menu)
+
+
+def StartServer_MenuKey(key): #int (returns const char *)
+
+	global mapnames, nummaps
+
+	if key == keys.K_ESCAPE:
+		mapnames = []
+		nummaps = 0
+
+	return Default_MenuKey(s_startserver_menu, key)
+
+
+def M_Menu_StartServer_f():
+
+	StartServer_MenuInit()
+	M_PushMenu(StartServer_MenuDraw, StartServer_MenuKey)
 
 /*
 =============================================================================
@@ -3184,6 +4600,465 @@ void M_Menu_DMOptions_f (void)
 	M_PushMenu( DMOptions_MenuDraw, DMOptions_MenuKey );
 }
 
+dmoptions_statusbar = ""
+
+s_dmoptions_menu = menuframework_s()
+s_friendlyfire_box = menuspincontrol_s()
+s_falls_box = menuspincontrol_s()
+s_weapons_stay_box = menuspincontrol_s()
+s_instant_powerups_box = menuspincontrol_s()
+s_powerups_box = menuspincontrol_s()
+s_health_box = menuspincontrol_s()
+s_spawn_farthest_box = menuspincontrol_s()
+s_teamplay_box = menuspincontrol_s()
+s_samelevel_box = menuspincontrol_s()
+s_force_respawn_box = menuspincontrol_s()
+s_armor_box = menuspincontrol_s()
+s_allow_exit_box = menuspincontrol_s()
+s_infinite_ammo_box = menuspincontrol_s()
+s_fixed_fov_box = menuspincontrol_s()
+s_quad_drop_box = menuspincontrol_s()
+s_no_mines_box = menuspincontrol_s()
+s_no_nukes_box = menuspincontrol_s()
+s_stack_double_box = menuspincontrol_s()
+s_no_spheres_box = menuspincontrol_s()
+
+DF_NO_MINES = getattr(q_shared, "DF_NO_MINES", 0x00020000)
+DF_NO_STACK_DOUBLE = getattr(q_shared, "DF_NO_STACK_DOUBLE", 0x00040000)
+DF_NO_NUKES = getattr(q_shared, "DF_NO_NUKES", 0x00080000)
+DF_NO_SPHERES = getattr(q_shared, "DF_NO_SPHERES", 0x00100000)
+
+
+def DMFlagCallback(self):
+
+	global dmoptions_statusbar
+
+	flags = int(cvar.Cvar_VariableValue("dmflags"))
+	bit = 0
+
+	if self is s_friendlyfire_box:
+		if self.curvalue:
+			flags &= ~q_shared.DF_NO_FRIENDLY_FIRE
+		else:
+			flags |= q_shared.DF_NO_FRIENDLY_FIRE
+	elif self is s_falls_box:
+		if self.curvalue:
+			flags &= ~q_shared.DF_NO_FALLING
+		else:
+			flags |= q_shared.DF_NO_FALLING
+	elif self is s_weapons_stay_box:
+		bit = q_shared.DF_WEAPONS_STAY
+	elif self is s_instant_powerups_box:
+		bit = q_shared.DF_INSTANT_ITEMS
+	elif self is s_allow_exit_box:
+		bit = q_shared.DF_ALLOW_EXIT
+	elif self is s_powerups_box:
+		if self.curvalue:
+			flags &= ~q_shared.DF_NO_ITEMS
+		else:
+			flags |= q_shared.DF_NO_ITEMS
+	elif self is s_health_box:
+		if self.curvalue:
+			flags &= ~q_shared.DF_NO_HEALTH
+		else:
+			flags |= q_shared.DF_NO_HEALTH
+	elif self is s_spawn_farthest_box:
+		bit = q_shared.DF_SPAWN_FARTHEST
+	elif self is s_teamplay_box:
+		if self.curvalue == 1:
+			flags |= q_shared.DF_SKINTEAMS
+			flags &= ~q_shared.DF_MODELTEAMS
+		elif self.curvalue == 2:
+			flags |= q_shared.DF_MODELTEAMS
+			flags &= ~q_shared.DF_SKINTEAMS
+		else:
+			flags &= ~(q_shared.DF_MODELTEAMS | q_shared.DF_SKINTEAMS)
+	elif self is s_samelevel_box:
+		bit = q_shared.DF_SAME_LEVEL
+	elif self is s_force_respawn_box:
+		bit = q_shared.DF_FORCE_RESPAWN
+	elif self is s_armor_box:
+		if self.curvalue:
+			flags &= ~q_shared.DF_NO_ARMOR
+		else:
+			flags |= q_shared.DF_NO_ARMOR
+	elif self is s_infinite_ammo_box:
+		bit = q_shared.DF_INFINITE_AMMO
+	elif self is s_fixed_fov_box:
+		bit = q_shared.DF_FIXED_FOV
+	elif self is s_quad_drop_box:
+		bit = q_shared.DF_QUAD_DROP
+	elif files.Developer_searchpath(2) == 2:
+		if self is s_no_mines_box:
+			bit = DF_NO_MINES
+		elif self is s_no_nukes_box:
+			bit = DF_NO_NUKES
+		elif self is s_stack_double_box:
+			bit = DF_NO_STACK_DOUBLE
+		elif self is s_no_spheres_box:
+			bit = DF_NO_SPHERES
+
+	if bit:
+		if self.curvalue == 0:
+			flags &= ~bit
+		else:
+			flags |= bit
+
+	cvar.Cvar_SetValue("dmflags", flags)
+	dmoptions_statusbar = "dmflags = {}".format(flags)
+
+
+def DMOptions_MenuInit():
+
+	yes_no_names = ["no", "yes"]
+	teamplay_names = ["disabled", "by skin", "by model"]
+	dmflags = int(cvar.Cvar_VariableValue("dmflags"))
+	y = 0
+
+	s_dmoptions_menu.x = vid_so.viddef.width * 0.50
+	s_dmoptions_menu.nitems = 0
+
+	s_falls_box.type = MTYPE_SPINCONTROL
+	s_falls_box.x = 0
+	s_falls_box.y = y
+	s_falls_box.name = "falling damage"
+	s_falls_box.callback = DMFlagCallback
+	s_falls_box.itemnames = yes_no_names
+	s_falls_box.curvalue = int((dmflags & q_shared.DF_NO_FALLING) == 0)
+
+	s_weapons_stay_box.type = MTYPE_SPINCONTROL
+	s_weapons_stay_box.x = 0
+	s_weapons_stay_box.y = y + 10
+	s_weapons_stay_box.name = "weapons stay"
+	s_weapons_stay_box.callback = DMFlagCallback
+	s_weapons_stay_box.itemnames = yes_no_names
+	s_weapons_stay_box.curvalue = int((dmflags & q_shared.DF_WEAPONS_STAY) != 0)
+
+	y += 10
+
+	s_instant_powerups_box.type = MTYPE_SPINCONTROL
+	s_instant_powerups_box.x = 0
+	s_instant_powerups_box.y = y + 10
+	s_instant_powerups_box.name = "instant powerups"
+	s_instant_powerups_box.callback = DMFlagCallback
+	s_instant_powerups_box.itemnames = yes_no_names
+	s_instant_powerups_box.curvalue = int((dmflags & q_shared.DF_INSTANT_ITEMS) != 0)
+
+	y += 10
+
+	s_powerups_box.type = MTYPE_SPINCONTROL
+	s_powerups_box.x = 0
+	s_powerups_box.y = y + 10
+	s_powerups_box.name = "allow powerups"
+	s_powerups_box.callback = DMFlagCallback
+	s_powerups_box.itemnames = yes_no_names
+	s_powerups_box.curvalue = int((dmflags & q_shared.DF_NO_ITEMS) == 0)
+
+	y += 10
+
+	s_health_box.type = MTYPE_SPINCONTROL
+	s_health_box.x = 0
+	s_health_box.y = y + 10
+	s_health_box.callback = DMFlagCallback
+	s_health_box.name = "allow health"
+	s_health_box.itemnames = yes_no_names
+	s_health_box.curvalue = int((dmflags & q_shared.DF_NO_HEALTH) == 0)
+
+	y += 10
+
+	s_armor_box.type = MTYPE_SPINCONTROL
+	s_armor_box.x = 0
+	s_armor_box.y = y + 10
+	s_armor_box.name = "allow armor"
+	s_armor_box.callback = DMFlagCallback
+	s_armor_box.itemnames = yes_no_names
+	s_armor_box.curvalue = int((dmflags & q_shared.DF_NO_ARMOR) == 0)
+
+	y += 10
+
+	s_spawn_farthest_box.type = MTYPE_SPINCONTROL
+	s_spawn_farthest_box.x = 0
+	s_spawn_farthest_box.y = y + 10
+	s_spawn_farthest_box.name = "spawn farthest"
+	s_spawn_farthest_box.callback = DMFlagCallback
+	s_spawn_farthest_box.itemnames = yes_no_names
+	s_spawn_farthest_box.curvalue = int((dmflags & q_shared.DF_SPAWN_FARTHEST) != 0)
+
+	y += 10
+
+	s_samelevel_box.type = MTYPE_SPINCONTROL
+	s_samelevel_box.x = 0
+	s_samelevel_box.y = y + 10
+	s_samelevel_box.name = "same map"
+	s_samelevel_box.callback = DMFlagCallback
+	s_samelevel_box.itemnames = yes_no_names
+	s_samelevel_box.curvalue = int((dmflags & q_shared.DF_SAME_LEVEL) != 0)
+
+	y += 10
+
+	s_force_respawn_box.type = MTYPE_SPINCONTROL
+	s_force_respawn_box.x = 0
+	s_force_respawn_box.y = y + 10
+	s_force_respawn_box.name = "force respawn"
+	s_force_respawn_box.callback = DMFlagCallback
+	s_force_respawn_box.itemnames = yes_no_names
+	s_force_respawn_box.curvalue = int((dmflags & q_shared.DF_FORCE_RESPAWN) != 0)
+
+	y += 10
+
+	s_teamplay_box.type = MTYPE_SPINCONTROL
+	s_teamplay_box.x = 0
+	s_teamplay_box.y = y + 10
+	s_teamplay_box.name = "teamplay"
+	s_teamplay_box.callback = DMFlagCallback
+	s_teamplay_box.itemnames = teamplay_names
+	if dmflags & q_shared.DF_SKINTEAMS:
+		s_teamplay_box.curvalue = 1
+	elif dmflags & q_shared.DF_MODELTEAMS:
+		s_teamplay_box.curvalue = 2
+	else:
+		s_teamplay_box.curvalue = 0
+
+	y += 10
+
+	s_allow_exit_box.type = MTYPE_SPINCONTROL
+	s_allow_exit_box.x = 0
+	s_allow_exit_box.y = y + 10
+	s_allow_exit_box.name = "allow exit"
+	s_allow_exit_box.callback = DMFlagCallback
+	s_allow_exit_box.itemnames = yes_no_names
+	s_allow_exit_box.curvalue = int((dmflags & q_shared.DF_ALLOW_EXIT) != 0)
+
+	y += 10
+
+	s_infinite_ammo_box.type = MTYPE_SPINCONTROL
+	s_infinite_ammo_box.x = 0
+	s_infinite_ammo_box.y = y + 10
+	s_infinite_ammo_box.name = "infinite ammo"
+	s_infinite_ammo_box.callback = DMFlagCallback
+	s_infinite_ammo_box.itemnames = yes_no_names
+	s_infinite_ammo_box.curvalue = int((dmflags & q_shared.DF_INFINITE_AMMO) != 0)
+
+	y += 10
+
+	s_fixed_fov_box.type = MTYPE_SPINCONTROL
+	s_fixed_fov_box.x = 0
+	s_fixed_fov_box.y = y + 10
+	s_fixed_fov_box.name = "fixed FOV"
+	s_fixed_fov_box.callback = DMFlagCallback
+	s_fixed_fov_box.itemnames = yes_no_names
+	s_fixed_fov_box.curvalue = int((dmflags & q_shared.DF_FIXED_FOV) != 0)
+
+	y += 10
+
+	s_quad_drop_box.type = MTYPE_SPINCONTROL
+	s_quad_drop_box.x = 0
+	s_quad_drop_box.y = y + 10
+	s_quad_drop_box.name = "quad drop"
+	s_quad_drop_box.callback = DMFlagCallback
+	s_quad_drop_box.itemnames = yes_no_names
+	s_quad_drop_box.curvalue = int((dmflags & q_shared.DF_QUAD_DROP) != 0)
+
+	y += 10
+
+	s_friendlyfire_box.type = MTYPE_SPINCONTROL
+	s_friendlyfire_box.x = 0
+	s_friendlyfire_box.y = y + 10
+	s_friendlyfire_box.name = "friendly fire"
+	s_friendlyfire_box.callback = DMFlagCallback
+	s_friendlyfire_box.itemnames = yes_no_names
+	s_friendlyfire_box.curvalue = int((dmflags & q_shared.DF_NO_FRIENDLY_FIRE) == 0)
+
+	if files.Developer_searchpath(2) == 2:
+		s_no_mines_box.type = MTYPE_SPINCONTROL
+		s_no_mines_box.x = 0
+		s_no_mines_box.y = y + 20
+		s_no_mines_box.name = "remove mines"
+		s_no_mines_box.callback = DMFlagCallback
+		s_no_mines_box.itemnames = yes_no_names
+		s_no_mines_box.curvalue = int((dmflags & DF_NO_MINES) != 0)
+
+		s_no_nukes_box.type = MTYPE_SPINCONTROL
+		s_no_nukes_box.x = 0
+		s_no_nukes_box.y = y + 30
+		s_no_nukes_box.name = "remove nukes"
+		s_no_nukes_box.callback = DMFlagCallback
+		s_no_nukes_box.itemnames = yes_no_names
+		s_no_nukes_box.curvalue = int((dmflags & DF_NO_NUKES) != 0)
+
+		s_stack_double_box.type = MTYPE_SPINCONTROL
+		s_stack_double_box.x = 0
+		s_stack_double_box.y = y + 40
+		s_stack_double_box.name = "2x/4x stacking off"
+		s_stack_double_box.callback = DMFlagCallback
+		s_stack_double_box.itemnames = yes_no_names
+		s_stack_double_box.curvalue = int((dmflags & DF_NO_STACK_DOUBLE) != 0)
+
+		s_no_spheres_box.type = MTYPE_SPINCONTROL
+		s_no_spheres_box.x = 0
+		s_no_spheres_box.y = y + 50
+		s_no_spheres_box.name = "remove spheres"
+		s_no_spheres_box.callback = DMFlagCallback
+		s_no_spheres_box.itemnames = yes_no_names
+		s_no_spheres_box.curvalue = int((dmflags & DF_NO_SPHERES) != 0)
+
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_falls_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_weapons_stay_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_instant_powerups_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_powerups_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_health_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_armor_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_spawn_farthest_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_samelevel_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_force_respawn_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_teamplay_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_allow_exit_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_infinite_ammo_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_fixed_fov_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_quad_drop_box)
+	qmenu.Menu_AddItem(s_dmoptions_menu, s_friendlyfire_box)
+
+	if files.Developer_searchpath(2) == 2:
+		qmenu.Menu_AddItem(s_dmoptions_menu, s_no_mines_box)
+		qmenu.Menu_AddItem(s_dmoptions_menu, s_no_nukes_box)
+		qmenu.Menu_AddItem(s_dmoptions_menu, s_stack_double_box)
+		qmenu.Menu_AddItem(s_dmoptions_menu, s_no_spheres_box)
+
+	qmenu.Menu_Center(s_dmoptions_menu)
+
+	DMFlagCallback(s_falls_box)
+	qmenu.Menu_SetStatusBar(s_dmoptions_menu, dmoptions_statusbar)
+
+
+def DMOptions_MenuDraw():
+
+	qmenu.Menu_Draw(s_dmoptions_menu)
+
+
+def DMOptions_MenuKey(key): #int (returns const char *)
+
+	return Default_MenuKey(s_dmoptions_menu, key)
+
+
+def M_Menu_DMOptions_f():
+
+	DMOptions_MenuInit()
+	M_PushMenu(DMOptions_MenuDraw, DMOptions_MenuKey)
+
+"""
+"""
+s_downloadoptions_menu = menuframework_s()
+s_download_title = menuseparator_s()
+s_allow_download_box = menuspincontrol_s()
+s_allow_download_maps_box = menuspincontrol_s()
+s_allow_download_models_box = menuspincontrol_s()
+s_allow_download_players_box = menuspincontrol_s()
+s_allow_download_sounds_box = menuspincontrol_s()
+
+
+def DownloadCallback(self):
+
+	if self is s_allow_download_box:
+		cvar.Cvar_SetValue("allow_download", int(self.curvalue))
+	elif self is s_allow_download_maps_box:
+		cvar.Cvar_SetValue("allow_download_maps", int(self.curvalue))
+	elif self is s_allow_download_models_box:
+		cvar.Cvar_SetValue("allow_download_models", int(self.curvalue))
+	elif self is s_allow_download_players_box:
+		cvar.Cvar_SetValue("allow_download_players", int(self.curvalue))
+	elif self is s_allow_download_sounds_box:
+		cvar.Cvar_SetValue("allow_download_sounds", int(self.curvalue))
+
+
+def DownloadOptions_MenuInit():
+
+	yes_no_names = ["no", "yes"]
+	y = 0
+
+	s_downloadoptions_menu.x = vid_so.viddef.width * 0.50
+	s_downloadoptions_menu.nitems = 0
+
+	s_download_title.type = MTYPE_SEPARATOR
+	s_download_title.name = "Download Options"
+	s_download_title.x = 48
+	s_download_title.y = y
+
+	s_allow_download_box.type = MTYPE_SPINCONTROL
+	s_allow_download_box.x = 0
+	s_allow_download_box.y = y + 20
+	s_allow_download_box.name = "allow downloading"
+	s_allow_download_box.callback = DownloadCallback
+	s_allow_download_box.itemnames = yes_no_names
+	s_allow_download_box.curvalue = int(cvar.Cvar_VariableValue("allow_download") != 0)
+
+	y += 20
+
+	s_allow_download_maps_box.type = MTYPE_SPINCONTROL
+	s_allow_download_maps_box.x = 0
+	s_allow_download_maps_box.y = y + 20
+	s_allow_download_maps_box.name = "maps"
+	s_allow_download_maps_box.callback = DownloadCallback
+	s_allow_download_maps_box.itemnames = yes_no_names
+	s_allow_download_maps_box.curvalue = int(cvar.Cvar_VariableValue("allow_download_maps") != 0)
+
+	y += 20
+
+	s_allow_download_players_box.type = MTYPE_SPINCONTROL
+	s_allow_download_players_box.x = 0
+	s_allow_download_players_box.y = y + 10
+	s_allow_download_players_box.name = "player models/skins"
+	s_allow_download_players_box.callback = DownloadCallback
+	s_allow_download_players_box.itemnames = yes_no_names
+	s_allow_download_players_box.curvalue = int(cvar.Cvar_VariableValue("allow_download_players") != 0)
+
+	y += 10
+
+	s_allow_download_models_box.type = MTYPE_SPINCONTROL
+	s_allow_download_models_box.x = 0
+	s_allow_download_models_box.y = y + 10
+	s_allow_download_models_box.name = "models"
+	s_allow_download_models_box.callback = DownloadCallback
+	s_allow_download_models_box.itemnames = yes_no_names
+	s_allow_download_models_box.curvalue = int(cvar.Cvar_VariableValue("allow_download_models") != 0)
+
+	y += 10
+
+	s_allow_download_sounds_box.type = MTYPE_SPINCONTROL
+	s_allow_download_sounds_box.x = 0
+	s_allow_download_sounds_box.y = y + 10
+	s_allow_download_sounds_box.name = "sounds"
+	s_allow_download_sounds_box.callback = DownloadCallback
+	s_allow_download_sounds_box.itemnames = yes_no_names
+	s_allow_download_sounds_box.curvalue = int(cvar.Cvar_VariableValue("allow_download_sounds") != 0)
+
+	qmenu.Menu_AddItem(s_downloadoptions_menu, s_download_title)
+	qmenu.Menu_AddItem(s_downloadoptions_menu, s_allow_download_box)
+	qmenu.Menu_AddItem(s_downloadoptions_menu, s_allow_download_maps_box)
+	qmenu.Menu_AddItem(s_downloadoptions_menu, s_allow_download_players_box)
+	qmenu.Menu_AddItem(s_downloadoptions_menu, s_allow_download_models_box)
+	qmenu.Menu_AddItem(s_downloadoptions_menu, s_allow_download_sounds_box)
+
+	qmenu.Menu_Center(s_downloadoptions_menu)
+
+	if s_downloadoptions_menu.cursor == 0:
+		s_downloadoptions_menu.cursor = 1
+
+
+def DownloadOptions_MenuDraw():
+
+	qmenu.Menu_Draw(s_downloadoptions_menu)
+
+
+def DownloadOptions_MenuKey(key): #int (returns const char *)
+
+	return Default_MenuKey(s_downloadoptions_menu, key)
+
+
+def M_Menu_DownloadOptions_f():
+
+	DownloadOptions_MenuInit()
+	M_PushMenu(DownloadOptions_MenuDraw, DownloadOptions_MenuKey)
+
 /*
 =============================================================================
 
@@ -3387,6 +5262,443 @@ void M_Menu_AddressBook_f(void)
 	AddressBook_MenuInit();
 	M_PushMenu( AddressBook_MenuDraw, AddressBook_MenuKey );
 }
+
+NUM_ADDRESSBOOK_ENTRIES = 9
+
+s_addressbook_menu = menuframework_s()
+s_addressbook_fields = [menufield_s() for _ in range(NUM_ADDRESSBOOK_ENTRIES)]
+
+
+def AddressBook_MenuInit():
+
+	s_addressbook_menu.x = vid_so.viddef.width // 2 - 142
+	s_addressbook_menu.y = vid_so.viddef.height // 2 - 58
+	s_addressbook_menu.nitems = 0
+
+	for i in range(NUM_ADDRESSBOOK_ENTRIES):
+		adr_name = "adr{}".format(i)
+		adr = cvar.Cvar_Get(adr_name, "", q_shared.CVAR_ARCHIVE)
+
+		field = s_addressbook_fields[i]
+		field.type = MTYPE_FIELD
+		field.name = None
+		field.callback = None
+		field.x = 0
+		field.y = i * 18 + 0
+		field.localdata[0] = i
+		field.cursor = 0
+		field.length = 60
+		field.visible_length = 30
+		field.visible_offset = 0
+		field.buffer = adr.string if adr is not None else ""
+
+		qmenu.Menu_AddItem(s_addressbook_menu, field)
+
+
+def AddressBook_MenuKey(key): #int (returns const char *)
+
+	if key == keys.K_ESCAPE:
+		for index in range(NUM_ADDRESSBOOK_ENTRIES):
+			adr_name = "adr{}".format(index)
+			cvar.Cvar_Set(adr_name, s_addressbook_fields[index].buffer)
+
+	return Default_MenuKey(s_addressbook_menu, key)
+
+
+def AddressBook_MenuDraw():
+
+	M_Banner("m_banner_addressbook")
+	qmenu.Menu_Draw(s_addressbook_menu)
+
+
+def M_Menu_AddressBook_f():
+
+	AddressBook_MenuInit()
+	M_PushMenu(AddressBook_MenuDraw, AddressBook_MenuKey)
+
+MAX_DISPLAYNAME = 16
+MAX_PLAYERMODELS = 1024
+
+
+class PlayerModelInfo(object):
+
+	def __init__(self):
+		self.nskins = 0
+		self.skindisplaynames = []
+		self.displayname = ""
+		self.directory = ""
+
+
+s_player_config_menu = menuframework_s()
+s_player_name_field = menufield_s()
+s_player_model_box = menuspincontrol_s()
+s_player_skin_box = menuspincontrol_s()
+s_player_handedness_box = menuspincontrol_s()
+s_player_rate_box = menuspincontrol_s()
+s_player_skin_title = menuseparator_s()
+s_player_model_title = menuseparator_s()
+s_player_hand_title = menuseparator_s()
+s_player_rate_title = menuseparator_s()
+s_player_download_action = menuaction_s()
+
+s_pmi = []
+s_pmnames = []
+s_numplayermodels = 0
+player_config_yaw = 0
+
+rate_tbl = [2500, 3200, 5000, 10000, 25000, 0]
+rate_names = [
+	"28.8 Modem",
+	"33.6 Modem",
+	"Single ISDN",
+	"Dual ISDN/Cable",
+	"T1/LAN",
+	"User defined",
+]
+
+
+def DownloadOptionsFunc(unused):
+
+	M_Menu_DownloadOptions_f()
+
+
+def HandednessCallback(unused):
+
+	cvar.Cvar_SetValue("hand", s_player_handedness_box.curvalue)
+
+
+def RateCallback(unused):
+
+	if s_player_rate_box.curvalue != len(rate_tbl) - 1:
+		cvar.Cvar_SetValue("rate", rate_tbl[s_player_rate_box.curvalue])
+
+
+def ModelCallback(unused):
+
+	s_player_skin_box.itemnames = s_pmi[s_player_model_box.curvalue].skindisplaynames
+	s_player_skin_box.curvalue = 0
+
+
+def FreeFileList(list_in):
+
+	if not list_in:
+		return
+	list_in.clear()
+
+
+def IconOfSkinExists(skin, pcxfiles):
+
+	base = os.path.basename(skin)
+	root, _ext = os.path.splitext(base)
+	icon = root + "_i.pcx"
+	for name in pcxfiles:
+		if os.path.basename(name) == icon:
+			return True
+	return False
+
+
+def PlayerConfig_ScanDirectories():
+
+	global s_pmi, s_numplayermodels
+
+	s_pmi = []
+	s_numplayermodels = 0
+
+	path = None
+	dirnames = None
+	while True:
+		path = files.FS_NextPath(path)
+		if path is None:
+			break
+		findname = os.path.join(path, "players", "*.*")
+		dirnames = files.FS_ListFiles(findname, q_shared.SFF_SUBDIR, 0)
+		if dirnames:
+			break
+
+	if not dirnames:
+		return False
+
+	npms = min(len(dirnames), MAX_PLAYERMODELS)
+
+	for dirname in dirnames[:npms]:
+		if not dirname:
+			continue
+
+		tris_path = os.path.join(dirname, "tris.md2")
+		if not os.path.exists(tris_path):
+			continue
+
+		pcxnames = files.FS_ListFiles(
+			os.path.join(dirname, "*.pcx"),
+			0,
+			q_shared.SFF_SUBDIR | q_shared.SFF_HIDDEN | q_shared.SFF_SYSTEM,
+		)
+		if not pcxnames:
+			continue
+
+		valid_skins = []
+		for pcxname in pcxnames:
+			if "_i.pcx" in pcxname:
+				continue
+			if IconOfSkinExists(pcxname, pcxnames):
+				valid_skins.append(pcxname)
+
+		if not valid_skins:
+			continue
+
+		skinnames = []
+		for pcxname in valid_skins:
+			base = os.path.basename(pcxname)
+			name = os.path.splitext(base)[0]
+			skinnames.append(name)
+
+		info = PlayerModelInfo()
+		info.nskins = len(skinnames)
+		info.skindisplaynames = skinnames
+
+		base_dir = os.path.basename(dirname.rstrip("/\\"))
+		info.displayname = base_dir[: MAX_DISPLAYNAME - 1]
+		info.directory = base_dir
+
+		s_pmi.append(info)
+
+	s_numplayermodels = len(s_pmi)
+	return s_numplayermodels > 0
+
+
+def _pm_sort_key(info):
+
+	directory = info.directory.lower()
+	if directory == "male":
+		return (0, directory)
+	if directory == "female":
+		return (1, directory)
+	return (2, directory)
+
+
+def PlayerConfig_MenuInit():
+
+	global s_pmnames
+
+	name_var = cvar.Cvar_Get("name", "unnamed", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	skin_var = cvar.Cvar_Get("skin", "male/grunt", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+	hand_var = cvar.Cvar_Get("hand", "0", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+
+	handedness = ["right", "left", "center"]
+
+	if not PlayerConfig_ScanDirectories():
+		return False
+
+	if hand_var.value < 0 or hand_var.value > 2:
+		cvar.Cvar_SetValue("hand", 0)
+
+	currentdirectory = skin_var.string
+	currentskin = ""
+	if "/" in currentdirectory:
+		currentdirectory, currentskin = currentdirectory.split("/", 1)
+	elif "\\" in currentdirectory:
+		currentdirectory, currentskin = currentdirectory.split("\\", 1)
+	else:
+		currentdirectory = "male"
+		currentskin = "grunt"
+
+	s_pmi.sort(key=_pm_sort_key)
+
+	s_pmnames = []
+	currentdirectoryindex = 0
+	currentskinindex = 0
+	for i, info in enumerate(s_pmi):
+		s_pmnames.append(info.displayname)
+		if q_shared.Q_stricmp(info.directory, currentdirectory) == 0:
+			currentdirectoryindex = i
+			for j, skin_name in enumerate(info.skindisplaynames):
+				if q_shared.Q_stricmp(skin_name, currentskin) == 0:
+					currentskinindex = j
+					break
+
+	s_player_config_menu.x = vid_so.viddef.width // 2 - 95
+	s_player_config_menu.y = vid_so.viddef.height // 2 - 97
+	s_player_config_menu.nitems = 0
+
+	s_player_name_field.type = MTYPE_FIELD
+	s_player_name_field.name = "name"
+	s_player_name_field.callback = None
+	s_player_name_field.x = 0
+	s_player_name_field.y = 0
+	s_player_name_field.length = 20
+	s_player_name_field.visible_length = 20
+	s_player_name_field.buffer = name_var.string
+	s_player_name_field.cursor = len(name_var.string)
+
+	s_player_model_title.type = MTYPE_SEPARATOR
+	s_player_model_title.name = "model"
+	s_player_model_title.x = -8
+	s_player_model_title.y = 60
+
+	s_player_model_box.type = MTYPE_SPINCONTROL
+	s_player_model_box.x = -56
+	s_player_model_box.y = 70
+	s_player_model_box.callback = ModelCallback
+	s_player_model_box.cursor_offset = -48
+	s_player_model_box.curvalue = currentdirectoryindex
+	s_player_model_box.itemnames = s_pmnames
+
+	s_player_skin_title.type = MTYPE_SEPARATOR
+	s_player_skin_title.name = "skin"
+	s_player_skin_title.x = -16
+	s_player_skin_title.y = 84
+
+	s_player_skin_box.type = MTYPE_SPINCONTROL
+	s_player_skin_box.x = -56
+	s_player_skin_box.y = 94
+	s_player_skin_box.name = None
+	s_player_skin_box.callback = None
+	s_player_skin_box.cursor_offset = -48
+	s_player_skin_box.curvalue = currentskinindex
+	s_player_skin_box.itemnames = s_pmi[currentdirectoryindex].skindisplaynames
+
+	s_player_hand_title.type = MTYPE_SEPARATOR
+	s_player_hand_title.name = "handedness"
+	s_player_hand_title.x = 32
+	s_player_hand_title.y = 108
+
+	s_player_handedness_box.type = MTYPE_SPINCONTROL
+	s_player_handedness_box.x = -56
+	s_player_handedness_box.y = 118
+	s_player_handedness_box.name = None
+	s_player_handedness_box.cursor_offset = -48
+	s_player_handedness_box.callback = HandednessCallback
+	s_player_handedness_box.curvalue = cvar.Cvar_VariableValue("hand")
+	s_player_handedness_box.itemnames = handedness
+
+	rate_index = len(rate_tbl) - 1
+	for i in range(len(rate_tbl) - 1):
+		if cvar.Cvar_VariableValue("rate") == rate_tbl[i]:
+			rate_index = i
+			break
+
+	s_player_rate_title.type = MTYPE_SEPARATOR
+	s_player_rate_title.name = "connect speed"
+	s_player_rate_title.x = 56
+	s_player_rate_title.y = 156
+
+	s_player_rate_box.type = MTYPE_SPINCONTROL
+	s_player_rate_box.x = -56
+	s_player_rate_box.y = 166
+	s_player_rate_box.name = None
+	s_player_rate_box.cursor_offset = -48
+	s_player_rate_box.callback = RateCallback
+	s_player_rate_box.curvalue = rate_index
+	s_player_rate_box.itemnames = rate_names
+
+	s_player_download_action.type = MTYPE_ACTION
+	s_player_download_action.name = "download options"
+	s_player_download_action.flags = QMF_LEFT_JUSTIFY
+	s_player_download_action.x = -24
+	s_player_download_action.y = 186
+	s_player_download_action.statusbar = None
+	s_player_download_action.callback = DownloadOptionsFunc
+
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_name_field)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_model_title)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_model_box)
+	if s_player_skin_box.itemnames:
+		qmenu.Menu_AddItem(s_player_config_menu, s_player_skin_title)
+		qmenu.Menu_AddItem(s_player_config_menu, s_player_skin_box)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_hand_title)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_handedness_box)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_rate_title)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_rate_box)
+	qmenu.Menu_AddItem(s_player_config_menu, s_player_download_action)
+
+	return True
+
+
+def PlayerConfig_MenuDraw():
+
+	global player_config_yaw
+
+	refdef = ref.refdef_t()
+	refdef.x = vid_so.viddef.width // 2
+	refdef.y = vid_so.viddef.height // 2 - 72
+	refdef.width = 144
+	refdef.height = 168
+	refdef.fov_x = 40
+	refdef.fov_y = cl_view.CalcFov(refdef.fov_x, refdef.width, refdef.height)
+	refdef.time = cl_main.cls.realtime * 0.001
+
+	if s_pmi[s_player_model_box.curvalue].skindisplaynames:
+		entity = ref.entity_t()
+		model_dir = s_pmi[s_player_model_box.curvalue].directory
+		skin_name = s_pmi[s_player_model_box.curvalue].skindisplaynames[s_player_skin_box.curvalue]
+
+		model_path = "players/{}/tris.md2".format(model_dir)
+		skin_path = "players/{}/{}.pcx".format(model_dir, skin_name)
+
+		entity.model = vid_so.re.RegisterModel(model_path)
+		entity.skin = vid_so.re.RegisterSkin(skin_path)
+		entity.flags = q_shared.RF_FULLBRIGHT
+		entity.origin[0] = 80
+		entity.origin[1] = 0
+		entity.origin[2] = 0
+		q_shared.VectorCopy(entity.origin, entity.oldorigin)
+		entity.frame = 0
+		entity.oldframe = 0
+		entity.backlerp = 0.0
+		entity.angles[1] = player_config_yaw
+		player_config_yaw += 1
+		if player_config_yaw > 360:
+			player_config_yaw -= 360
+
+		refdef.areabits = None
+		refdef.num_entities = 1
+		refdef.entities = [entity]
+		refdef.lightstyles = None
+		refdef.rdflags = q_shared.RDF_NOWORLDMODEL
+
+		qmenu.Menu_Draw(s_player_config_menu)
+
+		x = int(refdef.x * (320.0 / vid_so.viddef.width) - 8)
+		y = int((vid_so.viddef.height / 2) * (240.0 / vid_so.viddef.height) - 77)
+		M_DrawTextBox(x, y, refdef.width // 8, refdef.height // 8)
+		refdef.height += 4
+
+		vid_so.re.RenderFrame(refdef)
+
+		icon_path = "/players/{}/{}_i.pcx".format(model_dir, skin_name)
+		vid_so.re.DrawPic(s_player_config_menu.x - 40, refdef.y, icon_path)
+
+
+def PlayerConfig_MenuKey(key): #int (returns const char *)
+
+	if key == keys.K_ESCAPE:
+		name_var = cvar.Cvar_Get("name", "unnamed", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+		skin_var = cvar.Cvar_Get("skin", "male/grunt", q_shared.CVAR_USERINFO | q_shared.CVAR_ARCHIVE)
+
+		cvar.Cvar_Set("name", s_player_name_field.buffer)
+
+		model_dir = s_pmi[s_player_model_box.curvalue].directory
+		skin_name = s_pmi[s_player_model_box.curvalue].skindisplaynames[s_player_skin_box.curvalue]
+		skin_value = "{}/{}".format(model_dir, skin_name)
+		cvar.Cvar_Set("skin", skin_value)
+
+		name_var.modified = True
+		skin_var.modified = True
+
+		for info in s_pmi:
+			info.skindisplaynames = []
+			info.nskins = 0
+
+	return Default_MenuKey(s_player_config_menu, key)
+
+
+def M_Menu_PlayerConfig_f():
+
+	if not PlayerConfig_MenuInit():
+		qmenu.Menu_SetStatusBar(s_multiplayer_menu, "No valid player models found")
+		return
+	qmenu.Menu_SetStatusBar(s_multiplayer_menu, None)
+	M_PushMenu(PlayerConfig_MenuDraw, PlayerConfig_MenuKey)
 
 /*
 =============================================================================

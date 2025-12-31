@@ -306,8 +306,20 @@ Any variables with latched values will now be updated
 """
 def Cvar_GetLatchedVars ():
 
+	from qcommon import files
 
-	pass
+	for var in cvar_vars:
+		if not var.latched_string:
+			continue
+		var.string = var.latched_string
+		var.latched_string = None
+		try:
+			var.value = float(var.string)
+		except ValueError:
+			var.value = None
+		if var.name == "game":
+			files.FS_SetGamedir(var.string)
+			files.FS_ExecAutoexec()
 	"""
 	cvar_t	*var;
 

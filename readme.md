@@ -1,6 +1,5 @@
 
-Porting the Quake 2 engine to python. This is just an experiment and may
-never be completed.
+Porting the Quake 2 engine to python. I did 25% manually and the rest with ChatGPT.
 
 The code is all licensed under the terms of the GPL (gnu public license).
 You should read the entire license, but the gist of it is that you can do 
@@ -14,8 +13,6 @@ you do a true total conversion, you can create a standalone game based on
 this code.
 
    pip3 install -r requirements.txt
-
-   python3 setup.py build_ext --inplace
 
    python3 main.py +set basedir /path/to/quake2data/Data
 

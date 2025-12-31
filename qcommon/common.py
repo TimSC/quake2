@@ -31,7 +31,7 @@ import pygame
 screen = None
 
 """
-// common.c -- misc functions used in client and server
+# common.c -- misc functions used in client and server
 #include "qcommon.h"
 #include <setjmp.h>
 
@@ -296,9 +296,9 @@ Handles byte ordering and avoids alignment errors
 bytedirs = np.array(json.load(open("client/anorms.json", "rt")), dtype=np.float32)
 
 """
-//
-// writing functions
-//
+#
+# writing functions
+#
 """
 def MSG_WriteChar (sb: qcommon.sizebuf_t, c: bytes|bytearray):
 
@@ -334,10 +334,14 @@ def MSG_WriteByte (sb: qcommon.sizebuf_t, c): #sizebuf_t *, int
 		Com_Error (q_shared.ERR_FATAL, "MSG_WriteByte: range error");
 #endif
 """
-	assert len(c) == 1
+	if isinstance(c, (bytes, bytearray)):
+		assert len(c) == 1
+		value = c[0]
+	else:
+		value = int(c)
 	offset = SZ_GetSpace(sb, 1)
 
-	struct.pack_into("c", sb.data, offset, c)
+	struct.pack_into("B", sb.data, offset, value & 0xFF)
 
 
 def MSG_WriteShort (sb: qcommon.sizebuf_t, c):
@@ -442,57 +446,49 @@ void MSG_WriteAngle16 (sizebuf_t *sb, float f)
 """
 def MSG_WriteDeltaUsercmd (buf, from_cmd, cmd): #sizebuf_t *, usercmd_t *, usercmd_t *
 
-	pass
-	"""
-	int		bits;
+	bits = 0
+	if cmd.angles[0] != from_cmd.angles[0]:
+		bits |= qcommon.CM_ANGLE1
+	if cmd.angles[1] != from_cmd.angles[1]:
+		bits |= qcommon.CM_ANGLE2
+	if cmd.angles[2] != from_cmd.angles[2]:
+		bits |= qcommon.CM_ANGLE3
+	if cmd.forwardmove != from_cmd.forwardmove:
+		bits |= qcommon.CM_FORWARD
+	if cmd.sidemove != from_cmd.sidemove:
+		bits |= qcommon.CM_SIDE
+	if cmd.upmove != from_cmd.upmove:
+		bits |= qcommon.CM_UP
+	if cmd.buttons != from_cmd.buttons:
+		bits |= qcommon.CM_BUTTONS
+	if cmd.impulse != from_cmd.impulse:
+		bits |= qcommon.CM_IMPULSE
 
-//
-// send the movement message
-//
-	bits = 0;
-	if (cmd->angles[0] != from->angles[0])
-		bits |= CM_ANGLE1;
-	if (cmd->angles[1] != from->angles[1])
-		bits |= CM_ANGLE2;
-	if (cmd->angles[2] != from->angles[2])
-		bits |= CM_ANGLE3;
-	if (cmd->forwardmove != from->forwardmove)
-		bits |= CM_FORWARD;
-	if (cmd->sidemove != from->sidemove)
-		bits |= CM_SIDE;
-	if (cmd->upmove != from->upmove)
-		bits |= CM_UP;
-	if (cmd->buttons != from->buttons)
-		bits |= CM_BUTTONS;
-	if (cmd->impulse != from->impulse)
-		bits |= CM_IMPULSE;
+	MSG_WriteByte(buf, bits)
+	if bits & qcommon.CM_ANGLE1:
+		MSG_WriteShort(buf, cmd.angles[0])
+	if bits & qcommon.CM_ANGLE2:
+		MSG_WriteShort(buf, cmd.angles[1])
+	if bits & qcommon.CM_ANGLE3:
+		MSG_WriteShort(buf, cmd.angles[2])
 
-	MSG_WriteByte (buf, bits);
+	if bits & qcommon.CM_FORWARD:
+		MSG_WriteShort(buf, cmd.forwardmove)
+	if bits & qcommon.CM_SIDE:
+		MSG_WriteShort(buf, cmd.sidemove)
+	if bits & qcommon.CM_UP:
+		MSG_WriteShort(buf, cmd.upmove)
 
-	if (bits & CM_ANGLE1)
-		MSG_WriteShort (buf, cmd->angles[0]);
-	if (bits & CM_ANGLE2)
-		MSG_WriteShort (buf, cmd->angles[1]);
-	if (bits & CM_ANGLE3)
-		MSG_WriteShort (buf, cmd->angles[2]);
-	
-	if (bits & CM_FORWARD)
-		MSG_WriteShort (buf, cmd->forwardmove);
-	if (bits & CM_SIDE)
-	  	MSG_WriteShort (buf, cmd->sidemove);
-	if (bits & CM_UP)
-		MSG_WriteShort (buf, cmd->upmove);
+	if bits & qcommon.CM_BUTTONS:
+		MSG_WriteByte(buf, cmd.buttons)
+	if bits & qcommon.CM_IMPULSE:
+		MSG_WriteByte(buf, cmd.impulse)
 
- 	if (bits & CM_BUTTONS)
-	  	MSG_WriteByte (buf, cmd->buttons);
- 	if (bits & CM_IMPULSE)
-		MSG_WriteByte (buf, cmd->impulse);
-
-	MSG_WriteByte (buf, cmd->msec);
-	MSG_WriteByte (buf, cmd->lightlevel);
-}
+	MSG_WriteByte(buf, cmd.msec)
+	MSG_WriteByte(buf, cmd.lightlevel)
 
 
+"""
 void MSG_WriteDir (sizebuf_t *sb, vec3_t dir)
 {
 	int		i, best;
@@ -550,7 +546,7 @@ void MSG_WriteDeltaEntity (entity_state_t *from, entity_state_t *to, sizebuf_t *
 	if (to->number >= MAX_EDICTS)
 		Com_Error (q_shared.ERR_FATAL, "Entity number >= MAX_EDICTS");
 
-// send an update
+# send an update
 	bits = 0;
 
 	if (to->number >= 256)
@@ -736,8 +732,9 @@ void MSG_WriteDeltaEntity (entity_state_t *from, entity_state_t *to, sizebuf_t *
 }
 
 
-//============================================================
 """
+
+#============================================================
 #
 # reading functions
 #
@@ -934,7 +931,7 @@ void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move
 
 	bits = MSG_ReadByte (msg_read);
 		
-// read current angles
+# read current angles
 	if (bits & CM_ANGLE1)
 		move->angles[0] = MSG_ReadShort (msg_read);
 	if (bits & CM_ANGLE2)
@@ -942,7 +939,7 @@ void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move
 	if (bits & CM_ANGLE3)
 		move->angles[2] = MSG_ReadShort (msg_read);
 		
-// read movement
+# read movement
 	if (bits & CM_FORWARD)
 		move->forwardmove = MSG_ReadShort (msg_read);
 	if (bits & CM_SIDE)
@@ -950,17 +947,17 @@ void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move
 	if (bits & CM_UP)
 		move->upmove = MSG_ReadShort (msg_read);
 	
-// read buttons
+# read buttons
 	if (bits & CM_BUTTONS)
 		move->buttons = MSG_ReadByte (msg_read);
 
 	if (bits & CM_IMPULSE)
 		move->impulse = MSG_ReadByte (msg_read);
 
-// read time to run command
+# read time to run command
 	move->msec = MSG_ReadByte (msg_read);
 
-// read the light level
+	// read the light level
 	move->lightlevel = MSG_ReadByte (msg_read);
 }
 
@@ -1143,7 +1140,7 @@ void COM_AddParm (char *parm)
 
 
 
-/// just for debugging
+# just for debugging
 int	memsearch (byte *start, int count, int search)
 {
 	int		i;
@@ -1324,7 +1321,7 @@ void *Z_Malloc (int size)
 }
 
 
-//============================================================================
+#============================================================================
 
 
 /*
@@ -1333,8 +1330,8 @@ COM_BlockSequenceCheckByte
 
 For proxy protecting
 
-// THIS IS MASSIVELY BROKEN!  CHALLENGE MAY BE NEGATIVE
-// DON'T USE THIS FUNCTION!!!!!
+# THIS IS MASSIVELY BROKEN!  CHALLENGE MAY BE NEGATIVE
+# DON'T USE THIS FUNCTION!!!!!
 
 ====================
 */
@@ -1492,7 +1489,7 @@ def COM_BlockSequenceCRCByte (buff, baseOffset, length, sequence): #byte *, int 
 	return bytes(1)
 
 """
-//========================================================
+#========================================================
 
 float	frand(void)
 {

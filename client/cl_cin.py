@@ -20,7 +20,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 import os
 import struct
 import numpy as np
-import cl_cin_extras
+try:
+	import cl_cin_extras
+except ModuleNotFoundError:
+	# Allow running from the repo root where the extension module lives.
+	import sys
+	repo_root = os.path.dirname(os.path.dirname(__file__))
+	if repo_root not in sys.path:
+		sys.path.insert(0, repo_root)
+	import cl_cin_extras
 from client import cl_main, cl_scrn, client, snd_dma
 from qcommon import files, cvar, common, qcommon
 from game import q_shared
@@ -318,14 +326,18 @@ def Huff1TableInit ():
 			leftRightNextNode = [cin.hnodes1[prevpixel * 512 + nodenum * 2 + 0],
 				cin.hnodes1[prevpixel * 512 + nodenum * 2 + 1]]
 
-			if leftRightNextNode[0] < 256:
+			if leftRightNextNode[0] < 0:
+				leftRightNextNode[0] = 0
+			elif leftRightNextNode[0] < 256:
 				cin.hnodes1vals[prevpixel][nodenum][0] = leftRightNextNode[0]
 				leftRightNextNode[0] = 0
 				cin.hnodes1leaf[prevpixel][nodenum][0] = 1
 			else:
 				leftRightNextNode[0] -= 256
 
-			if leftRightNextNode[1] < 256:
+			if leftRightNextNode[1] < 0:
+				leftRightNextNode[1] = 0
+			elif leftRightNextNode[1] < 256:
 				cin.hnodes1vals[prevpixel][nodenum][1] = leftRightNextNode[1]
 				leftRightNextNode[1] = 0
 				cin.hnodes1leaf[prevpixel][nodenum][1] = 1

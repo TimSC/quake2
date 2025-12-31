@@ -79,6 +79,17 @@ typedef struct filelink_s
 
 filelink_t	*fs_links;
 """
+class filelink_t(object):
+
+	def __init__(self, from_path, to_path):
+		self.from_path = from_path
+		self.fromlength = len(from_path)
+		self.to_path = to_path
+
+	def __repr__(self):
+		return "filelink_t({} -> {})".format(self.from_path, self.to_path)
+
+fs_links = []
 class searchpath_t(object):
 
 	def __init__(self):
@@ -429,7 +440,7 @@ FS_FreeFile
 =============
 """
 def FS_FreeFile (buff): #void *
-	pass
+	return
 
 """
 =================
@@ -624,7 +635,23 @@ Creates a filelink_t
 """
 def FS_Link_f ():
 
-	pass
+	if cmd.Cmd_Argc() != 3:
+		common.Com_Printf("USAGE: link <from> <to>\n")
+		return
+
+	from_path = cmd.Cmd_Argv(1)
+	to_path = cmd.Cmd_Argv(2)
+
+	for link in list(fs_links):
+		if link.from_path == from_path:
+			if not to_path:
+				fs_links.remove(link)
+			else:
+				link.to_path = to_path
+			return
+
+	if to_path:
+		fs_links.append(filelink_t(from_path, to_path))
 """
 	filelink_t	*l, **prev;
 
@@ -762,7 +789,20 @@ FS_Path_f
 ============
 """
 def FS_Path_f ():
-	pass
+	common.Com_Printf("Current search path:\n")
+	in_base = True
+	for search in fs_searchpaths:
+		if in_base and search not in fs_base_searchpaths:
+			common.Com_Printf("----------\n")
+			in_base = False
+		if search.pack is not None:
+			common.Com_Printf("{} ({} files)\n".format(search.pack.filename, search.pack.numfiles))
+		else:
+			common.Com_Printf("{}\n".format(search.filename))
+
+	common.Com_Printf("\nLinks:\n")
+	for link in fs_links:
+		common.Com_Printf("{} : {}\n".format(link.from_path, link.to_path))
 
 """
 	searchpath_t	*s;
