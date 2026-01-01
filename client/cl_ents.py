@@ -528,7 +528,7 @@ def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 
 
 	if cl_main.cl.attractloop:
-		state.pmove.pm_type = q_shared.pmtype_t.PM_FREEZE		# demo playback
+		state.pmove.pm_type = q_shared.pmtype_t.PM_FREEZE.value		# demo playback
 
 	#
 	# parse the rest of the player_state_t
@@ -1040,7 +1040,7 @@ def CL_CalcViewValues ():
 				)
 			)
 
-	if cl_main.cl.frame.playerstate.pmove.pm_type < q_shared.PM_DEAD:
+	if cl_main.cl.frame.playerstate.pmove.pm_type < q_shared.pmtype_t.PM_DEAD.value:
 		for i in range(3):
 			cl_main.cl.refdef.viewangles[i] = cl_main.cl.predicted_angles[i]
 	else:

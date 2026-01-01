@@ -712,13 +712,13 @@ PMF_NO_PREDICTION = 64
 class pmove_state_t(object):
 
 	def __init__(self):
-		self.pm_type: pmtype_t = None
+		self.pm_type = pmtype_t.PM_NORMAL.value
 
 		self.origin = np.zeros((3,), dtype=np.int16) # short		[3];		// 12.3
 		self.velocity = np.zeros((3,), dtype=np.int16) #short		[3];	// 12.3
-		self.pm_flags = None #byte		;		// ducked, jump_held, etc
-		self.pm_time = None #byte		;		// each unit = 8 ms
-		self.gravity = None #short		;
+		self.pm_flags = 0 #byte		;		// ducked, jump_held, etc
+		self.pm_time = 0 #byte		;		// each unit = 8 ms
+		self.gravity = 0 #short		;
 		self.delta_angles = np.zeros((3,), dtype=np.int16) #short		[3];	// add to command angles to get view direction
 									# changed by spawns, rotating objects, and teleporters
 
@@ -1421,17 +1421,17 @@ class entity_state_t(object):
 		self.origin: vec3_t = np.zeros((3,), dtype=np.float32)
 		self.angles: vec3_t = np.zeros((3,), dtype=np.float32)
 		self.old_origin: vec3_t = np.zeros((3,), dtype=np.float32) # for lerping
-		self.modelindex: int = None
+		self.modelindex: int = 0
 		self.modelindex2, self.modelindex3, self.modelindex4 = None, None, None # weapons, CTF flags, etc, int
 		self.frame: int = None
-		self.skinnum: int = None
-		self.effects: int = None	# PGM - we're filling it, so it needs to be unsigned, unsigned int
-		self.renderfx: int = None
-		self.solid: int = None  # for client side prediction, 8*(bits 0-4) is x/y radius
+		self.skinnum: int = 0
+		self.effects: int = 0	# PGM - we're filling it, so it needs to be unsigned, unsigned int
+		self.renderfx: int = 0
+		self.solid: int = 0  # for client side prediction, 8*(bits 0-4) is x/y radius
 								# 8*(bits 5-9) is z down distance, 8(bits10-15) is z up
 								# gi.linkentity sets this properly
-		self.sound: int	= None	# for looping sounds, to guarantee shutoff
-		self.event: int	= None	# impulse events -- muzzle flashes, footsteps, etc
+		self.sound: int	= 0	# for looping sounds, to guarantee shutoff
+		self.event: int	= 0	# impulse events -- muzzle flashes, footsteps, etc
 								# events only go out for a single frame, they
 								# are automatically cleared each frame
 

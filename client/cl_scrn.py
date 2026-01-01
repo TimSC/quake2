@@ -305,32 +305,22 @@ def SCR_Sky_f ():
 	#float	rotate;
 	#vec3_t	axis;
 
-	pass
-	"""
-	if (Cmd_Argc() < 2)
-	{
-		Com_Printf ("Usage: sky <basename> <rotate> <axis x y z>\n");
-		return;
-	}
-	if (Cmd_Argc() > 2)
-		rotate = atof(Cmd_Argv(2));
-	else
-		rotate = 0;
-	if (Cmd_Argc() == 6)
-	{
-		axis[0] = atof(Cmd_Argv(3));
-		axis[1] = atof(Cmd_Argv(4));
-		axis[2] = atof(Cmd_Argv(5));
-	}
-	else
-	{
-		axis[0] = 0;
-		axis[1] = 0;
-		axis[2] = 1;
-	}
+	if cmd.Cmd_Argc() < 2:
+		common.Com_Printf ("Usage: sky <basename> <rotate> <axis x y z>\n")
+		return
 
-	vid_so.re.SetSky (Cmd_Argv(1), rotate, axis);
-	"""
+	if cmd.Cmd_Argc() > 2:
+		rotate = float(cmd.Cmd_Argv(2))
+	else:
+		rotate = 0.0
+
+	axis = [0.0, 0.0, 1.0]
+	if cmd.Cmd_Argc() == 6:
+		axis[0] = float(cmd.Cmd_Argv(3))
+		axis[1] = float(cmd.Cmd_Argv(4))
+		axis[2] = float(cmd.Cmd_Argv(5))
+
+	vid_so.re.SetSky (cmd.Cmd_Argv(1), rotate, axis)
 
 # ================================================================================
 
@@ -566,39 +556,28 @@ def SCR_TimeRefresh_f ():
 	#int		i;
 	#int		start, stop;
 	#float	time;
-	pass
-	"""
-	if ( cl_main.cls.state != ca_active )
-		return;
 
-	start = q_shlinux.Sys_Milliseconds ();
+	if cl_main.cls.state != client.connstate_t.ca_active:
+		return
 
-	if (Cmd_Argc() == 2)
-	{	// run without page flipping
-		vid_so.re.BeginFrame( 0 );
-		for (i=0 ; i<128 ; i++)
-		{
-			cl_main.cl.refdef.viewangles[1] = i/128.0*360.0;
-			vid_so.re.RenderFrame (&cl_main.cl.refdef);
-		}
-		vid_so.re.EndFrame();
-	}
-	else
-	{
-		for (i=0 ; i<128 ; i++)
-		{
-			cl_main.cl.refdef.viewangles[1] = i/128.0*360.0;
+	start = q_shlinux.Sys_Milliseconds ()
 
-			vid_so.re.BeginFrame( 0 );
-			vid_so.re.RenderFrame (&cl_main.cl.refdef);
-			vid_so.re.EndFrame();
-		}
-	}
+	if cmd.Cmd_Argc() == 2:
+		vid_so.re.BeginFrame(0)
+		for i in range(128):
+			cl_main.cl.refdef.viewangles[1] = i/128.0*360.0
+			vid_so.re.RenderFrame (cl_main.cl.refdef)
+		vid_so.re.EndFrame()
+	else:
+		for i in range(128):
+			cl_main.cl.refdef.viewangles[1] = i/128.0*360.0
+			vid_so.re.BeginFrame(0)
+			vid_so.re.RenderFrame (cl_main.cl.refdef)
+			vid_so.re.EndFrame()
 
-	stop = q_shlinux.Sys_Milliseconds ();
-	time = (stop-start)/1000.0;
-	Com_Printf ("%f seconds (%f fps)\n", time, 128/time);
-"""
+	stop = q_shlinux.Sys_Milliseconds ()
+	time = (stop-start)/1000.0
+	common.Com_Printf ("%f seconds (%f fps)\n", time, 128/time)
 
 """
 =================

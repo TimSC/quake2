@@ -24,10 +24,10 @@ import math
 import functools
 import copy
 import numpy as np
-from qcommon import cvar, common, cmd
+from qcommon import cvar, common, cmd, cmodel
 from game import q_shared
 from client import cl_tent, cl_main, client, console, cl_scrn, cl_ents, ref
-from linux import vid_so, cd_linux
+from linux import vid_so, cd_linux, sys_linux
 """
 #include "client.h"
 
@@ -47,6 +47,9 @@ cl_testlights = None #cvar_t *
 cl_testblend = None #cvar_t *
 
 cl_stats = None #cvar_t *
+
+cl_weaponmodels = [""] * client.MAX_CLIENTWEAPONMODELS
+num_cl_weaponmodels = 0
 
 
 r_numdlights: int = 0
@@ -236,26 +239,27 @@ void V_TestLights (void)
 # Call before entering a new level, or after changing dlls
 # ===================================================================
 def CL_PrepRefresh ():
+
+	global cl_weaponmodels, num_cl_weaponmodels
 	
-	"""
-	char		mapname[32];
-	int			i;
-	char		name[MAX_QPATH];
-	float		rotate;
-	"""
 	axis = np.zeros((3,), dtype=np.float32)
 
-	if cl_main.cl.configstrings[q_shared.CS_MODELS+1] is None:
+	if not cl_main.cl.configstrings[q_shared.CS_MODELS+1]:
 		return		# no map loaded
 
 	cl_scrn.SCR_AddDirtyPoint (0, 0)
 	cl_scrn.SCR_AddDirtyPoint (vid_so.viddef.width-1, vid_so.viddef.height-1)
 
 	# let the render dll load the map
-	mapname = cl_main.cl.configstrings[q_shared.CS_MODELS+1][5:]	# skip "maps/"
-	mapname = mapname[:-4]		# cut off ".bsp"
+	mapname = cl_main.cl.configstrings[q_shared.CS_MODELS+1]
+	if mapname and mapname.startswith("maps/"):
+		mapname = mapname[5:]
+	if mapname and mapname.endswith(".bsp"):
+		mapname = mapname[:-4]
 
-	# register models, pics, and skins
+	cl_weaponmodels[0] = "weapon.md2"
+	num_cl_weaponmodels = 1
+
 	common.Com_Printf ("Map: {}\r".format(mapname))
 	cl_scrn.SCR_UpdateScreen ()
 	vid_so.re.BeginRegistration (mapname)
@@ -268,70 +272,72 @@ def CL_PrepRefresh ():
 	common.Com_Printf ("                                     \r")
 
 	cl_tent.CL_RegisterTEntModels ()
-	"""
-	num_cl_weaponmodels = 1;
-	strcpy(cl_weaponmodels[0], "weapon.md2");
 
-	for (i=1 ; i<MAX_MODELS && cl_main.cl.configstrings[q_shared.CS_MODELS+i][0] ; i++)
-	{
-		strcpy (name, cl_main.cl.configstrings[q_shared.CS_MODELS+i]);
-		name[37] = 0;	// never go beyond one line
-		if (name[0] != '*')
-			common.Com_Printf ("%s\r", name); 
-		SCR_UpdateScreen ();
-		Sys_SendKeyEvents ();	// pump message loop
-		if (name[0] == '#')
-		{
-			// special player weapon model
-			if (num_cl_weaponmodels < MAX_CLIENTWEAPONMODELS)
-			{
-				strncpy(cl_weaponmodels[num_cl_weaponmodels], cl_main.cl.configstrings[q_shared.CS_MODELS+i]+1,
-					sizeof(cl_weaponmodels[num_cl_weaponmodels]) - 1);
-				num_cl_weaponmodels++;
-			}
-		} 
-		else
-		{
-			cl_main.cl.model_draw[i] = vid_so.re.RegisterModel (cl_main.cl.configstrings[q_shared.CS_MODELS+i]);
-			if (name[0] == '*')
-				cl_main.cl.model_clip[i] = CM_InlineModel (cl_main.cl.configstrings[q_shared.CS_MODELS+i]);
-			else
-				cl_main.cl.model_clip[i] = NULL;
-		}
-		if (name[0] != '*')
-			common.Com_Printf ("                                     \r");
-	}
+	# register models
+	for i in range(1, q_shared.MAX_MODELS):
+		model_name = cl_main.cl.configstrings[q_shared.CS_MODELS + i]
+		if not model_name:
+			break
+		name = model_name[:37]
+		if not model_name.startswith('*'):
+			common.Com_Printf ("{}\r".format(name))
+		cl_scrn.SCR_UpdateScreen ()
+		sys_linux.Sys_SendKeyEvents ()
+		if model_name.startswith('#'):
+			if num_cl_weaponmodels < client.MAX_CLIENTWEAPONMODELS:
+				cl_weaponmodels[num_cl_weaponmodels] = model_name[1:]
+				num_cl_weaponmodels += 1
+			if not model_name.startswith('*'):
+				common.Com_Printf ("                                     \r")
+			continue
+		cl_main.cl.model_draw[i] = vid_so.re.RegisterModel (model_name)
+		if model_name.startswith('*'):
+			cl_main.cl.model_clip[i] = cmodel.CM_InlineModel (model_name)
+		else:
+			cl_main.cl.model_clip[i] = None
+		if not model_name.startswith('*'):
+			common.Com_Printf ("                                     \r")
 
-	common.Com_Printf ("images\r", i); 
-	SCR_UpdateScreen ();
-	for (i=1 ; i<MAX_IMAGES && cl_main.cl.configstrings[q_shared.CS_IMAGES+i][0] ; i++)
-	{
-		cl_main.cl.image_precache[i] = vid_so.re.RegisterPic (cl_main.cl.configstrings[q_shared.CS_IMAGES+i]);
-		Sys_SendKeyEvents ();	// pump message loop
-	}
-	
-	common.Com_Printf ("                                     \r");
-	for (i=0 ; i<MAX_CLIENTS ; i++)
-	{
-		if (!cl_main.cl.configstrings[q_shared.CS_PLAYERSKINS+i][0])
-			continue;
-		common.Com_Printf ("client %i\r", i); 
-		SCR_UpdateScreen ();
-		Sys_SendKeyEvents ();	// pump message loop
-		CL_ParseClientinfo (i);
-		common.Com_Printf ("                                     \r");
-	}
+	# precache images
+	common.Com_Printf ("images\r")
+	cl_scrn.SCR_UpdateScreen ()
+	for i in range(1, q_shared.MAX_IMAGES):
+		image_name = cl_main.cl.configstrings[q_shared.CS_IMAGES + i]
+		if not image_name:
+			break
+		cl_main.cl.image_precache[i] = vid_so.re.RegisterPic (image_name)
+		sys_linux.Sys_SendKeyEvents ()
+	common.Com_Printf ("                                     \r")
 
-	CL_LoadClientinfo (&cl_main.cl.baseclientinfo, "unnamed\\male/grunt");
-	"""
-	"""
-	i=0 # DEBUG What should this be?
+	# cache player skins
+	from client import cl_parse as cl_parse_mod
+
+	for i in range(q_shared.MAX_CLIENTS):
+		info = cl_main.cl.configstrings[q_shared.CS_PLAYERSKINS + i]
+		if not info:
+			continue
+		common.Com_Printf ("client {}\r".format(i))
+		cl_scrn.SCR_UpdateScreen ()
+		sys_linux.Sys_SendKeyEvents ()
+		cl_parse_mod.CL_ParseClientinfo (i)
+		common.Com_Printf ("                                     \r")
 
 	# set sky textures and speed
-	common.Com_Printf ("sky\r".format(i))
+	common.Com_Printf ("sky\r")
 	cl_scrn.SCR_UpdateScreen ()
-	rotate = float(cl_main.cl.configstrings[q_shared.CS_SKYROTATE])
-	axis[0], axis[1], axis[2] = tuple(map(float, cl_main.cl.configstrings[q_shared.CS_SKYAXIS].split(" ")))
+	try:
+		rotate = float(cl_main.cl.configstrings[q_shared.CS_SKYROTATE] or 0.0)
+	except (TypeError, ValueError):
+		rotate = 0.0
+	axis_values = (cl_main.cl.configstrings[q_shared.CS_SKYAXIS] or "0 0 1").split()
+	for idx in range(min(3, len(axis_values))):
+		try:
+			axis[idx] = float(axis_values[idx])
+		except ValueError:
+			axis[idx] = 0.0
+	if len(axis_values) < 3:
+		for idx in range(len(axis_values), 3):
+			axis[idx] = 0.0
 	vid_so.re.SetSky (cl_main.cl.configstrings[q_shared.CS_SKY], rotate, axis)
 	common.Com_Printf ("                                     \r")
 
@@ -346,8 +352,11 @@ def CL_PrepRefresh ():
 	cl_main.cl.force_refdef = True # make sure we have a valid refdef
 
 	# start the cd track
-	cd_linux.CDAudio_Play (cl_main.cl.configstrings[q_shared.CS_CDTRACK], True)
-	"""
+	try:
+		cd_track = int(cl_main.cl.configstrings[q_shared.CS_CDTRACK] or 0)
+	except (TypeError, ValueError):
+		cd_track = 0
+	cd_linux.CDAudio_Play (cd_track, True)
 
 
 # ====================
