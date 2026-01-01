@@ -138,6 +138,8 @@ r_base_world_matrix = np.zeros((16,), dtype=np.float32)
 r_newrefdef = ref.refdef_t()
 
 r_viewcluster, r_viewcluster2, r_oldviewcluster, r_oldviewcluster2 = None, None, None, None #int
+r_visframecount = 0 #int			// bumped when going to a new PVS
+r_framecount = 0 #int			// used for dlight push checking
 
 r_norefresh = None #cvar_t *
 r_drawentities = None #cvar_t *

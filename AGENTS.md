@@ -26,7 +26,9 @@ the ref_gl renderer and pygame based cross platform compatibility.
 - Integers and floats are kept explicit when needed; use `struct` for binary
   packing/unpacking.
 - Constants and shared structs are pulled from `game/q_shared.py` and
-  `qcommon/qfiles.py`.
+-  `qcommon/qfiles.py`.
+- Avoid `getattr` with a default of `None` just to suppress attribute errors;
+  refer to the attribute directly so missing names raise immediately.
 - Logging/errors flow through `qcommon/common.py` (e.g., `Com_Printf`,
   `Com_Error`) rather than `print` or exceptions.
 - Vectors can be expressed as numpy arrays

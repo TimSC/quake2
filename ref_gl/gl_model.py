@@ -124,15 +124,16 @@ def Mod_DecompressVis(data, model):
 # ==================
 def Mod_ClusterPVS(cluster, model):
 
-	if cluster == -1 or not model or not model.vis:
+	if cluster is None or cluster == -1 or not model or not model.vis:
 		return mod_novis
 
-	offset = model.vis.bitofs[cluster][qfiles.DVIS_PVS]
-	if offset < 0 or not model.vis.data:
+	cluster = int(cluster)
+	offset = int(model.vis.bitofs[cluster, qfiles.DVIS_PVS])
+	data = model.vis.data
+	if offset < 0 or data is None or len(data) == 0:
 		return mod_novis
 
-	data = model.vis.data[offset:]
-	return Mod_DecompressVis(data, model)
+	return Mod_DecompressVis(data[offset:], model)
 
 
 
@@ -1023,7 +1024,7 @@ def Mod_LoadSpriteModel (mod, buff): # model_t *, void *
 # @@@@@@@@@@@@@@@@@@@@@
 def R_BeginRegistration (model): #char *
 
-	global registration_sequence
+	global registration_sequence, gl_rmain, r_viewcluster
 
 	#char	fullname[MAX_QPATH];
 	#cvar_t	*flushmap;
@@ -1038,7 +1039,7 @@ def R_BeginRegistration (model): #char *
 	flushmap = gl_rmain.ri.Cvar_Get ("flushmap", "0", 0)
 	if mod_known[0].name != fullname or flushmap.value:
 		Mod_Free (mod_known[0])
-	r_worldmodel = Mod_ForName(fullname, True)
+	gl_rmain.r_worldmodel = Mod_ForName(fullname, True)
 
 	r_viewcluster = -1
 

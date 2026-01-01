@@ -529,6 +529,17 @@ class dvertex_t(object):
 		self.point[1] = q_shared.LittleFloat(buff[4:8])
 		self.point[2] = q_shared.LittleFloat(buff[8:])
 
+
+# 0-2 are axial planes
+PLANE_X = 0
+PLANE_Y = 1
+PLANE_Z = 2
+
+# 3-5 are non-axial planes snapped to the nearest
+PLANE_ANYX = 3
+PLANE_ANYY = 4
+PLANE_ANYZ = 5
+
 # planes (x&~1) and (x&~1)+1 are always opposites
 
 class dplane_t(object):
