@@ -1,7 +1,8 @@
 # Quake2 Python Porting Notes
 
 This repo is a work-in-progress port of the original Quake II C code to
-Python. The unported reference lives in `quake2-original/`.
+Python. The unported reference lives in `quake2-original/`. We are focusing on
+the ref_gl renderer and pygame based cross platform compatibility.
 
 ## Porting Approach
 - Keep a 1:1 file mapping: `quake2-original/<path>.c` -> `<path>.py`.
@@ -17,7 +18,6 @@ Python. The unported reference lives in `quake2-original/`.
   basic default, with type hints in comments.
 - C structs become simple Python classes with fields initialized in `__init__`.
 - Fixed-size C arrays become Python lists, often pre-filled in a `for` loop.
-- Many lines keep C-style semicolons; this is acceptable and consistent.
 - Imports stay close to the C include order and the existing file patterns.
 
 ## Translation Patterns

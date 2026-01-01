@@ -139,77 +139,42 @@ FS_CreatePath
 
 Creates any directories needed to store the given filename
 ============
-*/
-void	FS_CreatePath (char *path)
-{
-	char	*ofs;
-	
-	for (ofs = path+1 ; *ofs ; ofs++)
-	{
-		if (*ofs == '/')
-		{	// create the directory
-			*ofs = 0;
-			Sys_Mkdir (path);
-			*ofs = '/';
-		}
-	}
-}
+"""
+def FS_CreatePath (path): #char *
+	if not path:
+		return
 
+	directory = os.path.dirname(path)
+	if not directory:
+		return
+	os.makedirs(directory, exist_ok=True)
 
-/*
+"""
 ==============
 FS_FCloseFile
 
 For some reason, other dll's can't just cal fclose()
 on files returned by FS_FOpenFile...
 ==============
-*/
-void FS_FCloseFile (FILE *f)
-{
-	fclose (f);
-}
+"""
+def FS_FCloseFile (f): #FILE *
+	if f is None:
+		return
+	f.close()
 
 
-// RAFAEL
-/*
-	Developer_searchpath
-*/
-int	Developer_searchpath (int who)
-{
-	
-	int		ch;
-	// PMM - warning removal
-//	char	*start;
-	searchpath_t	*search;
-	
-	if (who == 1) // xatrix
-		ch = 'x';
-	else if (who == 2)
-		ch = 'r';
-
-	for (search = fs_searchpaths ; search ; search = search->next)
-	{
-		if (strstr (search->filename, "xatrix"))
-			return 1;
-
-		if (strstr (search->filename, "rogue"))
-			return 2;
-/*
-		start = strchr (search->filename, ch);
-
-		if (start == NULL)
-			continue;
-
-		if (strcmp (start ,"xatrix") == 0)
-			return (1);
-*/
-	}
-	return (0);
-
-}
+# RAFAEL
+def Developer_searchpath (who): #int (returns int)
+	for search in fs_searchpaths:
+		filename = search.filename or ""
+		if "xatrix" in filename:
+			return 1
+		if "rogue" in filename:
+			return 2
+	return 0
 
 
-/*
+"""
 ===========
 FS_FOpenFile
 
@@ -234,23 +199,16 @@ def FS_FOpenFile (filename): #char *
 	file_from_pak = 0
 	handle = None
 
-	"""
 	# check for links first
-	for (link = fs_links ; link ; link=link->next)
-	{
-		if (!strncmp (filename, link->from, link->fromlength))
-		{
-			Com_sprintf (netpath, sizeof(netpath), "%s%s",link->to, filename+link->fromlength);
-			*file = fopen (netpath, "rb");
-			if (*file)
-			{		
-				Com_DPrintf ("link file: %s\n",netpath);
-				return FS_filelength (*file);
-			}
-			return -1;
-		}
-	}
-"""
+	for link in fs_links:
+		if filename.startswith(link.from_path):
+			netpath = "{}{}".format(link.to_path, filename[link.fromlength:])
+			try:
+				handle = open(netpath, "rb")
+			except FileNotFoundError:
+				return -1, None
+			common.Com_DPrintf ("link file: {}\n".format(netpath))
+			return FS_filelength(handle), handle
 
 	#
 	# search through the path, one element at a time
@@ -516,7 +474,7 @@ then loads and adds pak1.pak pak2.pak ...
 """
 def FS_AddGameDirectory (folder): #char *
 
-	global fs_gamedir
+	global fs_gamedir, fs_searchpaths
 
 	"""
 	int				i;
@@ -595,6 +553,8 @@ Sets the gamedir and path to a different directory.
 """
 def FS_SetGamedir (folder): #char *
 
+	global fs_searchpaths, fs_gamedir
+
 	if folder.find("..") != -1 or folder.find("/") != -1 \
 		or folder.find("\\") != -1 or folder.find(":") != -1:
 	
@@ -616,11 +576,11 @@ def FS_SetGamedir (folder): #char *
 
 	if folder == qcommon.BASEDIRNAME or len(folder) == 0:
 	
-		cmd.Cvar_FullSet ("gamedir", "", q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET);
-		cmd.Cvar_FullSet ("game", "", q_shared.CVAR_LATCH|q_shared.CVAR_SERVERINFO);
+		cvar.Cvar_FullSet ("gamedir", "", q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET)
+		cvar.Cvar_FullSet ("game", "", q_shared.CVAR_LATCH|q_shared.CVAR_SERVERINFO)
 	
 	else:	
-		cmd.Cvar_FullSet ("gamedir", dir, q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET);
+		cvar.Cvar_FullSet ("gamedir", folder, q_shared.CVAR_SERVERINFO|q_shared.CVAR_NOSET)
 		if len(fs_cddir.string) > 0:
 			FS_AddGameDirectory (os.path.join(fs_cddir.string, folder) )
 		FS_AddGameDirectory (os.path.join(fs_basedir.string, folder) )
@@ -634,6 +594,8 @@ Creates a filelink_t
 ================
 """
 def FS_Link_f ():
+
+	global fs_links
 
 	if cmd.Cmd_Argc() != 3:
 		common.Com_Printf("USAGE: link <from> <to>\n")
@@ -737,6 +699,8 @@ def FS_ListFiles( findname, musthave, canthave ): #char *, unsigned, unsigned (r
 	
 	q_shlinux.Sys_FindClose ()
 
+	if not out:
+		return None
 	return out
 
 

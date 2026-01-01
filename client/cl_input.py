@@ -17,7 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cvar, net_chan, qcommon, common
+import numpy as np
+from qcommon import cvar, net_chan, qcommon, common, cmd
 from game import q_shared
 from client import cl_main, client, keys, client
 from linux import in_linux, sys_linux, q_shlinux
@@ -58,6 +59,182 @@ Key_Event (int key, qboolean down, unsigned time);
 
 ===============================================================================
 */
+class kbutton_t(object):
+
+	def __init__(self):
+		self.down = [0, 0]
+		self.state = 0
+		self.downtime = 0
+		self.msec = 0
+
+
+in_klook = kbutton_t()
+in_left = kbutton_t()
+in_right = kbutton_t()
+in_forward = kbutton_t()
+in_back = kbutton_t()
+in_lookup = kbutton_t()
+in_lookdown = kbutton_t()
+in_moveleft = kbutton_t()
+in_moveright = kbutton_t()
+in_strafe = kbutton_t()
+in_speed = kbutton_t()
+in_use = kbutton_t()
+in_attack = kbutton_t()
+in_up = kbutton_t()
+in_down = kbutton_t()
+
+in_impulse = 0
+
+cl_upspeed = None
+cl_forwardspeed = None
+cl_sidespeed = None
+cl_yawspeed = None
+cl_pitchspeed = None
+cl_run = None
+cl_anglespeedkey = None
+
+
+def KeyDown(b):
+	c = cmd.Cmd_Argv(1)
+	if c:
+		k = int(c)
+	else:
+		k = -1
+
+	if k == b.down[0] or k == b.down[1]:
+		return
+
+	if not b.down[0]:
+		b.down[0] = k
+	elif not b.down[1]:
+		b.down[1] = k
+	else:
+		common.Com_Printf("Three keys down for a button!\n")
+		return
+
+	if b.state & 1:
+		return
+
+	c = cmd.Cmd_Argv(2)
+	b.downtime = int(c) if c else 0
+	if not b.downtime:
+		b.downtime = sys_linux.sys_frame_time - 100
+
+	b.state |= 1 + 2
+
+
+def KeyUp(b):
+	c = cmd.Cmd_Argv(1)
+	if c:
+		k = int(c)
+	else:
+		b.down[0] = 0
+		b.down[1] = 0
+		b.state = 4
+		return
+
+	if b.down[0] == k:
+		b.down[0] = 0
+	elif b.down[1] == k:
+		b.down[1] = 0
+	else:
+		return
+	if b.down[0] or b.down[1]:
+		return
+
+	if not (b.state & 1):
+		return
+
+	c = cmd.Cmd_Argv(2)
+	uptime = int(c) if c else 0
+	if uptime:
+		b.msec += uptime - b.downtime
+	else:
+		b.msec += 10
+
+	b.state &= ~1
+	b.state |= 4
+
+
+def IN_KLookDown(): KeyDown(in_klook)
+def IN_KLookUp(): KeyUp(in_klook)
+def IN_UpDown(): KeyDown(in_up)
+def IN_UpUp(): KeyUp(in_up)
+def IN_DownDown(): KeyDown(in_down)
+def IN_DownUp(): KeyUp(in_down)
+def IN_LeftDown(): KeyDown(in_left)
+def IN_LeftUp(): KeyUp(in_left)
+def IN_RightDown(): KeyDown(in_right)
+def IN_RightUp(): KeyUp(in_right)
+def IN_ForwardDown(): KeyDown(in_forward)
+def IN_ForwardUp(): KeyUp(in_forward)
+def IN_BackDown(): KeyDown(in_back)
+def IN_BackUp(): KeyUp(in_back)
+def IN_LookupDown(): KeyDown(in_lookup)
+def IN_LookupUp(): KeyUp(in_lookup)
+def IN_LookdownDown(): KeyDown(in_lookdown)
+def IN_LookdownUp(): KeyUp(in_lookdown)
+def IN_MoveleftDown(): KeyDown(in_moveleft)
+def IN_MoveleftUp(): KeyUp(in_moveleft)
+def IN_MoverightDown(): KeyDown(in_moveright)
+def IN_MoverightUp(): KeyUp(in_moveright)
+def IN_SpeedDown(): KeyDown(in_speed)
+def IN_SpeedUp(): KeyUp(in_speed)
+def IN_StrafeDown(): KeyDown(in_strafe)
+def IN_StrafeUp(): KeyUp(in_strafe)
+def IN_AttackDown(): KeyDown(in_attack)
+def IN_AttackUp(): KeyUp(in_attack)
+def IN_UseDown(): KeyDown(in_use)
+def IN_UseUp(): KeyUp(in_use)
+
+
+def IN_Impulse():
+	global in_impulse
+	c = cmd.Cmd_Argv(1)
+	in_impulse = int(c) if c else 0
+
+
+def CL_KeyState(key):
+	global frame_msec
+
+	key.state &= 1
+
+	msec = key.msec
+	key.msec = 0
+
+	if key.state:
+		msec += sys_linux.sys_frame_time - key.downtime
+		key.downtime = sys_linux.sys_frame_time
+
+	val = float(msec) / float(frame_msec) if frame_msec else 0.0
+	if val < 0:
+		val = 0
+	if val > 1:
+		val = 1
+
+	return val
+
+
+def CL_AdjustAngles():
+	if in_speed.state & 1:
+		speed = cl_main.cls.frametime * cl_anglespeedkey.value
+	else:
+		speed = cl_main.cls.frametime
+
+	if not (in_strafe.state & 1):
+		cl_main.cl.viewangles[q_shared.YAW] -= speed * cl_yawspeed.value * CL_KeyState(in_right)
+		cl_main.cl.viewangles[q_shared.YAW] += speed * cl_yawspeed.value * CL_KeyState(in_left)
+	if in_klook.state & 1:
+		cl_main.cl.viewangles[q_shared.PITCH] -= speed * cl_pitchspeed.value * CL_KeyState(in_forward)
+		cl_main.cl.viewangles[q_shared.PITCH] += speed * cl_pitchspeed.value * CL_KeyState(in_back)
+
+	up = CL_KeyState(in_lookup)
+	down = CL_KeyState(in_lookdown)
+
+	cl_main.cl.viewangles[q_shared.PITCH] -= speed * cl_pitchspeed.value * up
+	cl_main.cl.viewangles[q_shared.PITCH] += speed * cl_pitchspeed.value * down
+
 
 
 kbutton_t	in_klook;
@@ -279,109 +456,254 @@ CL_BaseMove
 Send the intended movement message to the server
 ================
 """
+class kbutton_t(object):
+
+	def __init__(self):
+		self.down = [0, 0]
+		self.state = 0
+		self.downtime = 0
+		self.msec = 0
+
+
+in_klook = kbutton_t()
+in_left = kbutton_t()
+in_right = kbutton_t()
+in_forward = kbutton_t()
+in_back = kbutton_t()
+in_lookup = kbutton_t()
+in_lookdown = kbutton_t()
+in_moveleft = kbutton_t()
+in_moveright = kbutton_t()
+in_strafe = kbutton_t()
+in_speed = kbutton_t()
+in_use = kbutton_t()
+in_attack = kbutton_t()
+in_up = kbutton_t()
+in_down = kbutton_t()
+
+in_impulse = 0
+
+cl_upspeed = None
+cl_forwardspeed = None
+cl_sidespeed = None
+cl_yawspeed = None
+cl_pitchspeed = None
+cl_run = None
+cl_anglespeedkey = None
+
+
+def KeyDown(b):
+	c = cmd.Cmd_Argv(1)
+	if c:
+		k = int(c)
+	else:
+		k = -1
+
+	if k == b.down[0] or k == b.down[1]:
+		return
+
+	if not b.down[0]:
+		b.down[0] = k
+	elif not b.down[1]:
+		b.down[1] = k
+	else:
+		common.Com_Printf("Three keys down for a button!\n")
+		return
+
+	if b.state & 1:
+		return
+
+	c = cmd.Cmd_Argv(2)
+	b.downtime = int(c) if c else 0
+	if not b.downtime:
+		b.downtime = sys_linux.sys_frame_time - 100
+
+	b.state |= 1 + 2
+
+
+def KeyUp(b):
+	c = cmd.Cmd_Argv(1)
+	if c:
+		k = int(c)
+	else:
+		b.down[0] = 0
+		b.down[1] = 0
+		b.state = 4
+		return
+
+	if b.down[0] == k:
+		b.down[0] = 0
+	elif b.down[1] == k:
+		b.down[1] = 0
+	else:
+		return
+	if b.down[0] or b.down[1]:
+		return
+
+	if not (b.state & 1):
+		return
+
+	c = cmd.Cmd_Argv(2)
+	uptime = int(c) if c else 0
+	if uptime:
+		b.msec += uptime - b.downtime
+	else:
+		b.msec += 10
+
+	b.state &= ~1
+	b.state |= 4
+
+
+def IN_KLookDown(): KeyDown(in_klook)
+def IN_KLookUp(): KeyUp(in_klook)
+def IN_UpDown(): KeyDown(in_up)
+def IN_UpUp(): KeyUp(in_up)
+def IN_DownDown(): KeyDown(in_down)
+def IN_DownUp(): KeyUp(in_down)
+def IN_LeftDown(): KeyDown(in_left)
+def IN_LeftUp(): KeyUp(in_left)
+def IN_RightDown(): KeyDown(in_right)
+def IN_RightUp(): KeyUp(in_right)
+def IN_ForwardDown(): KeyDown(in_forward)
+def IN_ForwardUp(): KeyUp(in_forward)
+def IN_BackDown(): KeyDown(in_back)
+def IN_BackUp(): KeyUp(in_back)
+def IN_LookupDown(): KeyDown(in_lookup)
+def IN_LookupUp(): KeyUp(in_lookup)
+def IN_LookdownDown(): KeyDown(in_lookdown)
+def IN_LookdownUp(): KeyUp(in_lookdown)
+def IN_MoveleftDown(): KeyDown(in_moveleft)
+def IN_MoveleftUp(): KeyUp(in_moveleft)
+def IN_MoverightDown(): KeyDown(in_moveright)
+def IN_MoverightUp(): KeyUp(in_moveright)
+def IN_SpeedDown(): KeyDown(in_speed)
+def IN_SpeedUp(): KeyUp(in_speed)
+def IN_StrafeDown(): KeyDown(in_strafe)
+def IN_StrafeUp(): KeyUp(in_strafe)
+def IN_AttackDown(): KeyDown(in_attack)
+def IN_AttackUp(): KeyUp(in_attack)
+def IN_UseDown(): KeyDown(in_use)
+def IN_UseUp(): KeyUp(in_use)
+
+
+def IN_Impulse():
+	global in_impulse
+	c = cmd.Cmd_Argv(1)
+	in_impulse = int(c) if c else 0
+
+
+def CL_KeyState(key):
+	global frame_msec
+
+	key.state &= 1
+
+	msec = key.msec
+	key.msec = 0
+
+	if key.state:
+		msec += sys_linux.sys_frame_time - key.downtime
+		key.downtime = sys_linux.sys_frame_time
+
+	val = float(msec) / float(frame_msec) if frame_msec else 0.0
+	if val < 0:
+		val = 0
+	if val > 1:
+		val = 1
+
+	return val
+
+
+def CL_AdjustAngles():
+	if in_speed.state & 1:
+		speed = cl_main.cls.frametime * cl_anglespeedkey.value
+	else:
+		speed = cl_main.cls.frametime
+
+	if not (in_strafe.state & 1):
+		cl_main.cl.viewangles[q_shared.YAW] -= speed * cl_yawspeed.value * CL_KeyState(in_right)
+		cl_main.cl.viewangles[q_shared.YAW] += speed * cl_yawspeed.value * CL_KeyState(in_left)
+	if in_klook.state & 1:
+		cl_main.cl.viewangles[q_shared.PITCH] -= speed * cl_pitchspeed.value * CL_KeyState(in_forward)
+		cl_main.cl.viewangles[q_shared.PITCH] += speed * cl_pitchspeed.value * CL_KeyState(in_back)
+
+	up = CL_KeyState(in_lookup)
+	down = CL_KeyState(in_lookdown)
+
+	cl_main.cl.viewangles[q_shared.PITCH] -= speed * cl_pitchspeed.value * up
+	cl_main.cl.viewangles[q_shared.PITCH] += speed * cl_pitchspeed.value * down
+
 def CL_BaseMove (cmd): #usercmd_t *
 
-	pass
-	"""
-	CL_AdjustAngles ();
-	
-	memset (cmd, 0, sizeof(*cmd));
-	
-	VectorCopy (cl_main.cl.viewangles, cmd->angles);
-	if (in_strafe.state & 1)
-	{
-		cmd->sidemove += cl_sidespeed->value * CL_KeyState (&in_right);
-		cmd->sidemove -= cl_sidespeed->value * CL_KeyState (&in_left);
-	}
+	CL_AdjustAngles ()
 
-	cmd->sidemove += cl_sidespeed->value * CL_KeyState (&in_moveright);
-	cmd->sidemove -= cl_sidespeed->value * CL_KeyState (&in_moveleft);
+	cmd.reset()
+	cmd.angles = [cl_main.cl.viewangles[0], cl_main.cl.viewangles[1], cl_main.cl.viewangles[2]]
 
-	cmd->upmove += cl_upspeed->value * CL_KeyState (&in_up);
-	cmd->upmove -= cl_upspeed->value * CL_KeyState (&in_down);
+	if in_strafe.state & 1:
+		cmd.sidemove += cl_sidespeed.value * CL_KeyState(in_right)
+		cmd.sidemove -= cl_sidespeed.value * CL_KeyState(in_left)
 
-	if (! (in_klook.state & 1) )
-	{	
-		cmd->forwardmove += cl_forwardspeed->value * CL_KeyState (&in_forward);
-		cmd->forwardmove -= cl_forwardspeed->value * CL_KeyState (&in_back);
-	}	
+	cmd.sidemove += cl_sidespeed.value * CL_KeyState(in_moveright)
+	cmd.sidemove -= cl_sidespeed.value * CL_KeyState(in_moveleft)
 
-//
-// adjust for speed key / running
-//
-	if ( (in_speed.state & 1) ^ (int)(cl_run->value) )
-	{
-		cmd->forwardmove *= 2;
-		cmd->sidemove *= 2;
-		cmd->upmove *= 2;
-	}	
-}
+	cmd.upmove += cl_upspeed.value * CL_KeyState(in_up)
+	cmd.upmove -= cl_upspeed.value * CL_KeyState(in_down)
 
-void CL_ClampPitch (void)
-{
-	float	pitch;
+	if not (in_klook.state & 1):
+		cmd.forwardmove += cl_forwardspeed.value * CL_KeyState(in_forward)
+		cmd.forwardmove -= cl_forwardspeed.value * CL_KeyState(in_back)
 
-	pitch = SHORT2ANGLE(cl_main.cl.frame.playerstate.pmove.delta_angles[PITCH]);
-	if (pitch > 180)
-		pitch -= 360;
+	if (in_speed.state & 1) ^ (int(cl_run.value)):
+		cmd.forwardmove *= 2
+		cmd.sidemove *= 2
+		cmd.upmove *= 2
 
-	if (cl_main.cl.viewangles[PITCH] + pitch < -360)
-		cl_main.cl.viewangles[PITCH] += 360; // wrapped
-	if (cl_main.cl.viewangles[PITCH] + pitch > 360)
-		cl_main.cl.viewangles[PITCH] -= 360; // wrapped
+def CL_ClampPitch ():
+	pitch = q_shared.SHORT2ANGLE(cl_main.cl.frame.playerstate.pmove.delta_angles[q_shared.PITCH])
+	if pitch > 180:
+		pitch -= 360
 
-	if (cl_main.cl.viewangles[PITCH] + pitch > 89)
-		cl_main.cl.viewangles[PITCH] = 89 - pitch;
-	if (cl_main.cl.viewangles[PITCH] + pitch < -89)
-		cl_main.cl.viewangles[PITCH] = -89 - pitch;
-}
+	if cl_main.cl.viewangles[q_shared.PITCH] + pitch < -360:
+		cl_main.cl.viewangles[q_shared.PITCH] += 360
+	if cl_main.cl.viewangles[q_shared.PITCH] + pitch > 360:
+		cl_main.cl.viewangles[q_shared.PITCH] -= 360
 
-/*
-==============
-CL_FinishMove
-==============
-"""
+	if cl_main.cl.viewangles[q_shared.PITCH] + pitch > 89:
+		cl_main.cl.viewangles[q_shared.PITCH] = 89 - pitch
+	if cl_main.cl.viewangles[q_shared.PITCH] + pitch < -89:
+		cl_main.cl.viewangles[q_shared.PITCH] = -89 - pitch
 def CL_FinishMove (cmd): #usercmd_t *
 
-	#int		ms;
-	#int		i;
-	"""
-	#
-	# figure button bits
-	#	
-	if ( in_attack.state & 3 )
-		cmd->buttons |= BUTTON_ATTACK;
-	in_attack.state &= ~2;
-	
-	if (in_use.state & 3)
-		cmd->buttons |= BUTTON_USE;
-	in_use.state &= ~2;
-	"""
+	global in_impulse
+
+	if in_attack.state & 3:
+		cmd.buttons |= q_shared.BUTTON_ATTACK
+	in_attack.state &= ~2
+
+	if in_use.state & 3:
+		cmd.buttons |= q_shared.BUTTON_USE
+	in_use.state &= ~2
+
 	if keys.anykeydown and cl_main.cls.key_dest == client.keydest_t.key_game:
 		cmd.buttons |= q_shared.BUTTON_ANY
-	"""
-	// send milliseconds of time to apply the move
-	ms = cl_main.cls.frametime * 1000;
-	if (ms > 250)
-		ms = 100;		// time was unreasonable
-	cmd->msec = ms;
 
-	CL_ClampPitch ();
-	for (i=0 ; i<3 ; i++)
-		cmd->angles[i] = ANGLE2SHORT(cl_main.cl.viewangles[i]);
+	ms = cl_main.cls.frametime * 1000
+	if ms > 250:
+		ms = 100
+	cmd.msec = int(ms)
 
-	cmd->impulse = in_impulse;
-	in_impulse = 0;
+	CL_ClampPitch ()
+	cmd.angles = [
+		q_shared.ANGLE2SHORT(cl_main.cl.viewangles[0]),
+		q_shared.ANGLE2SHORT(cl_main.cl.viewangles[1]),
+		q_shared.ANGLE2SHORT(cl_main.cl.viewangles[2]),
+	]
 
-// send the ambient light level at the player's current position
-	cmd->lightlevel = (byte)cl_lightlevel->value;
-}
+	cmd.impulse = in_impulse
+	in_impulse = 0
 
-/*
-=================
-CL_CreateCmd
-=================
-"""
+	cmd.lightlevel = int(cl_main.cl_lightlevel.value) if cl_main.cl_lightlevel else 0
+
 def CL_CreateCmd ():
 
 	global old_sys_frame_time, frame_msec
@@ -408,57 +730,62 @@ def CL_CreateCmd ():
 
 	return cmd
 
-"""
+def IN_CenterView ():
+	cl_main.cl.viewangles[q_shared.PITCH] = -q_shared.SHORT2ANGLE(
+		cl_main.cl.frame.playerstate.pmove.delta_angles[q_shared.PITCH]
+	)
 
-void IN_CenterView (void)
-{
-	cl_main.cl.viewangles[PITCH] = -SHORT2ANGLE(cl_main.cl.frame.playerstate.pmove.delta_angles[PITCH]);
-}
-
-/*
-============
-CL_InitInput
-============
-"""
 def CL_InitInput ():
 
 	global cl_nodelta
-	"""
-	Cmd_AddCommand ("centerview",IN_CenterView);
+	global cl_upspeed, cl_forwardspeed, cl_sidespeed
+	global cl_yawspeed, cl_pitchspeed, cl_run, cl_anglespeedkey
 
-	Cmd_AddCommand ("+moveup",IN_UpDown);
-	Cmd_AddCommand ("-moveup",IN_UpUp);
-	Cmd_AddCommand ("+movedown",IN_DownDown);
-	Cmd_AddCommand ("-movedown",IN_DownUp);
-	Cmd_AddCommand ("+left",IN_LeftDown);
-	Cmd_AddCommand ("-left",IN_LeftUp);
-	Cmd_AddCommand ("+right",IN_RightDown);
-	Cmd_AddCommand ("-right",IN_RightUp);
-	Cmd_AddCommand ("+forward",IN_ForwardDown);
-	Cmd_AddCommand ("-forward",IN_ForwardUp);
-	Cmd_AddCommand ("+back",IN_BackDown);
-	Cmd_AddCommand ("-back",IN_BackUp);
-	Cmd_AddCommand ("+lookup", IN_LookupDown);
-	Cmd_AddCommand ("-lookup", IN_LookupUp);
-	Cmd_AddCommand ("+lookdown", IN_LookdownDown);
-	Cmd_AddCommand ("-lookdown", IN_LookdownUp);
-	Cmd_AddCommand ("+strafe", IN_StrafeDown);
-	Cmd_AddCommand ("-strafe", IN_StrafeUp);
-	Cmd_AddCommand ("+moveleft", IN_MoveleftDown);
-	Cmd_AddCommand ("-moveleft", IN_MoveleftUp);
-	Cmd_AddCommand ("+moveright", IN_MoverightDown);
-	Cmd_AddCommand ("-moveright", IN_MoverightUp);
-	Cmd_AddCommand ("+speed", IN_SpeedDown);
-	Cmd_AddCommand ("-speed", IN_SpeedUp);
-	Cmd_AddCommand ("+attack", IN_AttackDown);
-	Cmd_AddCommand ("-attack", IN_AttackUp);
-	Cmd_AddCommand ("+use", IN_UseDown);
-	Cmd_AddCommand ("-use", IN_UseUp);
-	Cmd_AddCommand ("impulse", IN_Impulse);
-	Cmd_AddCommand ("+klook", IN_KLookDown);
-	Cmd_AddCommand ("-klook", IN_KLookUp);
-"""
+	cmd.Cmd_AddCommand ("centerview", IN_CenterView)
+
+	cmd.Cmd_AddCommand ("+moveup", IN_UpDown)
+	cmd.Cmd_AddCommand ("-moveup", IN_UpUp)
+	cmd.Cmd_AddCommand ("+movedown", IN_DownDown)
+	cmd.Cmd_AddCommand ("-movedown", IN_DownUp)
+	cmd.Cmd_AddCommand ("+left", IN_LeftDown)
+	cmd.Cmd_AddCommand ("-left", IN_LeftUp)
+	cmd.Cmd_AddCommand ("+right", IN_RightDown)
+	cmd.Cmd_AddCommand ("-right", IN_RightUp)
+	cmd.Cmd_AddCommand ("+forward", IN_ForwardDown)
+	cmd.Cmd_AddCommand ("-forward", IN_ForwardUp)
+	cmd.Cmd_AddCommand ("+back", IN_BackDown)
+	cmd.Cmd_AddCommand ("-back", IN_BackUp)
+	cmd.Cmd_AddCommand ("+lookup", IN_LookupDown)
+	cmd.Cmd_AddCommand ("-lookup", IN_LookupUp)
+	cmd.Cmd_AddCommand ("+lookdown", IN_LookdownDown)
+	cmd.Cmd_AddCommand ("-lookdown", IN_LookdownUp)
+	cmd.Cmd_AddCommand ("+strafe", IN_StrafeDown)
+	cmd.Cmd_AddCommand ("-strafe", IN_StrafeUp)
+	cmd.Cmd_AddCommand ("+moveleft", IN_MoveleftDown)
+	cmd.Cmd_AddCommand ("-moveleft", IN_MoveleftUp)
+	cmd.Cmd_AddCommand ("+moveright", IN_MoverightDown)
+	cmd.Cmd_AddCommand ("-moveright", IN_MoverightUp)
+	cmd.Cmd_AddCommand ("+speed", IN_SpeedDown)
+	cmd.Cmd_AddCommand ("-speed", IN_SpeedUp)
+	cmd.Cmd_AddCommand ("+attack", IN_AttackDown)
+	cmd.Cmd_AddCommand ("-attack", IN_AttackUp)
+	cmd.Cmd_AddCommand ("+use", IN_UseDown)
+	cmd.Cmd_AddCommand ("-use", IN_UseUp)
+	cmd.Cmd_AddCommand ("impulse", IN_Impulse)
+	cmd.Cmd_AddCommand ("+klook", IN_KLookDown)
+	cmd.Cmd_AddCommand ("-klook", IN_KLookUp)
+
 	cl_nodelta = cvar.Cvar_Get ("cl_nodelta", "0", 0)
+	cl_upspeed = cvar.Cvar_Get ("cl_upspeed", "200", 0)
+	cl_forwardspeed = cvar.Cvar_Get ("cl_forwardspeed", "200", 0)
+	cl_sidespeed = cvar.Cvar_Get ("cl_sidespeed", "200", 0)
+	cl_yawspeed = cvar.Cvar_Get ("cl_yawspeed", "140", 0)
+	cl_pitchspeed = cvar.Cvar_Get ("cl_pitchspeed", "150", 0)
+	cl_run = cvar.Cvar_Get ("cl_run", "0", 0)
+	cl_anglespeedkey = cvar.Cvar_Get ("cl_anglespeedkey", "1.5", 0)
+
+	if not hasattr(cl_main.cl, "viewangles") or cl_main.cl.viewangles is None:
+		cl_main.cl.viewangles = np.zeros((3,), dtype=np.float32)
 
 
 

@@ -567,9 +567,46 @@ qboolean	chat_team;
 char		chat_buffer[MAXCMDLINE];
 int			chat_bufferlen = 0;
 """
+chat_team = False
+chat_buffer = ""
+chat_bufferlen = 0
 def Key_Message (key): #int 
 
-	pass
+	global chat_buffer, chat_bufferlen, chat_team
+
+	if key == K_ENTER or key == K_KP_ENTER:
+		if chat_team:
+			cmd.Cbuf_AddText("say_team \"")
+		else:
+			cmd.Cbuf_AddText("say \"")
+		cmd.Cbuf_AddText(chat_buffer)
+		cmd.Cbuf_AddText("\"\n")
+
+		cl_main.cls.key_dest = client.keydest_t.key_game
+		chat_buffer = ""
+		chat_bufferlen = 0
+		return
+
+	if key == K_ESCAPE:
+		cl_main.cls.key_dest = client.keydest_t.key_game
+		chat_buffer = ""
+		chat_bufferlen = 0
+		return
+
+	if key < 32 or key > 127:
+		return
+
+	if key == K_BACKSPACE:
+		if chat_bufferlen:
+			chat_bufferlen -= 1
+			chat_buffer = chat_buffer[:chat_bufferlen]
+		return
+
+	if chat_bufferlen >= MAXCMDLINE - 1:
+		return
+
+	chat_buffer += chr(key)
+	chat_bufferlen += 1
 	"""
 	if ( key == K_ENTER || key == K_KP_ENTER )
 	{

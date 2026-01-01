@@ -17,7 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-from qcommon import cmd, cvar, common, qcommon
+from qcommon import cmd, cvar, common, qcommon, files
+import os
 from linux import vid_so
 from client import cl_scrn, cl_main, client, keys, menu
 """
@@ -139,107 +140,53 @@ Con_ToggleChat_f
 """
 def Con_ToggleChat_f ():
 
-	pass
-	"""
-	Key_ClearTyping ();
+	Key_ClearTyping ()
 
-	if (cl_main.cls.key_dest == client.keydest_t.key_console)
-	{
-		if (cl_main.cls.state == ca_active)
-		{
-			M_ForceMenuOff ();
-			cl_main.cls.key_dest = key_game;
-		}
-	}
-	else
-		cl_main.cls.key_dest = client.keydest_t.key_console;
-	
-	Con_ClearNotify ();
+	if cl_main.cls.key_dest == client.keydest_t.key_console:
+		if cl_main.cls.state == client.connstate_t.ca_active:
+			menu.M_ForceMenuOff ()
+			cl_main.cls.key_dest = client.keydest_t.key_game
+	else:
+		cl_main.cls.key_dest = client.keydest_t.key_console
 
-/*
-================
-Con_Clear_f
-================
-"""
+	Con_ClearNotify ()
+
 def Con_Clear_f ():
 
 	for i, li in enumerate(con.text):
 		con.text[i] = ""
-	"""
-	memset (con.text, ' ', CON_TEXTSIZE);
-						
-/*
-================
-Con_Dump_f
-
-Save the console contents out to a file
-================
-"""
 def Con_Dump_f ():
-	pass
-	"""
-	int		l, x;
-	char	*line;
-	FILE	*f;
-	char	buffer[1024];
-	char	name[MAX_OSPATH];
+	if cmd.Cmd_Argc() != 2:
+		common.Com_Printf ("usage: condump <filename>\n")
+		return
 
-	if (Cmd_Argc() != 2)
-	{
-		Com_Printf ("usage: condump <filename>\n");
-		return;
-	}
+	name = os.path.join(files.FS_Gamedir(), "{}.txt".format(cmd.Cmd_Argv(1)))
 
-	Com_sprintf (name, sizeof(name), "%s/%s.txt", FS_Gamedir(), Cmd_Argv(1));
+	common.Com_Printf ("Dumped console text to {}.\n".format(name))
+	files.FS_CreatePath (name)
+	try:
+		f = open(name, "w", encoding="ascii", errors="ignore")
+	except OSError:
+		common.Com_Printf ("ERROR: couldn't open.\n")
+		return
 
-	Com_Printf ("Dumped console text to %s.\n", name);
-	FS_CreatePath (name);
-	f = fopen (name, "w");
-	if (!f)
-	{
-		Com_Printf ("ERROR: couldn't open.\n");
-		return;
-	}
+	l = con.current - con.totallines + 1
+	while l <= con.current:
+		line = con.text[l % con.totallines] if con.text else ""
+		if any(ch != " " for ch in line[:con.linewidth]):
+			break
+		l += 1
 
-	// skip empty lines
-	for (l = con.current - con.totallines + 1 ; l <= con.current ; l++)
-	{
-		line = con.text + (l%con.totallines)*con.linewidth;
-		for (x=0 ; x<con.linewidth ; x++)
-			if (line[x] != ' ')
-				break;
-		if (x != con.linewidth)
-			break;
-	}
+	while l <= con.current:
+		line = con.text[l % con.totallines] if con.text else ""
+		buffer = line[:con.linewidth].rstrip(" ")
+		buffer = "".join(chr(ord(ch) & 0x7f) for ch in buffer)
+		f.write(buffer + "\n")
+		l += 1
 
-	// write the remaining lines
-	buffer[con.linewidth] = 0;
-	for ( ; l <= con.current ; l++)
-	{
-		line = con.text + (l%con.totallines)*con.linewidth;
-		strncpy (buffer, line, con.linewidth);
-		for (x=con.linewidth-1 ; x>=0 ; x--)
-		{
-			if (buffer[x] == ' ')
-				buffer[x] = 0;
-			else
-				break;
-		}
-		for (x=0; buffer[x]; x++)
-			buffer[x] &= 0x7f;
-
-		fprintf (f, "%s\n", buffer);
-	}
-
-	fclose (f);
-}
+	f.close()
 
 						
-/*
-================
-Con_ClearNotify
-================
-"""
 def Con_ClearNotify ():
 
 	global con
@@ -255,32 +202,16 @@ Con_MessageMode_f
 """
 def Con_MessageMode_f ():
 
-	pass
-	"""
-	chat_team = false;
-	cl_main.cls.key_dest = key_message;
+	keys.chat_team = False
+	cl_main.cls.key_dest = client.keydest_t.key_message
 
 
-/*
-================
-Con_MessageMode2_f
-================
-"""
 def Con_MessageMode2_f ():
 
-	pass
-	"""
-	chat_team = true;
-	cl_main.cls.key_dest = key_message;
+	keys.chat_team = True
+	cl_main.cls.key_dest = client.keydest_t.key_message
 
 
-/*
-================
-Con_CheckResize
-
-If the line width has changed, reformat the buffer.
-================
-"""
 def Con_CheckResize ():
 	
 	#int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
@@ -450,42 +381,6 @@ def Con_Print (txt): #char *
 		if cursor < len(txt):
 			c = txt[cursor]
 
-"""
-==============
-Con_CenteredPrint
-==============
-*/
-void Con_CenteredPrint (char *text)
-{
-	int		l;
-	char	buffer[1024];
-
-	l = strlen(text);
-	l = (con.linewidth-l)/2;
-	if (l < 0)
-		l = 0;
-	memset (buffer, ' ', l);
-	strcpy (buffer+l, text);
-	strcat (buffer, "\n");
-	Con_Print (buffer);
-}
-
-/*
-==============================================================================
-
-DRAWING
-
-==============================================================================
-*/
-
-
-/*
-================
-Con_DrawInput
-
-The input line scrolls horizontally if typing goes beyond the right edge
-================
-"""
 def Con_DrawInput ():
    
 	#int		y;
@@ -530,75 +425,42 @@ Draws the last few lines of output transparently over the game top
 """
 def Con_DrawNotify ():
 
-	pass
-	"""
-	int		x, v;
-	char	*text;
-	int		i;
-	int		time;
-	char	*s;
-	int		skip;
+	v = 0
+	for i in range(con.current - NUM_CON_TIMES + 1, con.current + 1):
+		if i < 0:
+			continue
+		timestamp = con.times[i % NUM_CON_TIMES]
+		if not timestamp:
+			continue
+		time = cl_main.cls.realtime - timestamp
+		if time > con_notifytime.value * 1000:
+			continue
+		text = con.text[i % con.totallines] if con.text else ""
 
-	v = 0;
-	for (i= con.current-NUM_CON_TIMES+1 ; i<=con.current ; i++)
-	{
-		if (i < 0)
-			continue;
-		time = con.times[i % NUM_CON_TIMES];
-		if (time == 0)
-			continue;
-		time = cl_main.cls.realtime - time;
-		if (time > con_notifytime->value*1000)
-			continue;
-		text = con.text + (i % con.totallines)*con.linewidth;
-		
-		for (x = 0 ; x < con.linewidth ; x++)
-			vid_so.re.DrawChar ( (x+1)<<3, v, text[x]);
+		for x in range(min(con.linewidth, len(text))):
+			vid_so.re.DrawChar((x + 1) << 3, v, ord(text[x]))
 
-		v += 8;
-	}
+		v += 8
 
+	if cl_main.cls.key_dest == client.keydest_t.key_message:
+		if keys.chat_team:
+			prefix = "say_team:"
+		else:
+			prefix = "say:"
 
-	if (cl_main.cls.key_dest == key_message)
-	{
-		if (chat_team)
-		{
-			DrawString (8, v, "say_team:");
-			skip = 11;
-		}
-		else
-		{
-			DrawString (8, v, "say:");
-			skip = 5;
-		}
+		skip = len(prefix) + 1
+		for idx, ch in enumerate(prefix):
+			vid_so.re.DrawChar((idx + 1) << 3, v, ord(ch))
 
-		s = chat_buffer;
-		if (chat_bufferlen > (vid_so.viddef.width>>3)-(skip+1))
-			s += chat_bufferlen - ((vid_so.viddef.width>>3)-(skip+1));
-		x = 0;
-		while(s[x])
-		{
-			vid_so.re.DrawChar ( (x+skip)<<3, v, s[x]);
-			x++;
-		}
-		vid_so.re.DrawChar ( (x+skip)<<3, v, 10+((cl_main.cls.realtime>>8)&1));
-		v += 8;
-	}
-	
-	if (v)
-	{
-		SCR_AddDirtyPoint (0,0);
-		SCR_AddDirtyPoint (vid_so.viddef.width-1, v);
-	}
-}
+		available = (vid_so.viddef.width >> 3) - (skip + 1)
+		text = keys.chat_buffer
+		if keys.chat_bufferlen > available:
+			text = text[keys.chat_bufferlen - available:]
+		for x, ch in enumerate(text):
+			vid_so.re.DrawChar((x + skip) << 3, v, ord(ch))
+		vid_so.re.DrawChar((len(text) + skip) << 3, v, 10 + ((cl_main.cls.realtime >> 8) & 1))
+		v += 8
 
-/*
-================
-Con_DrawConsole
-
-Draws the console with the solid background
-================
-"""
 def Con_DrawConsole (frac): #float
 
 	"""
@@ -669,54 +531,5 @@ def Con_DrawConsole (frac): #float
 		y-=8 
 		row-=1
 	
-	"""
-//ZOID
-	# draw the download bar
-	# figure out width
-	if (cl_main.cls.download) {
-		if ((text = strrchr(cl_main.cls.downloadname, '/')) != NULL)
-			text++;
-		else
-			text = cl_main.cls.downloadname;
-
-		x = con.linewidth - ((con.linewidth * 7) / 40);
-		y = x - strlen(text) - 8;
-		i = con.linewidth/3;
-		if (strlen(text) > i) {
-			y = x - i - 11;
-			strncpy(dlbar, text, i);
-			dlbar[i] = 0;
-			strcat(dlbar, "...");
-		} else
-			strcpy(dlbar, text);
-		strcat(dlbar, ": ");
-		i = strlen(dlbar);
-		dlbar[i++] = '\x80';
-		// where's the dot go?
-		if (cl_main.cls.downloadpercent == 0)
-			n = 0;
-		else
-			n = y * cl_main.cls.downloadpercent / 100;
-			
-		for (j = 0; j < y; j++)
-			if (j == n)
-				dlbar[i++] = '\x83';
-			else
-				dlbar[i++] = '\x81';
-		dlbar[i++] = '\x82';
-		dlbar[i] = 0;
-
-		sprintf(dlbar + strlen(dlbar), " %02d%%", cl_main.cls.downloadpercent);
-
-		// draw it
-		y = con.vislines-12;
-		for (i = 0; i < strlen(dlbar); i++)
-			vid_so.re.DrawChar ( (i+1)<<3, y, dlbar[i]);
-	}
-//ZOID
-"""
 	# draw the input prompt, user text, and cursor if desired
 	Con_DrawInput ()
-
-
-

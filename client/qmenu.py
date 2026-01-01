@@ -415,24 +415,15 @@ def Menu_Draw( menu ): #menuframework_s *
 
 def Menu_DrawStatusBar( string ): #const char *
 	
-	pass
-	"""
-	if ( string )
-	{
-		int l = strlen( string );
-		int maxrow = VID_HEIGHT() / 8;
-		int maxcol = VID_WIDTH() / 8;
-		int col = maxcol / 2 - l / 2;
+	if string:
+		l = len(string)
+		maxcol = VID_WIDTH() // 8
+		col = maxcol // 2 - l // 2
 
-		Draw_Fill( 0, VID_HEIGHT()-8, VID_WIDTH(), 8, 4 );
-		Menu_DrawString( col*8, VID_HEIGHT() - 8, string );
-	}
-	else
-	{
-		Draw_Fill( 0, VID_HEIGHT()-8, VID_WIDTH(), 8, 0 );
-	}
-}
-"""
+		Draw_Fill(0, VID_HEIGHT() - 8, VID_WIDTH(), 8, 4)
+		Menu_DrawString(col * 8, VID_HEIGHT() - 8, string)
+	else:
+		Draw_Fill(0, VID_HEIGHT() - 8, VID_WIDTH(), 8, 0)
 def Menu_DrawString( x, y, string ): #int, int, const char *
 
 	for i, ch in enumerate(string):
@@ -531,25 +522,26 @@ void Menulist_DoEnter( menulist_s *l )
 }
 """
 def MenuList_Draw( l ): #menulist_s *
-	pass
-	"""
-	const char **n;
-	int y = 0;
+	y = 0
 
-	Menu_DrawStringR2LDark( l.x + l.parent.x + LCOLUMN_OFFSET, l.y + l.parent.y, l.name );
+	Menu_DrawStringR2LDark(l.x + l.parent.x + LCOLUMN_OFFSET, l.y + l.parent.y, l.name)
 
-	n = l->itemnames;
-
-  	Draw_Fill( l.x - 112 + l.parent.x, l.parent.y + l.y + l->curvalue*10 + 10, 128, 10, 16 );
-	while ( *n )
-	{
-		Menu_DrawStringR2LDark( l.x + l.parent.x + LCOLUMN_OFFSET, l.y + l.parent.y + y + 10, *n );
-
-		n++;
-		y += 10;
-	}
-}
-"""
+	Draw_Fill(
+		l.x - 112 + l.parent.x,
+		l.parent.y + l.y + l.curvalue * 10 + 10,
+		128,
+		10,
+		16,
+	)
+	for name in l.itemnames:
+		if name is None:
+			break
+		Menu_DrawStringR2LDark(
+			l.x + l.parent.x + LCOLUMN_OFFSET,
+			l.y + l.parent.y + y + 10,
+			name,
+		)
+		y += 10
 def Separator_Draw( s ): #menuseparator_s *
 
 	if s.name:
