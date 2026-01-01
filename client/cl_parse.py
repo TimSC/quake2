@@ -694,6 +694,9 @@ def CL_ParseStartSoundPacket():
 	"""
 
 
+	flags = common.MSG_ReadByte (net_chan.net_message)
+	sound_num = common.MSG_ReadByte (net_chan.net_message)
+
 	if flags & qcommon.SND_VOLUME:
 		volume = common.MSG_ReadByte (net_chan.net_message) / 255.0
 	else:

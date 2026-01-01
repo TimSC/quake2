@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 from qcommon import cvar, cmd, qcommon, common
-from client import console, cl_main, client, menu, cl_cin, snd_dma, cl_view
+from client import console, cl_main, client, menu, cl_cin, snd_dma, cl_view, cl_inv
 from linux import q_shlinux, vid_so, cd_linux
 from game import q_shared
 """
@@ -72,6 +72,28 @@ scr_graphshift = None #cvar_t		*
 scr_drawall = None #cvar_t		*
 
 
+STAT_MINUS = 10
+CHAR_WIDTH = 16
+
+sb_nums = [
+	["num_0","num_1","num_2","num_3","num_4","num_5","num_6","num_7","num_8","num_9","num_minus"],
+	["anum_0","anum_1","anum_2","anum_3","anum_4","anum_5","anum_6","anum_7","anum_8","anum_9","anum_minus"],
+]
+
+graphs_current = 0
+graphs_values = [{"value": 0.0, "color": 0} for _ in range(1024)]
+
+scr_centerstring = ""
+scr_centertime_start = 0.0
+scr_centertime_off = 0.0
+scr_center_lines = 0
+scr_erase_center = 0
+
+crosshair_pic = ""
+crosshair_width = 0
+crosshair_height = 0
+
+
 class dirty_t(object):
 
 	def __init__(self):
@@ -108,226 +130,113 @@ A new packet was just parsed
 """
 def CL_AddNetgraph ():
 
-	pass
-	"""
+	if int(scr_debuggraph.value) or int(scr_timegraph.value):
+		return
 
-	int		i;
-	int		in;
-	int		ping;
+	for _ in range(cl_main.cls.netchan.dropped):
+		SCR_DebugGraph (30, 0x40)
 
-	// if using the debuggraph for something else, don't
-	// add the net lines
-	if (scr_debuggraph->value || scr_timegraph->value)
-		return;
+	for _ in range(cl_main.cl.surpressCount):
+		SCR_DebugGraph (30, 0xdf)
 
-	for (i=0 ; i<cl_main.cls.netchan.dropped ; i++)
-		SCR_DebugGraph (30, 0x40);
+	in_index = cl_main.cls.netchan.incoming_acknowledged & (client.CMD_BACKUP-1)
+	ping = cl_main.cls.realtime - cl_main.cl.cmd_time[in_index]
+	ping //= 30
+	if ping > 30:
+		ping = 30
 
-	for (i=0 ; i<cl_main.cl.surpressCount ; i++)
-		SCR_DebugGraph (30, 0xdf);
-
-	// see what the latency was on this packet
-	in = cl_main.cls.netchan.incoming_acknowledged & (CMD_BACKUP-1);
-	ping = cl_main.cls.realtime - cl_main.cl.cmd_time[in];
-	ping /= 30;
-	if (ping > 30)
-		ping = 30;
-	SCR_DebugGraph (ping, 0xd0);
+	SCR_DebugGraph (ping, 0xd0)
 
 
 
-typedef struct
-{
-	float	value;
-	int		color;
-} graphsamp_t;
+def SCR_DebugGraph (value, color):
 
-static	int			current;
-static	graphsamp_t	values[1024];
-
-/*
-==============
-SCR_DebugGraph
-==============
-*/
-void SCR_DebugGraph (float value, int color)
-{
-	values[current&1023].value = value;
-	values[current&1023].color = color;
-	current++;
-}
-
-/*
-==============
-SCR_DrawDebugGraph
-==============
-*/
-void SCR_DrawDebugGraph (void)
-{
-	int		a, x, y, w, i, h;
-	float	v;
-	int		color;
-
-	//
-	// draw the graph
-	//
-	w = scr_vrect.width;
-
-	x = scr_vrect.x;
-	y = scr_vrect.y+scr_vrect.height;
-	vid_so.re.DrawFill (x, y-scr_graphheight->value,
-		w, scr_graphheight->value, 8);
-
-	for (a=0 ; a<w ; a++)
-	{
-		i = (current-1-a+1024) & 1023;
-		v = values[i].value;
-		color = values[i].color;
-		v = v*scr_graphscale->value + scr_graphshift->value;
-		
-		if (v < 0)
-			v += scr_graphheight->value * (1+(int)(-v/scr_graphheight->value));
-		h = (int)v % (int)scr_graphheight->value;
-		vid_so.re.DrawFill (x+w-1-a, y - h, 1,	h, color);
-	}
-}
-
-/*
-===============================================================================
-
-CENTER PRINTING
-
-===============================================================================
-*/
-
-char		scr_centerstring[1024];
-float		scr_centertime_start;	// for slow victory printing
-float		scr_centertime_off;
-int			scr_center_lines;
-int			scr_erase_center;
-
-/*
-==============
-SCR_CenterPrint
-
-Called for important messages that should stay in the center of the screen
-for a few moments
-==============
-*/
-void SCR_CenterPrint (char *str)
-{
-	char	*s;
-	char	line[64];
-	int		i, j, l;
-
-	strncpy (scr_centerstring, str, sizeof(scr_centerstring)-1);
-	scr_centertime_off = scr_centertime->value;
-	scr_centertime_start = cl_main.cl.time;
-
-	// count the number of lines for centering
-	scr_center_lines = 1;
-	s = str;
-	while (*s)
-	{
-		if (*s == '\n')
-			scr_center_lines++;
-		s++;
-	}
-
-	// echo it to the console
-	Com_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n");
-
-	s = str;
-	do	
-	{
-	// scan the width of the line
-		for (l=0 ; l<40 ; l++)
-			if (s[l] == '\n' || !s[l])
-				break;
-		for (i=0 ; i<(40-l)/2 ; i++)
-			line[i] = ' ';
-
-		for (j=0 ; j<l ; j++)
-		{
-			line[i++] = s[j];
-		}
-
-		line[i] = '\n';
-		line[i+1] = 0;
-
-		Com_Printf ("%s", line);
-
-		while (*s && *s != '\n')
-			s++;
-
-		if (!*s)
-			break;
-		s++;		// skip the \n
-	} while (1);
-	Com_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n");
-	Con_ClearNotify ();
-}
+	global graphs_current
+	graphs_values[graphs_current & 1023]["value"] = float(value)
+	graphs_values[graphs_current & 1023]["color"] = color
+	graphs_current += 1
 
 
-void SCR_DrawCenterString (void)
-{
-	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
-	int		remaining;
+def SCR_DrawDebugGraph ():
 
-// the finale prints the characters one at a time
-	remaining = 9999;
+	w = int(scr_vrect.width)
+	x = scr_vrect.x
+	y = scr_vrect.y + scr_vrect.height
+	if w <= 0 or scr_graphheight is None:
+		return
+	height = int(scr_graphheight.value)
+	if height <= 0:
+		height = 1
+	vid_so.re.DrawFill (x, y-height, w, height, 8)
+	for a in range(w):
+		i = (graphs_current - 1 - a + 1024) & 1023
+		v = graphs_values[i]["value"]
+		color = graphs_values[i]["color"]
+		v = v * scr_graphscale.value + scr_graphshift.value
+		if v < 0:
+			v += height * (1 + int(-v // height))
+		h = int(v) % height
+		vid_so.re.DrawFill (x + w - 1 - a, y - h, 1, h, color)
 
-	scr_erase_center = 0;
-	start = scr_centerstring;
 
-	if (scr_center_lines <= 4)
-		y = vid_so.viddef.height*0.35;
-	else
-		y = 48;
+def SCR_CenterPrint (text):
 
-	do	
-	{
-	// scan the width of the line
-		for (l=0 ; l<40 ; l++)
-			if (start[l] == '\n' || !start[l])
-				break;
-		x = (vid_so.viddef.width - l*8)/2;
-		SCR_AddDirtyPoint (x, y);
-		for (j=0 ; j<l ; j++, x+=8)
-		{
-			vid_so.re.DrawChar (x, y, start[j]);	
-			if (!remaining--)
-				return;
-		}
-		SCR_AddDirtyPoint (x, y+8);
-			
-		y += 8;
+	global scr_centerstring, scr_centertime_off, scr_centertime_start, scr_center_lines
+	scr_centerstring = text
+	scr_centertime_off = scr_centertime.value
+	scr_centertime_start = cl_main.cl.time
+	scr_center_lines = text.count("\n") + 1
+	common.Com_Printf("\n\n" + text + "\n\n")
+	console.Con_ClearNotify ()
 
-		while (*start && *start != '\n')
-			start++;
 
-		if (!*start)
-			break;
-		start++;		// skip the \n
-	} while (1);
-}
+def SCR_DrawCenterString ():
 
-void SCR_CheckDrawCenterString (void)
-{
-	scr_centertime_off -= cl_main.cls.frametime;
-	
-	if (scr_centertime_off <= 0)
-		return;
+	global scr_erase_center
+	if not scr_centerstring:
+		return
+	scr_erase_center = 0
+	start = scr_centerstring
+	if scr_center_lines <= 4:
+		y = int(vid_so.viddef.height * 0.35)
+	else:
+		y = 48
+	idx = 0
+	while idx < len(start):
+		line_chars = []
+		while idx < len(start) and start[idx] != "\n":
+			line_chars.append(start[idx])
+			idx += 1
+		x = (vid_so.viddef.width - len(line_chars)*8)//2
+		for ch in line_chars:
+			vid_so.re.DrawChar (x, y, ord(ch))
+			x += 8
+		y += 8
+		if idx < len(start) and start[idx] == "\n":
+			idx += 1
 
-	SCR_DrawCenterString ();
-}
 
-//=============================================================================
+def SCR_CheckDrawCenterString ():
 
-/*
+	global scr_centertime_off
+	scr_centertime_off -= cl_main.cls.frametime
+	if scr_centertime_off <= 0:
+		return
+	SCR_DrawCenterString ()
+
+
+def SCR_DrawStats ():
+
+	SCR_ExecuteLayoutString (cl_main.cl.configstrings[q_shared.CS_STATUSBAR])
+
+
+def SCR_DrawLayout ():
+	if not cl_main.cl.frame.playerstate.stats[q_shared.STAT_LAYOUTS]:
+		return
+	SCR_ExecuteLayoutString (cl_main.cl.layout)
+# ================================================================================
+
+"""
 =================
 SCR_CalcVrect
 
@@ -423,10 +332,9 @@ def SCR_Sky_f ():
 	vid_so.re.SetSky (Cmd_Argv(1), rotate, axis);
 	"""
 
-"""
-//============================================================================
+# ================================================================================
 
-/*
+"""
 ==================
 SCR_Init
 ==================
@@ -466,36 +374,28 @@ def SCR_Init ():
 ==============
 SCR_DrawNet
 ==============
-*/
-void SCR_DrawNet (void)
-{
-	if (cl_main.cls.netchan.outgoing_sequence - cl_main.cls.netchan.incoming_acknowledged 
-		< CMD_BACKUP-1)
-		return;
+"""
+def SCR_DrawNet ():
 
-	vid_so.re.DrawPic (scr_vrect.x+64, scr_vrect.y, "net");
-}
+	if (cl_main.cls.netchan.outgoing_sequence - cl_main.cls.netchan.incoming_acknowledged) < client.CMD_BACKUP-1:
+		return
+	vid_so.re.DrawPic (scr_vrect.x+64, scr_vrect.y, "net")
 
-/*
+"""
 ==============
 SCR_DrawPause
 ==============
-*/
-void SCR_DrawPause (void)
-{
-	int		w, h;
+"""
+def SCR_DrawPause ():
 
-	if (!scr_showpause->value)		// turn off for screenshots
-		return;
+	if not scr_showpause.value:
+		return
+	if not cl_main.cl_paused.value:
+		return
+	w, h = vid_so.re.DrawGetPicSize ("pause")
+	vid_so.re.DrawPic ((vid_so.viddef.width-w)//2, vid_so.viddef.height//2 + 8, "pause")
 
-	if (!cl_paused->value)
-		return;
-
-	vid_so.re.DrawGetPicSize (&w, &h, "pause");
-	vid_so.re.DrawPic ((vid_so.viddef.width-w)/2, vid_so.viddef.height/2 + 8, "pause");
-}
-
-/*
+"""
 ==============
 SCR_DrawLoading
 ==============
@@ -514,10 +414,9 @@ def SCR_DrawLoading ():
 	vid_so.re.DrawPic ((vid_so.viddef.width-w)//2, (vid_so.viddef.height-h)//2, "loading")
 
 
-"""
-//=============================================================================
+# ================================================================================
 
-/*
+"""
 ==================
 SCR_RunConsole
 
@@ -583,7 +482,7 @@ def SCR_DrawConsole ():
 
 
 """
-//=============================================================================
+# ================================================================================
 
 ================
 SCR_BeginLoadingPlaque
@@ -820,493 +719,249 @@ def SCR_TileClear ():
 
 
 """
-//===============================================================
+#===============================================================
 
+# C layout constants used by the status bar logic are defined earlier (see STAT_MINUS/CHAR_WIDTH).
+"""
 
-#define STAT_MINUS		10	// num frame for '-' stats digit
-char		*sb_nums[2][11] = 
-{
-	{"num_0", "num_1", "num_2", "num_3", "num_4", "num_5",
-	"num_6", "num_7", "num_8", "num_9", "num_minus"},
-	{"anum_0", "anum_1", "anum_2", "anum_3", "anum_4", "anum_5",
-	"anum_6", "anum_7", "anum_8", "anum_9", "anum_minus"}
-};
-
-#define	ICON_WIDTH	24
-#define	ICON_HEIGHT	24
-#define	CHAR_WIDTH	16
-#define	ICON_SPACE	8
-
-
-
-/*
+"""
 ================
 SizeHUDString
 
 Allow embedded \n in the string
 ================
-*/
-void SizeHUDString (char *string, int *w, int *h)
-{
-	int		lines, width, current;
-
-	lines = 1;
-	width = 0;
-
-	current = 0;
-	while (*string)
-	{
-		if (*string == '\n')
-		{
-			lines++;
-			current = 0;
-		}
-		else
-		{
-			current++;
-			if (current > width)
-				width = current;
-		}
-		string++;
-	}
-
-	*w = width * 8;
-	*h = lines * 8;
-}
-
-void DrawHUDString (char *string, int x, int y, int centerwidth, int xor)
-{
-	int		margin;
-	char	line[1024];
-	int		width;
-	int		i;
-
-	margin = x;
-
-	while (*string)
-	{
-		// scan out one line of text from the string
-		width = 0;
-		while (*string && *string != '\n')
-			line[width++] = *string++;
-		line[width] = 0;
-
-		if (centerwidth)
-			x = margin + (centerwidth - width*8)/2;
-		else
-			x = margin;
-		for (i=0 ; i<width ; i++)
-		{
-			vid_so.re.DrawChar (x, y, line[i]^xor);
-			x += 8;
-		}
-		if (*string)
-		{
-			string++;	// skip the \n
-			x = margin;
-			y += 8;
-		}
-	}
-}
-
-
-/*
-==============
-SCR_DrawField
-==============
-*/
-void SCR_DrawField (int x, int y, int color, int width, int value)
-{
-	char	num[16], *ptr;
-	int		l;
-	int		frame;
-
-	if (width < 1)
-		return;
-
-	// draw number string
-	if (width > 5)
-		width = 5;
-
-	SCR_AddDirtyPoint (x, y);
-	SCR_AddDirtyPoint (x+width*CHAR_WIDTH+2, y+23);
-
-	Com_sprintf (num, sizeof(num), "%i", value);
-	l = strlen(num);
-	if (l > width)
-		l = width;
-	x += 2 + CHAR_WIDTH*(width - l);
-
-	ptr = num;
-	while (*ptr && l)
-	{
-		if (*ptr == '-')
-			frame = STAT_MINUS;
-		else
-			frame = *ptr -'0';
-
-		vid_so.re.DrawPic (x,y,sb_nums[color][frame]);
-		x += CHAR_WIDTH;
-		ptr++;
-		l--;
-	}
-}
-
-
-/*
-===============
-SCR_TouchPics
-
-Allows rendering code to cache all needed sbar graphics
-===============
 """
+def SizeHUDString (string):
+
+	lines = string.split('\n') if string else ['']
+	width = 0
+	for line in lines:
+		if len(line) > width:
+			width = len(line)
+	return width * 8, len(lines) * 8
+
+
+def DrawHUDString (string, x, y, centerwidth, xor):
+	margin = x
+	i = 0
+	while i < len(string):
+		line = []
+		while i < len(string) and string[i] != '\n':
+			line.append(string[i])
+			i += 1
+		width = len(line)
+		if centerwidth:
+			x = margin + (centerwidth - width*8)//2
+		else:
+			x = margin
+		for ch in line:
+			vid_so.re.DrawChar (x, y, ord(ch) ^ xor)
+			x += 8
+		if i < len(string) and string[i] == '\n':
+			i += 1
+			y += 8
+
+
+def DrawString (x, y, string):
+	DrawHUDString (string, x, y, 0, 0)
+
+
+def DrawAltString (x, y, string):
+	DrawHUDString (string, x, y, 0, 0x80)
+
+
+def SCR_DrawField (x, y, color, width, value):
+	if width < 1:
+		return
+	width = min(width, 5)
+	SCR_AddDirtyPoint (x, y)
+	SCR_AddDirtyPoint (x + width*CHAR_WIDTH + 2, y + 23)
+	num = str(value)
+	if len(num) > width:
+		num = num[-width:]
+	x_pos = x + 2 + CHAR_WIDTH*(width - len(num))
+	for ch in num:
+		frame = STAT_MINUS if ch == '-' else ord(ch) - ord('0')
+		if frame < 0 or frame > 10:
+			frame = 0
+		vid_so.re.DrawPic (x_pos, y, sb_nums[color][frame])
+		x_pos += CHAR_WIDTH
+
+
 def SCR_TouchPics ():
+	for row in sb_nums:
+		for pic in row:
+			vid_so.re.RegisterPic (pic)
+	if hasattr(cl_view, 'crosshair') and cl_view.crosshair is not None and cl_view.crosshair.value:
+		value = int(cl_view.crosshair.value)
+		if value < 0:
+			value = 0
+		elif value > 3:
+			value = 3
+		global crosshair_pic, crosshair_width, crosshair_height
+		crosshair_pic = f"ch{value}"
+		w, h = vid_so.re.DrawGetPicSize (crosshair_pic)
+		crosshair_width = w
+		crosshair_height = h
+		if crosshair_width == 0:
+			crosshair_pic = ""
 
-	#int		i, j;
 
-	pass
-	"""
-	for (i=0 ; i<2 ; i++)
-		for (j=0 ; j<11 ; j++)
-			vid_so.re.RegisterPic (sb_nums[i][j]);
-
-	if (crosshair->value)
-	{
-		if (crosshair->value > 3 || crosshair->value < 0)
-			crosshair->value = 3;
-
-		Com_sprintf (crosshair_pic, sizeof(crosshair_pic), "ch%i", (int)(crosshair->value));
-		vid_so.re.DrawGetPicSize (&crosshair_width, &crosshair_height, crosshair_pic);
-		if (!crosshair_width)
-			crosshair_pic[0] = 0;
-	}
-	"""
+def SCR_ExecuteLayoutString (s):
+	if cl_main.cls.state != client.connstate_t.ca_active or not cl_main.cl.refresh_prepped:
+		return
+	if not s:
+		return
+	x = y = width = 0
+	cursor = 0
+	while True:
+		token, cursor = common.COM_Parse(s, cursor)
+		if not token:
+			break
+		if token == 'xl':
+			token, cursor = common.COM_Parse(s, cursor)
+			x = int(token)
+			continue
+		if token == 'xr':
+			token, cursor = common.COM_Parse(s, cursor)
+			x = vid_so.viddef.width + int(token)
+			continue
+		if token == 'xv':
+			token, cursor = common.COM_Parse(s, cursor)
+			x = vid_so.viddef.width//2 - 160 + int(token)
+			continue
+		if token == 'yt':
+			token, cursor = common.COM_Parse(s, cursor)
+			y = int(token)
+			continue
+		if token == 'yb':
+			token, cursor = common.COM_Parse(s, cursor)
+			y = vid_so.viddef.height + int(token)
+			continue
+		if token == 'yv':
+			token, cursor = common.COM_Parse(s, cursor)
+			y = vid_so.viddef.height//2 - 120 + int(token)
+			continue
+		if token == 'pic':
+			token, cursor = common.COM_Parse(s, cursor)
+			value = int(token)
+			if value < 0 or value >= q_shared.MAX_IMAGES:
+				continue
+			pic = cl_main.cl.configstrings[q_shared.CS_IMAGES + value]
+			if pic:
+				SCR_AddDirtyPoint(x, y)
+				SCR_AddDirtyPoint(x+23, y+23)
+				vid_so.re.DrawPic (x, y, pic)
+			continue
+		if token == 'client':
+			value, cursor = common.COM_Parse(s, cursor)
+			value = int(value)
+			x = vid_so.viddef.width//2 - 160 + value
+			token, cursor = common.COM_Parse(s, cursor)
+			y = vid_so.viddef.height//2 - 120 + int(token)
+			SCR_AddDirtyPoint(x, y)
+			SCR_AddDirtyPoint(x+159, y+31)
+			value, cursor = common.COM_Parse(s, cursor)
+			value = int(value)
+			if value < 0 or value >= q_shared.MAX_CLIENTS:
+				continue
+			ci = cl_main.cl.clientinfo[value]
+			score, cursor = common.COM_Parse(s, cursor)
+			score = int(score)
+			ping, cursor = common.COM_Parse(s, cursor)
+			ping = int(ping)
+			time, cursor = common.COM_Parse(s, cursor)
+			time = int(time)
+			DrawAltString (x+32, y, ci.name)
+			DrawString (x+32, y+8, "Score: ")
+			DrawAltString (x+32+7*8, y+8, str(score))
+			DrawString (x+32, y+16, f"Ping:  {ping}")
+			DrawString (x+32, y+24, f"Time:  {time}")
+			pic_token = ci.iconname if ci.iconname else cl_main.cl.baseclientinfo.iconname
+			if pic_token:
+				vid_so.re.DrawPic (x, y, pic_token)
+			continue
+		if token == 'ctf':
+			# simplified, treat like client
+			continue
+		if token == 'picn':
+			token, cursor = common.COM_Parse(s, cursor)
+			SCR_AddDirtyPoint(x, y)
+			SCR_AddDirtyPoint(x+23, y+23)
+			vid_so.re.DrawPic (x, y, token)
+			continue
+		if token == 'num':
+			token, cursor = common.COM_Parse(s, cursor)
+			value = cl_main.cl.frame.playerstate.stats[int(token)]
+			SCR_DrawField (x, y, 0, width, value)
+			continue
+		if token == 'hnum':
+			value = cl_main.cl.frame.playerstate.stats[q_shared.STAT_HEALTH]
+			if value > 25:
+				color = 0
+			elif value > 0:
+				color = (cl_main.cl.frame.serverframe >> 2) & 1
+			else:
+				color = 1
+			if cl_main.cl.frame.playerstate.stats[q_shared.STAT_FLASHES] & 1:
+				vid_so.re.DrawPic (x, y, "field_3")
+			SCR_DrawField (x, y, color, width, value)
+			continue
+		if token == 'anum':
+			value = cl_main.cl.frame.playerstate.stats[q_shared.STAT_AMMO]
+			if value > 5:
+				color = 0
+			elif value >= 0:
+				color = (cl_main.cl.frame.serverframe >> 2) & 1
+			else:
+				continue
+			if cl_main.cl.frame.playerstate.stats[q_shared.STAT_FLASHES] & 4:
+				vid_so.re.DrawPic (x, y, "field_3")
+			SCR_DrawField (x, y, color, width, value)
+			continue
+		if token == 'rnum':
+			value = cl_main.cl.frame.playerstate.stats[q_shared.STAT_ARMOR]
+			if value < 1:
+				continue
+			if cl_main.cl.frame.playerstate.stats[q_shared.STAT_FLASHES] & 2:
+				vid_so.re.DrawPic (x, y, "field_3")
+			SCR_DrawField (x, y, 0, width, value)
+			continue
+		if token == 'stat_string':
+			token, cursor = common.COM_Parse(s, cursor)
+			index = int(token)
+			value = cl_main.cl.frame.playerstate.stats[index]
+			if value >= 0 and value < q_shared.MAX_CONFIGSTRINGS:
+				DrawString (x, y, cl_main.cl.configstrings[value])
+			continue
+		if token == 'cstring':
+			token, cursor = common.COM_Parse(s, cursor)
+			DrawHUDString (token, x, y, 320, 0)
+			continue
+		if token == 'string':
+			token, cursor = common.COM_Parse(s, cursor)
+			DrawString (x, y, token)
+			continue
+		if token == 'cstring2':
+			token, cursor = common.COM_Parse(s, cursor)
+			DrawHUDString (token, x, y, 320, 0x80)
+			continue
+		if token == 'string2':
+			token, cursor = common.COM_Parse(s, cursor)
+			DrawAltString (x, y, token)
+			continue
+		if token == 'if':
+			token, cursor = common.COM_Parse(s, cursor)
+			if cl_main.cl.frame.playerstate.stats[int(token)]:
+				continue
+			while True:
+				peek, cursor = common.COM_Parse(s, cursor)
+				if not peek or peek == 'endif':
+					break
+			continue
+# =============================================================================== # End layout parsing
 
 """
-================
-SCR_ExecuteLayoutString 
-
-================
-*/
-void SCR_ExecuteLayoutString (char *s)
-{
-	int		x, y;
-	int		value;
-	char	*token;
-	int		width;
-	int		index;
-	clientinfo_t	*ci;
-
-	if (cl_main.cls.state != ca_active || !cl_main.cl.refresh_prepped)
-		return;
-
-	if (!s[0])
-		return;
-
-	x = 0;
-	y = 0;
-	width = 3;
-
-	while (s)
-	{
-		token = COM_Parse (&s);
-		if (!strcmp(token, "xl"))
-		{
-			token = COM_Parse (&s);
-			x = atoi(token);
-			continue;
-		}
-		if (!strcmp(token, "xr"))
-		{
-			token = COM_Parse (&s);
-			x = vid_so.viddef.width + atoi(token);
-			continue;
-		}
-		if (!strcmp(token, "xv"))
-		{
-			token = COM_Parse (&s);
-			x = vid_so.viddef.width/2 - 160 + atoi(token);
-			continue;
-		}
-
-		if (!strcmp(token, "yt"))
-		{
-			token = COM_Parse (&s);
-			y = atoi(token);
-			continue;
-		}
-		if (!strcmp(token, "yb"))
-		{
-			token = COM_Parse (&s);
-			y = vid_so.viddef.height + atoi(token);
-			continue;
-		}
-		if (!strcmp(token, "yv"))
-		{
-			token = COM_Parse (&s);
-			y = vid_so.viddef.height/2 - 120 + atoi(token);
-			continue;
-		}
-
-		if (!strcmp(token, "pic"))
-		{	// draw a pic from a stat number
-			token = COM_Parse (&s);
-			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
-			if (value >= MAX_IMAGES)
-				Com_Error (q_shared.ERR_DROP, "Pic >= MAX_IMAGES");
-			if (cl_main.cl.configstrings[CS_IMAGES+value])
-			{
-				SCR_AddDirtyPoint (x, y);
-				SCR_AddDirtyPoint (x+23, y+23);
-				vid_so.re.DrawPic (x, y, cl_main.cl.configstrings[CS_IMAGES+value]);
-			}
-			continue;
-		}
-
-		if (!strcmp(token, "client"))
-		{	// draw a deathmatch client block
-			int		score, ping, time;
-
-			token = COM_Parse (&s);
-			x = vid_so.viddef.width/2 - 160 + atoi(token);
-			token = COM_Parse (&s);
-			y = vid_so.viddef.height/2 - 120 + atoi(token);
-			SCR_AddDirtyPoint (x, y);
-			SCR_AddDirtyPoint (x+159, y+31);
-
-			token = COM_Parse (&s);
-			value = atoi(token);
-			if (value >= MAX_CLIENTS || value < 0)
-				Com_Error (q_shared.ERR_DROP, "client >= MAX_CLIENTS");
-			ci = &cl_main.cl.clientinfo[value];
-
-			token = COM_Parse (&s);
-			score = atoi(token);
-
-			token = COM_Parse (&s);
-			ping = atoi(token);
-
-			token = COM_Parse (&s);
-			time = atoi(token);
-
-			DrawAltString (x+32, y, ci->name);
-			DrawString (x+32, y+8,  "Score: ");
-			DrawAltString (x+32+7*8, y+8,  va("%i", score));
-			DrawString (x+32, y+16, va("Ping:  %i", ping));
-			DrawString (x+32, y+24, va("Time:  %i", time));
-
-			if (!ci->icon)
-				ci = &cl_main.cl.baseclientinfo;
-			vid_so.re.DrawPic (x, y, ci->iconname);
-			continue;
-		}
-
-		if (!strcmp(token, "ctf"))
-		{	// draw a ctf client block
-			int		score, ping;
-			char	block[80];
-
-			token = COM_Parse (&s);
-			x = vid_so.viddef.width/2 - 160 + atoi(token);
-			token = COM_Parse (&s);
-			y = vid_so.viddef.height/2 - 120 + atoi(token);
-			SCR_AddDirtyPoint (x, y);
-			SCR_AddDirtyPoint (x+159, y+31);
-
-			token = COM_Parse (&s);
-			value = atoi(token);
-			if (value >= MAX_CLIENTS || value < 0)
-				Com_Error (q_shared.ERR_DROP, "client >= MAX_CLIENTS");
-			ci = &cl_main.cl.clientinfo[value];
-
-			token = COM_Parse (&s);
-			score = atoi(token);
-
-			token = COM_Parse (&s);
-			ping = atoi(token);
-			if (ping > 999)
-				ping = 999;
-
-			sprintf(block, "%3d %3d %-12.12s", score, ping, ci->name);
-
-			if (value == cl_main.cl.playernum)
-				DrawAltString (x, y, block);
-			else
-				DrawString (x, y, block);
-			continue;
-		}
-
-		if (!strcmp(token, "picn"))
-		{	// draw a pic from a name
-			token = COM_Parse (&s);
-			SCR_AddDirtyPoint (x, y);
-			SCR_AddDirtyPoint (x+23, y+23);
-			vid_so.re.DrawPic (x, y, token);
-			continue;
-		}
-
-		if (!strcmp(token, "num"))
-		{	// draw a number
-			token = COM_Parse (&s);
-			width = atoi(token);
-			token = COM_Parse (&s);
-			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
-			SCR_DrawField (x, y, 0, width, value);
-			continue;
-		}
-
-		if (!strcmp(token, "hnum"))
-		{	// health number
-			int		color;
-
-			width = 3;
-			value = cl_main.cl.frame.playerstate.stats[STAT_HEALTH];
-			if (value > 25)
-				color = 0;	// green
-			else if (value > 0)
-				color = (cl_main.cl.frame.serverframe>>2) & 1;		// flash
-			else
-				color = 1;
-
-			if (cl_main.cl.frame.playerstate.stats[STAT_FLASHES] & 1)
-				vid_so.re.DrawPic (x, y, "field_3");
-
-			SCR_DrawField (x, y, color, width, value);
-			continue;
-		}
-
-		if (!strcmp(token, "anum"))
-		{	// ammo number
-			int		color;
-
-			width = 3;
-			value = cl_main.cl.frame.playerstate.stats[STAT_AMMO];
-			if (value > 5)
-				color = 0;	// green
-			else if (value >= 0)
-				color = (cl_main.cl.frame.serverframe>>2) & 1;		// flash
-			else
-				continue;	// negative number = don't show
-
-			if (cl_main.cl.frame.playerstate.stats[STAT_FLASHES] & 4)
-				vid_so.re.DrawPic (x, y, "field_3");
-
-			SCR_DrawField (x, y, color, width, value);
-			continue;
-		}
-
-		if (!strcmp(token, "rnum"))
-		{	// armor number
-			int		color;
-
-			width = 3;
-			value = cl_main.cl.frame.playerstate.stats[STAT_ARMOR];
-			if (value < 1)
-				continue;
-
-			color = 0;	// green
-
-			if (cl_main.cl.frame.playerstate.stats[STAT_FLASHES] & 2)
-				vid_so.re.DrawPic (x, y, "field_3");
-
-			SCR_DrawField (x, y, color, width, value);
-			continue;
-		}
-
-
-		if (!strcmp(token, "stat_string"))
-		{
-			token = COM_Parse (&s);
-			index = atoi(token);
-			if (index < 0 || index >= MAX_CONFIGSTRINGS)
-				Com_Error (q_shared.ERR_DROP, "Bad stat_string index");
-			index = cl_main.cl.frame.playerstate.stats[index];
-			if (index < 0 || index >= MAX_CONFIGSTRINGS)
-				Com_Error (q_shared.ERR_DROP, "Bad stat_string index");
-			DrawString (x, y, cl_main.cl.configstrings[index]);
-			continue;
-		}
-
-		if (!strcmp(token, "cstring"))
-		{
-			token = COM_Parse (&s);
-			DrawHUDString (token, x, y, 320, 0);
-			continue;
-		}
-
-		if (!strcmp(token, "string"))
-		{
-			token = COM_Parse (&s);
-			DrawString (x, y, token);
-			continue;
-		}
-
-		if (!strcmp(token, "cstring2"))
-		{
-			token = COM_Parse (&s);
-			DrawHUDString (token, x, y, 320,0x80);
-			continue;
-		}
-
-		if (!strcmp(token, "string2"))
-		{
-			token = COM_Parse (&s);
-			DrawAltString (x, y, token);
-			continue;
-		}
-
-		if (!strcmp(token, "if"))
-		{	// draw a number
-			token = COM_Parse (&s);
-			value = cl_main.cl.frame.playerstate.stats[atoi(token)];
-			if (!value)
-			{	// skip to endif
-				while (s && strcmp(token, "endif") )
-				{
-					token = COM_Parse (&s);
-				}
-			}
-
-			continue;
-		}
-
-
-	}
-}
-
-
-/*
-================
-SCR_DrawStats
-
-The status bar is a small layout program that
-is based on the stats array
-================
-*/
-void SCR_DrawStats (void)
-{
-	SCR_ExecuteLayoutString (cl_main.cl.configstrings[CS_STATUSBAR]);
-}
-
-
-/*
-================
-SCR_DrawLayout
-
-================
-*/
-#define	STAT_LAYOUTS		13
-
-void SCR_DrawLayout (void)
-{
-	if (!cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS])
-		return;
-	SCR_ExecuteLayoutString (cl_main.cl.layout);
-}
-
-//=======================================================
-
-/*
 ==================
 SCR_UpdateScreen
 
@@ -1426,24 +1081,22 @@ def SCR_UpdateScreen ():
 			SCR_TileClear ()
 
 			cl_view.V_RenderView ( separation[i] )
-			"""
 			SCR_DrawStats ()
-			if (cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS] & 1)
+			if cl_main.cl.frame.playerstate.stats[q_shared.STAT_LAYOUTS] & 1:
 				SCR_DrawLayout ()
-			if (cl_main.cl.frame.playerstate.stats[STAT_LAYOUTS] & 2)
-				CL_DrawInventory ()
+			if cl_main.cl.frame.playerstate.stats[q_shared.STAT_LAYOUTS] & 2:
+				cl_inv.CL_DrawInventory ()
 
 			SCR_DrawNet ()
 			SCR_CheckDrawCenterString ()
 
-			if (scr_timegraph->value)
+			if scr_timegraph.value:
 				SCR_DebugGraph (cl_main.cls.frametime*300, 0)
 
-			if (scr_debuggraph->value || scr_timegraph->value || scr_netgraph->value)
+			if (int(scr_debuggraph.value) or int(scr_timegraph.value) or int(scr_netgraph.value)):
 				SCR_DrawDebugGraph ()
 
 			SCR_DrawPause ()
-			"""
 			SCR_DrawConsole ()
 
 			menu.M_Draw ()
@@ -1453,4 +1106,3 @@ def SCR_UpdateScreen ():
 		
 	
 	vid_so.re.EndFrame()
-

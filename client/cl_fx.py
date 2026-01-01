@@ -1048,6 +1048,26 @@ def CL_ParticleEffect (org, dirIn, color, count): #vec3_t org, vec3_t dir, int c
 		p.alpha = 1.0
 		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
 		active_particles.append(p)
+
+
+def CL_ExplosionParticles (org):
+
+	for _ in range(256):
+		p = _alloc_particle()
+		if p is None:
+			return
+		p.time = cl_main.cl.time
+		p.color = 0xe0 + random.randint(0, 7)
+
+		for j in range(3):
+			p.org[j] = org[j] + random.randint(0, 31) - 16
+			p.vel[j] = random.randint(0, 383) - 192
+
+		p.accel[0] = p.accel[1] = 0.0
+		p.accel[2] = -PARTICLE_GRAVITY
+		p.alpha = 1.0
+		p.alphavel = -0.8 / (0.5 + random.random() * 0.3)
+		active_particles.append(p)
 def CL_BigTeleportParticles(org):
 	color_table = [2 * 8, 13 * 8, 21 * 8, 18 * 8]
 	for _ in range(4096):

@@ -161,6 +161,7 @@ class client_state_t(object):
 		self.frames = []
 		for i in range(qcommon.UPDATE_BACKUP):
 			self.frames.append(frame_t())
+		self.surpressCount: int = 0		# number of messages rate supressed
 		"""
 		// the client maintains its own idea of view angles, which are
 		// sent to the server each frame.  It is cleared to 0 upon entering each level.

@@ -1235,21 +1235,22 @@ SPLASH_BROWN_WATER	= 3
 SPLASH_SLIME		= 4
 SPLASH_LAVA			= 5
 SPLASH_BLOOD		= 6
-"""
 
-// sound channels
-// channel 0 never willingly overrides
-// other channels (1-7) allways override a playing sound on that channel
-#define	CHAN_AUTO               0
-#define	CHAN_WEAPON             1
-#define	CHAN_VOICE              2
-#define	CHAN_ITEM               3
-#define	CHAN_BODY               4
-// modifier flags
-#define	CHAN_NO_PHS_ADD			8	// send to all clients, not just ones in PHS (ATTN 0 will also do this)
-#define	CHAN_RELIABLE			16	// send by reliable message, not datagram
 
-"""
+# sound channels
+# channel 0 never willingly overrides
+# other channels (1-7) allways override a playing sound on that channel
+
+CHAN_AUTO = 0
+CHAN_WEAPON = 1
+CHAN_VOICE = 2
+CHAN_ITEM = 3
+CHAN_BODY = 4
+# modifier flags
+CHAN_NO_PHS_ADD = 8	# send to all clients, not just ones in PHS (ATTN 0 will also do this)
+CHAN_RELIABLE = 16	# send by reliable message, not datagram
+
+
 # sound attenuation values
 ATTN_NONE =               0	# full volume the entire level
 ATTN_NORM =               1
@@ -1397,6 +1398,15 @@ class entity_event_t(Enum):
 	EV_FALLFAR = 5
 	EV_PLAYER_TELEPORT = 6
 	EV_OTHER_TELEPORT = 7
+
+EV_NONE = entity_event_t.EV_NONE.value
+EV_ITEM_RESPAWN = entity_event_t.EV_ITEM_RESPAWN.value
+EV_FOOTSTEP = entity_event_t.EV_FOOTSTEP.value
+EV_FALLSHORT = entity_event_t.EV_FALLSHORT.value
+EV_FALL = entity_event_t.EV_FALL.value
+EV_FALLFAR = entity_event_t.EV_FALLFAR.value
+EV_PLAYER_TELEPORT = entity_event_t.EV_PLAYER_TELEPORT.value
+EV_OTHER_TELEPORT = entity_event_t.EV_OTHER_TELEPORT.value
 
 
 # entity_state_t is the information conveyed from the server
