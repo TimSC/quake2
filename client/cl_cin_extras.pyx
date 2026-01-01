@@ -1,7 +1,9 @@
 import struct
 import numpy
-cimport numpy
+cimport numpy as cnp
 cimport cython
+
+cnp.import_array()
 
 """
 ==================
@@ -10,10 +12,13 @@ Huff1Decompress
 """
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def Huff1Decompress (in_blk: bytes, numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1tree, 
-	numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1vals, 
-	numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1leaf, 
-	numpy.ndarray[numpy.uint8_t, ndim=1] numhnodes1) -> bytearray: #cblock_t
+def Huff1Decompress(
+    in_blk: bytes,
+    cnp.ndarray[cnp.uint8_t, ndim=3] hnodes1tree,
+    cnp.ndarray[cnp.uint8_t, ndim=3] hnodes1vals,
+    cnp.ndarray[cnp.uint8_t, ndim=3] hnodes1leaf,
+    cnp.ndarray[cnp.uint8_t, ndim=1] numhnodes1,
+) -> bytearray:  # cblock_t
 
 	# Algorithm explained https://multimedia.cx/mirror/idcin.html
 
@@ -27,17 +32,19 @@ def Huff1Decompress (in_blk: bytes, numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1
 	"""
 
 	# get decompressed count
-	count: numpy.uint32_t = struct.unpack("<L", in_blk[:4])[0]
-	input_offset: numpy.uint32_t = 0
-	input_data: bytes = in_blk[4:]
-	out: bytearray = bytearray(count)
-	out_p: numpy.uint32_t = 0
+	cdef unsigned int count = struct.unpack("<L", in_blk[:4])[0]
+	cdef unsigned int input_offset = 0
+	cdef bytes input_data = in_blk[4:]
+	cdef bytearray out = bytearray(count)
+	cdef unsigned int out_p = 0
 
-	prevpixel: numpy.uint8_t = 0
-	nodenum: numpy.uint8_t = numhnodes1[0]
-	nodeval: numpy.uint8_t = 0
-	leaf: numpy.uint8_t = 0
-	inbyte: numpy.uint8_t = 0
+	cdef unsigned int prevpixel = 0
+	cdef unsigned int nodenum = numhnodes1[0]
+	cdef unsigned int prevnodenum = 0
+	cdef unsigned int nodeval = 0
+	cdef unsigned int leaf = 0
+	cdef unsigned int inbyte = 0
+	cdef unsigned int i = 0
 
 	while count:
 		# Read input byte
@@ -80,4 +87,3 @@ def Huff1Decompress (in_blk: bytes, numpy.ndarray[numpy.uint8_t, ndim=3] hnodes1
 	assert len(out) == out_p
 
 	return out
-

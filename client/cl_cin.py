@@ -23,12 +23,7 @@ import numpy as np
 try:
 	import cl_cin_extras
 except ModuleNotFoundError:
-	# Allow running from the repo root where the extension module lives.
-	import sys
-	repo_root = os.path.dirname(os.path.dirname(__file__))
-	if repo_root not in sys.path:
-		sys.path.insert(0, repo_root)
-	import cl_cin_extras
+	from client import cl_cin_extras
 from client import cl_main, cl_scrn, client, snd_dma
 from qcommon import files, cvar, common, qcommon
 from game import q_shared

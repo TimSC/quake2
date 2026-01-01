@@ -1048,8 +1048,6 @@ def CL_ParticleEffect (org, dirIn, color, count): #vec3_t org, vec3_t dir, int c
 		p.alpha = 1.0
 		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
 		active_particles.append(p)
-	"""
-
 def CL_BigTeleportParticles(org):
 	color_table = [2 * 8, 13 * 8, 21 * 8, 18 * 8]
 	for _ in range(4096):
@@ -1103,8 +1101,9 @@ def CL_BlasterParticles (org, readdir): # vec3_t, vec3_t
 		p.accel[1] = 0.0
 		p.accel[2] = -PARTICLE_GRAVITY
 		p.alpha = 1.0
-		p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
-		active_particles.append(p)
+	p.alphavel = -1.0 / (0.5 + random.random() * 0.3)
+	active_particles.append(p)
+"""
 	vec3_t		move;
 	vec3_t		vec;
 	float		len;
@@ -1186,9 +1185,10 @@ def CL_BlasterParticles (org, readdir): # vec3_t, vec3_t
 
 		VectorAdd (move, vec, move);
 	}
-}
+	}
+"""
 
-// RAFAEL
+# RAFAEL
 def CL_IonripperTrail(start, end):
 	_trail_particles(start, end, 0xE0, 5.0)
 

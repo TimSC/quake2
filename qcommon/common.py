@@ -1799,4 +1799,15 @@ Qcommon_Shutdown
 =================
 """
 def Qcommon_Shutdown ():
-	pass
+	try:
+		sv_main.SV_Shutdown("Server quit\n", False)
+	except Exception:
+		pass
+	try:
+		cl_main.CL_Shutdown()
+	except Exception:
+		pass
+	try:
+		pygame.quit()
+	except Exception:
+		pass

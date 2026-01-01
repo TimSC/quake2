@@ -3,3 +3,5 @@ pyopengl
 cython
 numpy
 pillow
+build
+cython

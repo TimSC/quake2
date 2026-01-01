@@ -65,7 +65,7 @@ def Cmd_Wait_f ():
 """
 cmd_text = qcommon.sizebuf_t()
 cmd_text_maxsize=8192
-defer_text_buf="" #byte[8192];
+defer_text_buf=b"" #byte[8192];
 """
 ============
 Cbuf_Init
@@ -127,50 +127,40 @@ def Cbuf_InsertText (text): #char *
 ============
 Cbuf_CopyToDefer
 ============
-*/
-void Cbuf_CopyToDefer (void)
-{
-	memcpy(defer_text_buf, cmd_text_buf, cmd_text.cursize);
-	defer_text_buf[cmd_text.cursize] = 0;
-	cmd_text.cursize = 0;
-}
+"""
+def Cbuf_CopyToDefer ():
+	global cmd_text, defer_text_buf
 
-/*
+	defer_text_buf = bytes(cmd_text.data[:cmd_text.cursize])
+	cmd_text.cursize = 0
+	cmd_text.data = bytearray()
+
+"""
 ============
 Cbuf_InsertFromDefer
 ============
-*/
-void Cbuf_InsertFromDefer (void)
-{
-	Cbuf_InsertText (defer_text_buf);
-	defer_text_buf[0] = 0;
-}
-
-
 """
+def Cbuf_InsertFromDefer ():
+	global defer_text_buf
+
+	if defer_text_buf:
+		Cbuf_InsertText (defer_text_buf.decode("ascii"))
+		defer_text_buf = b""
+
 """
 ============
 Cbuf_ExecuteText
 ============
 """
 def Cbuf_ExecuteText (exec_when, text): #int, char *
-	print ("Cbuf_ExecuteText", exec_when, text)
-"""
-	switch (exec_when):
-	
-	case EXEC_NOW:
-		Cmd_ExecuteString (text);
-		break;
-	case EXEC_INSERT:
-		Cbuf_InsertText (text);
-		break;
-	case EXEC_APPEND:
-		Cbuf_AddText (text);
-		break;
-	default:
-		Com_Error (ERR_FATAL, "Cbuf_ExecuteText: bad exec_when");
-	
-"""
+	if exec_when == qcommon.EXEC_NOW:
+		Cmd_ExecuteString (text)
+	elif exec_when == qcommon.EXEC_INSERT:
+		Cbuf_InsertText (text)
+	elif exec_when == qcommon.EXEC_APPEND:
+		Cbuf_AddText (text)
+	else:
+		common.Com_Error (q_shared.ERR_FATAL, "Cbuf_ExecuteText: bad exec_when")
 
 """
 ============
