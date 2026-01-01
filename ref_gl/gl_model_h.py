@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import numpy as np
 from enum import Enum
+from qcommon import qfiles
 """
 
 d*_t structures are on-disk representations
@@ -181,79 +182,68 @@ class modtype_t(Enum):
 
 class model_t(object):
 
-
 	def __init__(self):
 		self.reset()
 
 	def reset(self):
 
-		self.name = None #char[MAX_QPATH]
-		"""
-		int			registration_sequence;
+		self.name = None
+		self.registration_sequence = 0
+		self.type = modtype_t.mod_bad
+		self.numframes = 0
+		self.flags = 0
 
-		modtype_t	type;
-		int			numframes;
-		
-		int			flags;
+		self.mins = np.zeros((3,), dtype=np.float32)
+		self.maxs = np.zeros((3,), dtype=np.float32)
+		self.radius = 0.0
 
-	//
-	// volume occupied by the model graphics
-	//		
-		vec3_t		mins, maxs;
-		float		radius;
+		self.clipbox = False
+		self.clipmins = np.zeros((3,), dtype=np.float32)
+		self.clipmaxs = np.zeros((3,), dtype=np.float32)
 
-	//
-	// solid volume for clipping 
-	//
-		qboolean	clipbox;
-		vec3_t		clipmins, clipmaxs;
+		self.firstmodelsurface = 0
+		self.nummodelsurfaces = 0
+		self.lightmap = 0
 
-	//
-	// brush model
-	//
-		int			firstmodelsurface, nummodelsurfaces;
-		int			lightmap;		// only for submodels
+		self.numsubmodels = 0
+		self.submodels = []
 
-		int			numsubmodels;
-		mmodel_t	*submodels;
+		self.numplanes = 0
+		self.planes = []
 
-		int			numplanes;
-		cplane_t	*planes;
+		self.numleafs = 0
+		self.leafs = []
 
-		int			numleafs;		// number of visible leafs, not counting 0
-		mleaf_t		*leafs;
+		self.numvertexes = 0
+		self.vertexes = None
 
-		int			numvertexes;
-		mvertex_t	*vertexes;
+		self.numedges = 0
+		self.edges = None
 
-		int			numedges;
-		medge_t		*edges;
+		self.numnodes = 0
+		self.firstnode = 0
+		self.nodes = []
 
-		int			numnodes;
-		int			firstnode;
-		mnode_t		*nodes;
+		self.numtexinfo = 0
+		self.texinfo = []
 
-		int			numtexinfo;
-		mtexinfo_t	*texinfo;
+		self.numsurfaces = 0
+		self.surfaces = []
 
-		int			numsurfaces;
-		msurface_t	*surfaces;
+		self.numsurfedges = 0
+		self.surfedges = None
 
-		int			numsurfedges;
-		int			*surfedges;
+		self.nummarksurfaces = 0
+		self.marksurfaces = []
 
-		int			nummarksurfaces;
-		msurface_t	**marksurfaces;
+		self.vis = None
 
-		dvis_t		*vis;
+		self.lightdata = None
 
-		byte		*lightdata;
+		self.skins = [None] * qfiles.MAX_MD2SKINS
 
-		// for alias models and skins
-		image_t		*skins[MAX_MD2SKINS];
-		"""
-		self.extradatasize = 0 #int
-		self.extradata = None #void*
+		self.extradatasize = 0
+		self.extradata = None
 
 """
 //============================================================================
@@ -274,3 +264,80 @@ void	Hunk_Free (void *base);
 void	Mod_FreeAll (void);
 void	Mod_Free (model_t *mod);
 """
+
+VERTEXSIZE = 7
+
+
+class glpoly_t(object):
+
+	def __init__(self):
+		self.next = None
+		self.chain = None
+		self.numverts = 0
+		self.flags = 0
+		self.verts = np.zeros((4, VERTEXSIZE), dtype=np.float32)
+
+
+class msurface_t(object):
+
+	def __init__(self):
+		self.visframe = 0
+		self.plane = None
+		self.flags = 0
+		self.firstedge = 0
+		self.numedges = 0
+		self.texturemins = [0, 0]
+		self.extents = [0, 0]
+		self.light_s = 0
+		self.light_t = 0
+		self.dlight_s = 0
+		self.dlight_t = 0
+		self.polys = None
+		self.texturechain = None
+		self.lightmapchain = None
+		self.texinfo = None
+		self.dlightframe = 0
+		self.dlightbits = 0
+		self.lightmaptexturenum = 0
+		self.styles = [0] * qfiles.MAXLIGHTMAPS
+		self.cached_light = [0.0] * qfiles.MAXLIGHTMAPS
+		self.samples = None
+
+
+class mnode_t(object):
+
+	def __init__(self):
+		self.contents = -1
+		self.visframe = 0
+		self.minmaxs = [0.0] * 6
+		self.parent = None
+		self.plane = None
+		self.children = [None, None]
+		self.firstsurface = 0
+		self.numsurfaces = 0
+
+
+class mleaf_t(object):
+
+	def __init__(self):
+		self.contents = 0
+		self.visframe = 0
+		self.minmaxs = [0.0] * 6
+		self.parent = None
+		self.cluster = -1
+		self.area = 0
+		self.firstmarksurface = []
+		self.nummarksurfaces = 0
+
+
+class mmodel_t(object):
+
+	def __init__(self):
+		self.mins = np.zeros((3,), dtype=np.float32)
+		self.maxs = np.zeros((3,), dtype=np.float32)
+		self.origin = np.zeros((3,), dtype=np.float32)
+		self.radius = 0.0
+		self.headnode = 0
+		self.visleafs = 0
+		self.firstface = 0
+		self.numfaces = 0

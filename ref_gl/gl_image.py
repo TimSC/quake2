@@ -45,9 +45,9 @@ class image_t(object):
 		self.type = imagetype_t.it_skin #imagetype_t
 		self.width, self.height = None, None #int, source image
 		self.upload_width, self.upload_height = None, None #int, after power of two and picmip
-		self.registration_sequence = None #int, 0 = free
+		self.registration_sequence = 0 #int, 0 = free
 		self.texturechain = None #struct msurface_s	*, for sort-by-texture world drawing
-		self.texnum = None #int, gl texture binding
+		self.texnum = 0 #int, gl texture binding
 		self.sl, self.tl, self.sh, self.th = 0.0, 0.0, 0.0, 0.0 #float, 0,0 - 1,1 unless part of the scrap
 		self.scrap = False #qboolean
 		self.has_alpha = False #qboolean
@@ -1463,36 +1463,17 @@ GL_FreeUnusedImages
 Any image that was not touched on this registration sequence
 will be freed.
 ================
-*/
-void GL_FreeUnusedImages (void)
-{
-	int		i;
-	image_t	*image;
-
-	// never free r_notexture or particle texture
-	r_notexture->registration_sequence = registration_sequence;
-	r_particletexture->registration_sequence = registration_sequence;
-
-	for (i=0, image=gltextures ; i<numgltextures ; i++, image++)
-	{
-		if (image->registration_sequence == registration_sequence)
-			continue;		// used this sequence
-		if (!image->registration_sequence)
-			continue;		// free image_t slot
-		if (image->type == it_pic)
-			continue;		// don't free pics
-		// free it
-		qglDeleteTextures (1, &image->texnum);
-		memset (image, 0, sizeof(*image));
-	}
-}
-
-
-/*
-===============
-Draw_GetPalette
-===============
 """
+def GL_FreeUnusedImages():
+	for image in gltextures[:numgltextures]:
+		seq = image.registration_sequence
+		if seq == 0 or seq == gl_model.registration_sequence:
+			continue
+		if image.texnum:
+			GL.glDeleteTextures(1, (image.texnum,))
+		image.__init__()
+
+
 def Draw_GetPalette ():
 
 	"""

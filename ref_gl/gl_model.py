@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+import math
+import struct
 import numpy as np
 from ref_gl import gl_rmain, gl_model_h, gl_image
 from qcommon import qfiles
@@ -46,127 +48,114 @@ mod_numknown = 0 #int
 // the inline * models from the current map are kept seperate
 model_t	mod_inline[MAX_MOD_KNOWN];
 """
+mod_inline = [gl_model_h.model_t() for _ in range(MAX_MOD_KNOWN)]
+currentmodel = None
 registration_sequence = 0 #int		
+
+# ===================
+# Mod_PointInLeaf
+# ===================
+def Mod_PointInLeaf(p, model):
+	"""Return the leaf containing point `p` inside `model`."""
+
+	if model is None or not model.nodes:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "Mod_PointInLeaf: bad model")
+
+	node = model.nodes[0] if model.nodes else None
+	while node is not None:
+		if node.contents != -1:
+			return node
+		plane = node.plane
+		if plane is None:
+			break
+		d = q_shared.DotProduct(p, plane.normal) - plane.dist
+		node = node.children[0] if d > 0 else node.children[1]
+
+	return None
+
+
+# ===================
+# Mod_DecompressVis
+# ===================
+def Mod_DecompressVis(data, model):
+
+	if not model or not model.vis:
+		return mod_novis
+
+	row = (model.vis.numclusters + 7) >> 3
+	if row <= 0:
+		return bytearray()
+
+	decompressed = bytearray(row)
+	if not data:
+		for i in range(row):
+			decompressed[i] = 0xff
+		return decompressed
+
+	out_pos = 0
+	i = 0
+	data_view = memoryview(data)
+	while out_pos < row and i < len(data_view):
+		value = data_view[i]
+		if value:
+			decompressed[out_pos] = value
+			out_pos += 1
+			i += 1
+			continue
+
+		if i + 1 >= len(data_view):
+			break
+		count = data_view[i + 1]
+		i += 2
+		for _ in range(count):
+			if out_pos >= row:
+				break
+			decompressed[out_pos] = 0
+			out_pos += 1
+
+	while out_pos < row:
+		decompressed[out_pos] = 0
+		out_pos += 1
+
+	return decompressed
+
+# ==================
+# Mod_ClusterPVS
+# ==================
+def Mod_ClusterPVS(cluster, model):
+
+	if cluster == -1 or not model or not model.vis:
+		return mod_novis
+
+	offset = model.vis.bitofs[cluster][qfiles.DVIS_PVS]
+	if offset < 0 or not model.vis.data:
+		return mod_novis
+
+	data = model.vis.data[offset:]
+	return Mod_DecompressVis(data, model)
+
+
+
 """
-/*
-===============
-Mod_PointInLeaf
-===============
-*/
-mleaf_t *Mod_PointInLeaf (vec3_t p, model_t *model)
-{
-	mnode_t		*node;
-	float		d;
-	cplane_t	*plane;
-	
-	if (!model || !model->nodes)
-		ri.Sys_Error (ERR_DROP, "Mod_PointInLeaf: bad model");
+# =================
+# Mod_Modellist_f
+# =================
+"""
+def Mod_Modellist_f():
 
-	node = model->nodes;
-	while (1)
-	{
-		if (node->contents != -1)
-			return (mleaf_t *)node;
-		plane = node->plane;
-		d = DotProduct (p,plane->normal) - plane->dist;
-		if (d > 0)
-			node = node->children[0];
-		else
-			node = node->children[1];
-	}
-	
-	return NULL;	// never reached
-}
+	total = 0
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL,"Loaded models:\n")
+	for mod in mod_known[:mod_numknown]:
+		if not mod.name:
+			continue
+		gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "%8i : %s\n", mod.extradatasize, mod.name)
+		total += mod.extradatasize
+	gl_rmain.ri.Con_Printf (q_shared.PRINT_ALL, "Total resident: %i\n", total)
 
-
-/*
-===================
-Mod_DecompressVis
-===================
-*/
-byte *Mod_DecompressVis (byte *in, model_t *model)
-{
-	static byte	decompressed[MAX_MAP_LEAFS/8];
-	int		c;
-	byte	*out;
-	int		row;
-
-	row = (model->vis->numclusters+7)>>3;	
-	out = decompressed;
-
-	if (!in)
-	{	// no vis info, so make all visible
-		while (row)
-		{
-			*out++ = 0xff;
-			row--;
-		}
-		return decompressed;		
-	}
-
-	do
-	{
-		if (*in)
-		{
-			*out++ = *in++;
-			continue;
-		}
-	
-		c = in[1];
-		in += 2;
-		while (c)
-		{
-			*out++ = 0;
-			c--;
-		}
-	} while (out - decompressed < row);
-	
-	return decompressed;
-}
-
-/*
-==============
-Mod_ClusterPVS
-==============
-*/
-byte *Mod_ClusterPVS (int cluster, model_t *model)
-{
-	if (cluster == -1 || !model->vis)
-		return mod_novis;
-	return Mod_DecompressVis ( (byte *)model->vis + model->vis->bitofs[cluster][DVIS_PVS],
-		model);
-}
-
-
-//===============================================================================
-
-/*
-================
-Mod_Modellist_f
-================
-*/
-void Mod_Modellist_f (void)
-{
-	int		i;
-	model_t	*mod;
-	int		total;
-
-	total = 0;
-	ri.Con_Printf (PRINT_ALL,"Loaded models:\n");
-	for (i=0, mod=mod_known ; i < mod_numknown ; i++, mod++)
-	{
-		if (!mod->name[0])
-			continue;
-		ri.Con_Printf (PRINT_ALL, "%8i : %s\n",mod->extradatasize, mod->name);
-		total += mod->extradatasize;
-	}
-	ri.Con_Printf (PRINT_ALL, "Total resident: %i\n", total);
-}
-
-/*
-===============
-Mod_Init
-===============
+"""
+# =================
+# Mod_Init
+# =================
 """
 def Mod_Init ():
 	global mod_novis
@@ -193,15 +182,15 @@ def Mod_ForName (name, crash)->gl_model_h.model_t: #char *, qboolean
 	if name is None or len(name) == 0:
 		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "Mod_ForName: NULL name");
 		
-	#
-	# inline models are grabbed only from worldmodel
-	#
-	if name[0] == '*':
-	
-		i = int(name[1:])
-		if i < 1 or gl_rmain.r_worldmodel is None or i >= gl_rmain.r_worldmodel.numsubmodels:
-			gl_rmain.ri.Sys_Error (ERR_DROP, "bad inline model number")
-		return mod_inline[i]
+		#
+		# inline models are grabbed only from worldmodel
+		#
+		if name[0] == '*':
+		
+			i = int(name[1:])
+			if i < 1 or gl_rmain.r_worldmodel is None or i >= gl_rmain.r_worldmodel.numsubmodels:
+				gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "bad inline model number")
+			return mod_inline[i]
 
 
 	#
@@ -273,7 +262,7 @@ def Mod_ForName (name, crash)->gl_model_h.model_t: #char *, qboolean
 		Mod_LoadBrushModel (mod, buf)
 
 	else:
-		gl_rmain.ri.Sys_Error (ERR_DROP,"Mod_NumForName: unknown fileid for {}".format(mod.name))
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP,"Mod_NumForName: unknown fileid for {}".format(mod.name))
 
 	#loadmodel.extradatasize = Hunk_End ()
 
@@ -284,10 +273,9 @@ def Mod_ForName (name, crash)->gl_model_h.model_t: #char *, qboolean
 """
 ===============================================================================
 
-					BRUSHMODEL LOADING
+						BRUSHMODEL LOADING
 
 ===============================================================================
-*/
 """
 mod_base = None #byte *
 
@@ -314,29 +302,23 @@ def Mod_LoadLighting (l: qfiles.lump_t):
 =================
 Mod_LoadVisibility
 =================
-*/
-void Mod_LoadVisibility (qfiles.lump_t *l)
-{
-	int		i;
+"""
+def Mod_LoadVisibility(l: qfiles.lump_t):
 
-	if (!l->filelen)
-	{
-		loadmodel->vis = NULL;
-		return;
-	}
-	loadmodel->vis = Hunk_Alloc ( l->filelen);	
-	memcpy (loadmodel->vis, mod_base + l->fileofs, l->filelen);
+	if not l.filelen:
+		loadmodel.vis = None
+		return
 
-	loadmodel->vis->numclusters = q_shared.LittleLong (loadmodel->vis->numclusters);
-	for (i=0 ; i<loadmodel->vis->numclusters ; i++)
-	{
-		loadmodel->vis->bitofs[i][0] = q_shared.LittleLong (loadmodel->vis->bitofs[i][0]);
-		loadmodel->vis->bitofs[i][1] = q_shared.LittleLong (loadmodel->vis->bitofs[i][1]);
-	}
-}
+	in_offset = l.fileofs
+	in_offset2 = in_offset + l.filelen
+	buffer = mod_base[in_offset:in_offset2]
+
+	vis = qfiles.dvis_t()
+	vis.load(buffer)
+	loadmodel.vis = vis
 
 
-/*
+"""
 =================
 Mod_LoadVertexes
 =================
@@ -353,7 +335,7 @@ def Mod_LoadVertexes (l): #qfiles.lump_t *
 
 	#in = (void *)(mod_base + l->fileofs);
 	if l.filelen % qfiles.dvertex_t.packed_size():
-		gl_rmain.ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
 	count = l.filelen // qfiles.dvertex_t.packed_size()
 	#out = Hunk_Alloc ( count*sizeof(*out))
 
@@ -376,57 +358,49 @@ def Mod_LoadVertexes (l): #qfiles.lump_t *
 =================
 RadiusFromBounds
 =================
-*/
-float RadiusFromBounds (vec3_t mins, vec3_t maxs)
-{
-	int		i;
-	vec3_t	corner;
+"""
+def RadiusFromBounds(mins, maxs):
 
-	for (i=0 ; i<3 ; i++)
-	{
-		corner[i] = fabs(mins[i]) > fabs(maxs[i]) ? fabs(mins[i]) : fabs(maxs[i]);
-	}
+	mins_arr = np.abs(np.array(mins))
+	maxs_arr = np.abs(np.array(maxs))
+	corner = np.maximum(mins_arr, maxs_arr)
 
-	return VectorLength (corner);
-}
+	return float(np.linalg.norm(corner))
 
 
-/*
+"""
 =================
 Mod_LoadSubmodels
 =================
-*/
-void Mod_LoadSubmodels (qfiles.lump_t *l)
-{
-	dmodel_t	*in;
-	mmodel_t	*out;
-	int			i, j, count;
+"""
+def Mod_LoadSubmodels(l: qfiles.lump_t):
 
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*sizeof(*out));	
+	if l.filelen % qfiles.dmodel_t.packed_size():
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
 
-	loadmodel->submodels = out;
-	loadmodel->numsubmodels = count;
+	count = l.filelen // qfiles.dmodel_t.packed_size()
+	loadmodel.submodels = []
+	loadmodel.numsubmodels = count
+	in_obj = qfiles.dmodel_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		for (j=0 ; j<3 ; j++)
-		{	// spread the mins / maxs by a pixel
-			out->mins[j] = LittleFloat (in->mins[j]) - 1;
-			out->maxs[j] = LittleFloat (in->maxs[j]) + 1;
-			out->origin[j] = LittleFloat (in->origin[j]);
-		}
-		out->radius = RadiusFromBounds (out->mins, out->maxs);
-		out->headnode = q_shared.LittleLong (in->headnode);
-		out->firstface = q_shared.LittleLong (in->firstface);
-		out->numfaces = q_shared.LittleLong (in->numfaces);
-	}
-}
+	for i in range(count):
 
-/*
+		in_offset = l.fileofs + i * qfiles.dmodel_t.packed_size()
+		in_offset2 = in_offset + qfiles.dmodel_t.packed_size()
+		in_obj.load(mod_base[in_offset:in_offset2])
+
+		out = gl_model_h.mmodel_t()
+		out.mins = in_obj.mins - 1.0
+		out.maxs = in_obj.maxs + 1.0
+		out.origin = in_obj.origin.copy()
+		out.radius = RadiusFromBounds(out.mins, out.maxs)
+		out.headnode = in_obj.headnode
+		out.firstface = in_obj.firstface
+		out.numfaces = in_obj.numfaces
+
+		loadmodel.submodels.append(out)
+
+"""
 =================
 Mod_LoadEdges
 =================
@@ -539,289 +513,233 @@ CalcSurfaceExtents
 
 Fills in s->texturemins[] and s->extents[]
 ================
-*/
-void CalcSurfaceExtents (msurface_t *s)
-{
-	float	mins[2], maxs[2], val;
-	int		i,j, e;
-	mvertex_t	*v;
-	mtexinfo_t	*tex;
-	int		bmins[2], bmaxs[2];
+"""
+def CalcSurfaceExtents(s: gl_model_h.msurface_t):
 
-	mins[0] = mins[1] = 999999;
-	maxs[0] = maxs[1] = -99999;
+	tex = s.texinfo
+	if tex is None or s.numedges <= 0:
+		return
 
-	tex = s->texinfo;
-	
-	for (i=0 ; i<s->numedges ; i++)
-	{
-		e = loadmodel->surfedges[s->firstedge+i];
-		if (e >= 0)
-			v = &loadmodel->vertexes[loadmodel->edges[e].v[0]];
-		else
-			v = &loadmodel->vertexes[loadmodel->edges[-e].v[1]];
-		
-		for (j=0 ; j<2 ; j++)
-		{
-			val = v->position[0] * tex->vecs[j][0] + 
-				v->position[1] * tex->vecs[j][1] +
-				v->position[2] * tex->vecs[j][2] +
-				tex->vecs[j][3];
-			if (val < mins[j])
-				mins[j] = val;
-			if (val > maxs[j])
-				maxs[j] = val;
-		}
-	}
+	mins = [float("inf"), float("inf")]
+	maxs = [float("-inf"), float("-inf")]
 
-	for (i=0 ; i<2 ; i++)
-	{	
-		bmins[i] = floor(mins[i]/16);
-		bmaxs[i] = ceil(maxs[i]/16);
+	for idx in range(s.numedges):
+		surfedge_index = s.firstedge + idx
+		if surfedge_index >= len(loadmodel.surfedges):
+			continue
 
-		s->texturemins[i] = bmins[i] * 16;
-		s->extents[i] = (bmaxs[i] - bmins[i]) * 16;
+		e = int(loadmodel.surfedges[surfedge_index])
+		if e >= 0:
+			vertex_index = int(loadmodel.edges[e, 0])
+		else:
+			vertex_index = int(loadmodel.edges[-e, 1])
 
-//		if ( !(tex->flags & TEX_SPECIAL) && s->extents[i] > 512 /* 256 */ )
-//			ri.Sys_Error (ERR_DROP, "Bad surface extents");
-	}
-}
+		vertex = loadmodel.vertexes[vertex_index]
+		for j in range(2):
+			val = (
+				vertex[0] * tex.vecs[j, 0]
+				+ vertex[1] * tex.vecs[j, 1]
+				+ vertex[2] * tex.vecs[j, 2]
+				+ tex.vecs[j, 3]
+			)
+
+			if val < mins[j]:
+				mins[j] = val
+			if val > maxs[j]:
+				maxs[j] = val
+
+	for i in range(2):
+		bmin = math.floor(mins[i] / 16.0)
+		bmax = math.ceil(maxs[i] / 16.0)
+		s.texturemins[i] = int(bmin * 16)
+		s.extents[i] = int((bmax - bmin) * 16)
 
 
-void GL_BuildPolygonFromSurface(msurface_t *fa);
-void GL_CreateSurfaceLightmap (msurface_t *surf);
-void GL_EndBuildingLightmaps (void);
-void GL_BeginBuildingLightmaps (model_t *m);
-
-/*
+"""
 =================
 Mod_LoadFaces
 =================
-*/
-void Mod_LoadFaces (qfiles.lump_t *l)
-{
-	dface_t		*in;
-	msurface_t 	*out;
-	int			i, count, surfnum;
-	int			planenum, side;
-	int			ti;
+"""
+def Mod_LoadFaces(l: qfiles.lump_t):
 
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*sizeof(*out));	
+	face_size = 20
+	if l.filelen % face_size:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
 
-	loadmodel->surfaces = out;
-	loadmodel->numsurfaces = count;
+	count = l.filelen // face_size
+	loadmodel.surfaces = []
+	loadmodel.numsurfaces = count
+	global currentmodel
+	currentmodel = loadmodel
 
-	currentmodel = loadmodel;
+	for face_num in range(count):
 
-	GL_BeginBuildingLightmaps (loadmodel);
+		in_offset = l.fileofs + face_num * face_size
+		in_offset2 = in_offset + face_size
+		in_data = mod_base[in_offset:in_offset2]
 
-	for ( surfnum=0 ; surfnum<count ; surfnum++, in++, out++)
-	{
-		out->firstedge = q_shared.LittleLong(in->firstedge);
-		out->numedges = LittleShort(in->numedges);		
-		out->flags = 0;
-		out->polys = NULL;
+		planenum = q_shared.LittleShort (in_data[0:2])
+		side = q_shared.LittleShort (in_data[2:4])
+		firstedge = q_shared.LittleLong (in_data[4:8])
+		numedges = q_shared.LittleShort (in_data[8:10])
+		texinfo_index = q_shared.LittleShort (in_data[10:12])
+		styles = [in_data[12], in_data[13], in_data[14], in_data[15]]
+		lightofs = q_shared.LittleLong (in_data[16:20])
 
-		planenum = LittleShort(in->planenum);
-		side = LittleShort(in->side);
-		if (side)
-			out->flags |= SURF_PLANEBACK;			
+		surf = gl_model_h.msurface_t()
+		surf.firstedge = firstedge
+		surf.numedges = numedges
+		surf.flags = 0
 
-		out->plane = loadmodel->planes + planenum;
+		if side:
+			surf.flags |= q_shared.SURF_PLANEBACK
 
-		ti = LittleShort (in->texinfo);
-		if (ti < 0 || ti >= loadmodel->numtexinfo)
-			ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: bad texinfo number");
-		out->texinfo = loadmodel->texinfo + ti;
+		if 0 <= planenum < loadmodel.numplanes:
+			surf.plane = loadmodel.planes[planenum]
 
-		CalcSurfaceExtents (out);
-				
-	// lighting info
+		if texinfo_index < 0 or texinfo_index >= loadmodel.numtexinfo:
+			gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: bad texinfo number")
+		surf.texinfo = loadmodel.texinfo[texinfo_index]
 
-		for (i=0 ; i<MAXLIGHTMAPS ; i++)
-			out->styles[i] = in->styles[i];
-		i = q_shared.LittleLong(in->lightofs);
-		if (i == -1)
-			out->samples = NULL;
-		else
-			out->samples = loadmodel->lightdata + i;
-		
-	// set the drawing flags
-		
-		if (out->texinfo->flags & SURF_WARP)
-		{
-			out->flags |= SURF_DRAWTURB;
-			for (i=0 ; i<2 ; i++)
-			{
-				out->extents[i] = 16384;
-				out->texturemins[i] = -8192;
-			}
-			GL_SubdivideSurface (out);	// cut up polygon for warps
-		}
+		CalcSurfaceExtents(surf)
 
-		// create lightmaps and polygons
-		if ( !(out->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP) ) )
-			GL_CreateSurfaceLightmap (out);
+		surf.styles = styles
+		if lightofs == -1 or loadmodel.lightdata is None:
+			surf.samples = None
+		else:
+			surf.samples = loadmodel.lightdata[lightofs:]
 
-		if (! (out->texinfo->flags & SURF_WARP) ) 
-			GL_BuildPolygonFromSurface(out);
-
-	}
-
-	GL_EndBuildingLightmaps ();
-}
+		loadmodel.surfaces.append(surf)
 
 
-/*
+"""
 =================
 Mod_SetParent
 =================
-*/
-void Mod_SetParent (mnode_t *node, mnode_t *parent)
-{
-	node->parent = parent;
-	if (node->contents != -1)
-		return;
-	Mod_SetParent (node->children[0], node);
-	Mod_SetParent (node->children[1], node);
-}
+"""
+def Mod_SetParent(node: gl_model_h.mnode_t, parent: gl_model_h.mnode_t):
 
-/*
+	if node is None:
+		return
+
+	node.parent = parent
+	if node.contents != -1:
+		return
+
+	for child in node.children:
+		if child is not None:
+			Mod_SetParent(child, node)
+
+
+"""
 =================
 Mod_LoadNodes
 =================
-*/
-void Mod_LoadNodes (qfiles.lump_t *l)
-{
-	int			i, j, count, p;
-	dnode_t		*in;
-	mnode_t 	*out;
+"""
+def Mod_LoadNodes(l: qfiles.lump_t):
 
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*sizeof(*out));	
+	node_size = qfiles.dnode_t.packed_size()
+	if l.filelen % node_size:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
 
-	loadmodel->nodes = out;
-	loadmodel->numnodes = count;
+	count = l.filelen // node_size
+	loadmodel.nodes = []
+	loadmodel.numnodes = count
+	in_obj = qfiles.dnode_t()
+	child_indices = []
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		for (j=0 ; j<3 ; j++)
-		{
-			out->minmaxs[j] = LittleShort (in->mins[j]);
-			out->minmaxs[3+j] = LittleShort (in->maxs[j]);
-		}
-	
-		p = q_shared.LittleLong(in->planenum);
-		out->plane = loadmodel->planes + p;
+	for i in range(count):
 
-		out->firstsurface = LittleShort (in->firstface);
-		out->numsurfaces = LittleShort (in->numfaces);
-		out->contents = -1;	// differentiate from leafs
+		in_offset = l.fileofs + i * node_size
+		in_offset2 = in_offset + node_size
+		in_obj.load(mod_base[in_offset:in_offset2])
 
-		for (j=0 ; j<2 ; j++)
-		{
-			p = q_shared.LittleLong (in->children[j]);
-			if (p >= 0)
-				out->children[j] = loadmodel->nodes + p;
-			else
-				out->children[j] = (mnode_t *)(loadmodel->leafs + (-1 - p));
-		}
-	}
-	
-	Mod_SetParent (loadmodel->nodes, NULL);	// sets nodes and leafs
-}
+		node = gl_model_h.mnode_t()
+		node.minmaxs[:3] = in_obj.mins.tolist()
+		node.minmaxs[3:] = in_obj.maxs.tolist()
+		node.contents = -1
+		node.firstsurface = in_obj.firstface
+		node.numsurfaces = in_obj.numfaces
+		if 0 <= in_obj.planenum < loadmodel.numplanes:
+			node.plane = loadmodel.planes[in_obj.planenum]
 
-/*
+		loadmodel.nodes.append(node)
+		child_indices.append((int(in_obj.children[0]), int(in_obj.children[1])))
+
+	for node, (child0, child1) in zip(loadmodel.nodes, child_indices):
+		for idx, child_value in enumerate((child0, child1)):
+			if child_value >= 0:
+				node.children[idx] = loadmodel.nodes[child_value]
+			else:
+				leaf_index = -1 - child_value
+				if 0 <= leaf_index < len(loadmodel.leafs):
+					node.children[idx] = loadmodel.leafs[leaf_index]
+
+	if loadmodel.nodes:
+		Mod_SetParent(loadmodel.nodes[0], None)
+
+
+"""
 =================
 Mod_LoadLeafs
 =================
-*/
-void Mod_LoadLeafs (qfiles.lump_t *l)
-{
-	dleaf_t 	*in;
-	mleaf_t 	*out;
-	int			i, j, count, p;
-//	glpoly_t	*poly;
+"""
+def Mod_LoadLeafs(l: qfiles.lump_t):
 
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*sizeof(*out));	
+	leaf_size = qfiles.dleaf_t.packed_size()
+	if l.filelen % leaf_size:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
 
-	loadmodel->leafs = out;
-	loadmodel->numleafs = count;
+	count = l.filelen // leaf_size
+	loadmodel.leafs = []
+	loadmodel.numleafs = count
+	in_obj = qfiles.dleaf_t()
 
-	for ( i=0 ; i<count ; i++, in++, out++)
-	{
-		for (j=0 ; j<3 ; j++)
-		{
-			out->minmaxs[j] = LittleShort (in->mins[j]);
-			out->minmaxs[3+j] = LittleShort (in->maxs[j]);
-		}
+	for i in range(count):
 
-		p = q_shared.LittleLong(in->contents);
-		out->contents = p;
+		in_offset = l.fileofs + i * leaf_size
+		in_offset2 = in_offset + leaf_size
+		in_obj.load(mod_base[in_offset:in_offset2])
 
-		out->cluster = LittleShort(in->cluster);
-		out->area = LittleShort(in->area);
+		leaf = gl_model_h.mleaf_t()
+		for j in range(3):
+			leaf.minmaxs[j] = in_obj.mins[j]
+			leaf.minmaxs[3 + j] = in_obj.maxs[j]
 
-		out->firstmarksurface = loadmodel->marksurfaces +
-			LittleShort(in->firstleafface);
-		out->nummarksurfaces = LittleShort(in->numleaffaces);
-		
-		// gl underwater warp
-#if 0
-		if (out->contents & (CONTENTS_WATER|CONTENTS_SLIME|CONTENTS_LAVA|CONTENTS_THINWATER) )
-		{
-			for (j=0 ; j<out->nummarksurfaces ; j++)
-			{
-				out->firstmarksurface[j]->flags |= SURF_UNDERWATER;
-				for (poly = out->firstmarksurface[j]->polys ; poly ; poly=poly->next)
-					poly->flags |= SURF_UNDERWATER;
-			}
-		}
-#endif
-	}	
-}
+		leaf.contents = in_obj.contents
+		leaf.cluster = in_obj.cluster
+		leaf.area = in_obj.area
 
-/*
+		start = in_obj.firstleafface
+		end = start + in_obj.numleaffaces
+		if loadmodel.marksurfaces:
+			leaf.firstmarksurface = loadmodel.marksurfaces[start:end]
+		leaf.nummarksurfaces = in_obj.numleaffaces
+
+		loadmodel.leafs.append(leaf)
+
+"""
 =================
 Mod_LoadMarksurfaces
 =================
-*/
-void Mod_LoadMarksurfaces (qfiles.lump_t *l)
-{	
-	int		i, j, count;
-	short		*in;
-	msurface_t **out;
-	
-	in = (void *)(mod_base + l->fileofs);
-	if (l->filelen % sizeof(*in))
-		ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size in %s",loadmodel->name);
-	count = l->filelen / sizeof(*in);
-	out = Hunk_Alloc ( count*sizeof(*out));	
+"""
+def Mod_LoadMarksurfaces(l: qfiles.lump_t):
 
-	loadmodel->marksurfaces = out;
-	loadmodel->nummarksurfaces = count;
+	if l.filelen % 2:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "MOD_LoadBmodel: funny lump size in {}".format(loadmodel.name))
 
-	for ( i=0 ; i<count ; i++)
-	{
-		j = LittleShort(in[i]);
-		if (j < 0 ||  j >= loadmodel->numsurfaces)
-			ri.Sys_Error (ERR_DROP, "Mod_ParseMarksurfaces: bad surface number");
-		out[i] = loadmodel->surfaces + j;
-	}
-}
+	count = l.filelen // 2
+	loadmodel.marksurfaces = []
+	loadmodel.nummarksurfaces = count
 
-/*
+	for i in range(count):
+		in_offset = l.fileofs + i * 2
+		index = q_shared.LittleShort(mod_base[in_offset:in_offset+2])
+		if index < 0 or index >= loadmodel.numsurfaces:
+			gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "Mod_ParseMarksurfaces: bad surface number")
+		loadmodel.marksurfaces.append(loadmodel.surfaces[index])
+
+"""
 =================
 Mod_LoadSurfedges
 =================
@@ -936,243 +854,175 @@ def Mod_LoadBrushModel (mod, buff): #model_t *, void *
 	Mod_LoadLighting (header.lumps[qfiles.LUMP_LIGHTING])
 	Mod_LoadPlanes (header.lumps[qfiles.LUMP_PLANES])
 	Mod_LoadTexinfo (header.lumps[qfiles.LUMP_TEXINFO])
-	"""
 	Mod_LoadFaces (header.lumps[qfiles.LUMP_FACES])
 	Mod_LoadMarksurfaces (header.lumps[qfiles.LUMP_LEAFFACES])
 	Mod_LoadVisibility (header.lumps[qfiles.LUMP_VISIBILITY])
 	Mod_LoadLeafs (header.lumps[qfiles.LUMP_LEAFS])
 	Mod_LoadNodes (header.lumps[qfiles.LUMP_NODES])
 	Mod_LoadSubmodels (header.lumps[qfiles.LUMP_MODELS])
-	mod.numframes = 2		# regular and alternate animation
+	loadmodel.numframes = 2		# regular and alternate animation
 
 
 	
 #
 # set up the submodels
 #
-	for (i=0 ; i<mod->numsubmodels ; i++)
-	{
-		model_t	*starmod;
+	for i in range(loadmodel.numsubmodels):
 
-		bm = &mod->submodels[i];
-		starmod = &mod_inline[i];
+		bm = loadmodel.submodels[i]
+		starmod = gl_model_h.model_t()
+		starmod.__dict__.update(loadmodel.__dict__)
 
-		*starmod = *loadmodel;
-		
-		starmod->firstmodelsurface = bm->firstface;
-		starmod->nummodelsurfaces = bm->numfaces;
-		starmod->firstnode = bm->headnode;
-		if (starmod->firstnode >= loadmodel->numnodes)
-			ri.Sys_Error (ERR_DROP, "Inline model %i has bad firstnode", i);
+		starmod.firstmodelsurface = bm.firstface
+		starmod.nummodelsurfaces = bm.numfaces
+		starmod.firstnode = bm.headnode
+		if starmod.firstnode >= loadmodel.numnodes:
+			gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "Inline model {} has bad firstnode".format(i))
 
-		VectorCopy (bm->maxs, starmod->maxs);
-		VectorCopy (bm->mins, starmod->mins);
-		starmod->radius = bm->radius;
-	
-		if (i == 0)
-			*loadmodel = *starmod;
+		starmod.maxs = bm.maxs.copy()
+		starmod.mins = bm.mins.copy()
+		starmod.radius = bm.radius
 
-		starmod->numleafs = bm->visleafs;
-	}
-}
+		if i == 0:
+			loadmodel.__dict__.update(starmod.__dict__)
 
-/*
-==============================================================================
+		starmod.numleafs = bm.visleafs
+		mod_inline[i] = starmod
 
-ALIAS MODELS
-
-==============================================================================
-*/
-
-/*
-=================
-Mod_LoadAliasModel
-=================
-"""
+# ==============================================================================
+# ALIAS MODELS
+# ==============================================================================
 def Mod_LoadAliasModel (mod, buff): #model_t *, void *
 
 	print ("Mod_LoadAliasModel")
-	raise NotImplementedError()
-	"""
-	int					i, j;
-	dmdl_t				*pinmodel, *pheader;
-	dstvert_t			*pinst, *poutst;
-	dtriangle_t			*pintri, *pouttri;
-	daliasframe_t		*pinframe, *poutframe;
-	int					*pincmd, *poutcmd;
-	int					version;
 
-	pinmodel = (dmdl_t *)buffer;
+	header = qfiles.dmdl_t()
+	header.load(buff)
 
-	version = q_shared.LittleLong (pinmodel->version);
-	if (version != ALIAS_VERSION)
-		ri.Sys_Error (ERR_DROP, "%s has wrong version number (%i should be %i)",
-				 mod->name, version, ALIAS_VERSION);
+	if header.version != qfiles.ALIAS_VERSION:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "{} has wrong version number ({} should be {})".format(mod.name, header.version, qfiles.ALIAS_VERSION))
 
-	pheader = Hunk_Alloc (q_shared.LittleLong(pinmodel->ofs_end));
-	
-	// byte swap the header fields and sanity check
-	for (i=0 ; i<sizeof(dmdl_t)/4 ; i++)
-		((int *)pheader)[i] = q_shared.LittleLong (((int *)buffer)[i]);
+	if header.skinheight > qfiles.MAX_LBM_HEIGHT:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "model {} has a skin taller than {}".format(mod.name, qfiles.MAX_LBM_HEIGHT))
 
-	if (pheader->skinheight > MAX_LBM_HEIGHT)
-		ri.Sys_Error (ERR_DROP, "model %s has a skin taller than %d", mod->name,
-				   MAX_LBM_HEIGHT);
+	if header.num_xyz <= 0 or header.num_xyz > qfiles.MAX_VERTS:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "model {} has invalid vertex count".format(mod.name))
 
-	if (pheader->num_xyz <= 0)
-		ri.Sys_Error (ERR_DROP, "model %s has no vertices", mod->name);
+	if header.num_st <= 0:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "model {} has no st vertices".format(mod.name))
 
-	if (pheader->num_xyz > MAX_VERTS)
-		ri.Sys_Error (ERR_DROP, "model %s has too many vertices", mod->name);
+	if header.num_tris <= 0:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "model {} has no triangles".format(mod.name))
 
-	if (pheader->num_st <= 0)
-		ri.Sys_Error (ERR_DROP, "model %s has no st vertices", mod->name);
+	if header.num_frames <= 0:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "model {} has no frames".format(mod.name))
 
-	if (pheader->num_tris <= 0)
-		ri.Sys_Error (ERR_DROP, "model %s has no triangles", mod->name);
+	min_frame_size = 40 + header.num_xyz * 4
+	if header.framesize < min_frame_size:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "model {} has invalid frame size".format(mod.name))
 
-	if (pheader->num_frames <= 0)
-		ri.Sys_Error (ERR_DROP, "model %s has no frames", mod->name);
+	skin_count = min(header.num_skins, qfiles.MAX_MD2SKINS)
+	for i in range(skin_count):
+		offset = header.ofs_skins + i * qfiles.MAX_SKINNAME
+		name_bytes = buff[offset:offset + qfiles.MAX_SKINNAME]
+		name = name_bytes.split(b'\x00', 1)[0].decode("ascii", "ignore")
+		if not name:
+			continue
+		mod.skins[i] = gl_image.GL_FindImage (name, gl_image.imagetype_t.it_skin)
 
-//
-// load base s and t vertices (not used in gl version)
-//
-	pinst = (dstvert_t *) ((byte *)pinmodel + pheader->ofs_st);
-	poutst = (dstvert_t *) ((byte *)pheader + pheader->ofs_st);
+	stverts = []
+	st_offset = header.ofs_st
+	for i in range(header.num_st):
+		entry_offset = st_offset + i * 4
+		s, t = struct.unpack_from("<hh", buff, entry_offset)
+		stverts.append((s, t))
 
-	for (i=0 ; i<pheader->num_st ; i++)
-	{
-		poutst[i].s = LittleShort (pinst[i].s);
-		poutst[i].t = LittleShort (pinst[i].t);
+	triangles = []
+	tri_offset = header.ofs_tris
+	for i in range(header.num_tris):
+		entry_offset = tri_offset + i * 12
+		index_xyz = struct.unpack_from("<3h", buff, entry_offset)
+		index_st = struct.unpack_from("<3h", buff, entry_offset + 6)
+		triangles.append({
+			"index_xyz": index_xyz,
+			"index_st": index_st,
+		})
+
+	frames = []
+	frame_offset = header.ofs_frames
+	for _ in range(header.num_frames):
+		frame_data = buff[frame_offset:frame_offset + header.framesize]
+		scale = np.array(struct.unpack_from("<3f", frame_data, 0), dtype=np.float32)
+		translate = np.array(struct.unpack_from("<3f", frame_data, 12), dtype=np.float32)
+		name_bytes = frame_data[24:40]
+		frame_name = name_bytes.split(b'\x00', 1)[0].decode("ascii", "ignore")
+
+		verts = []
+		cur = 40
+		for _ in range(header.num_xyz):
+			v0 = frame_data[cur]
+			v1 = frame_data[cur + 1]
+			v2 = frame_data[cur + 2]
+			lightnormalindex = frame_data[cur + 3]
+			verts.append({
+				"v": (v0, v1, v2),
+				"lightnormalindex": lightnormalindex,
+			})
+			cur += 4
+
+		frames.append({
+			"name": frame_name,
+			"scale": scale,
+			"translate": translate,
+			"verts": verts,
+		})
+		frame_offset += header.framesize
+
+	glcmds = []
+	if header.num_glcmds > 0:
+		cmd_offset = header.ofs_glcmds
+		for i in range(header.num_glcmds):
+			cmd_bytes = buff[cmd_offset + 4*i: cmd_offset + 4*(i+1)]
+			glcmds.append(q_shared.LittleLong(cmd_bytes))
+
+	mod.type = gl_model_h.modtype_t.mod_alias
+	mod.numframes = header.num_frames
+	mod.extradata = {
+		"header": header,
+		"buffer": buff,
+		"stverts": stverts,
+		"triangles": triangles,
+		"frames": frames,
+		"glcmds": glcmds,
 	}
 
-//
-// load triangle lists
-//
-	pintri = (dtriangle_t *) ((byte *)pinmodel + pheader->ofs_tris);
-	pouttri = (dtriangle_t *) ((byte *)pheader + pheader->ofs_tris);
-
-	for (i=0 ; i<pheader->num_tris ; i++)
-	{
-		for (j=0 ; j<3 ; j++)
-		{
-			pouttri[i].index_xyz[j] = LittleShort (pintri[i].index_xyz[j]);
-			pouttri[i].index_st[j] = LittleShort (pintri[i].index_st[j]);
-		}
-	}
-
-//
-// load the frames
-//
-	for (i=0 ; i<pheader->num_frames ; i++)
-	{
-		pinframe = (daliasframe_t *) ((byte *)pinmodel 
-			+ pheader->ofs_frames + i * pheader->framesize);
-		poutframe = (daliasframe_t *) ((byte *)pheader 
-			+ pheader->ofs_frames + i * pheader->framesize);
-
-		memcpy (poutframe->name, pinframe->name, sizeof(poutframe->name));
-		for (j=0 ; j<3 ; j++)
-		{
-			poutframe->scale[j] = LittleFloat (pinframe->scale[j]);
-			poutframe->translate[j] = LittleFloat (pinframe->translate[j]);
-		}
-		// verts are all 8 bit, so no swapping needed
-		memcpy (poutframe->verts, pinframe->verts, 
-			pheader->num_xyz*sizeof(dtrivertx_t));
-
-	}
-
-	mod->type = mod_alias;
-
-	//
-	// load the glcmds
-	//
-	pincmd = (int *) ((byte *)pinmodel + pheader->ofs_glcmds);
-	poutcmd = (int *) ((byte *)pheader + pheader->ofs_glcmds);
-	for (i=0 ; i<pheader->num_glcmds ; i++)
-		poutcmd[i] = q_shared.LittleLong (pincmd[i]);
-
-
-	// register all skins
-	memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + pheader->ofs_skins,
-		pheader->num_skins*MAX_SKINNAME);
-	for (i=0 ; i<pheader->num_skins ; i++)
-	{
-		mod->skins[i] = GL_FindImage ((char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME
-			, it_skin);
-	}
-
-	mod->mins[0] = -32;
-	mod->mins[1] = -32;
-	mod->mins[2] = -32;
-	mod->maxs[0] = 32;
-	mod->maxs[1] = 32;
-	mod->maxs[2] = 32;
-}
-
-/*
-==============================================================================
-
-SPRITE MODELS
-
-==============================================================================
-*/
-
-/*
-=================
-Mod_LoadSpriteModel
-=================
-"""
 def Mod_LoadSpriteModel (mod, buff): # model_t *, void *
 
 	print ("Mod_LoadSpriteModel")
-	raise NotImplementedError()
-	"""
-	dsprite_t	*sprin, *sprout;
-	int			i;
+	sprite = qfiles.dsprite_t()
+	sprite.load(buff)
 
-	sprin = (dsprite_t *)buffer;
-	sprout = Hunk_Alloc (modfilelen);
+	if sprite.version != qfiles.SPRITE_VERSION:
+		gl_rmain.ri.Sys_Error (q_shared.ERR_DROP, "{} has wrong sprite version ({})".format(mod.name, sprite.version))
 
-	sprout->ident = q_shared.LittleLong (sprin->ident);
-	sprout->version = q_shared.LittleLong (sprin->version);
-	sprout->numframes = q_shared.LittleLong (sprin->numframes);
+	skin_count = min(sprite.numframes, qfiles.MAX_MD2SKINS)
+	for i in range(skin_count):
+		frame = sprite.frames[i]
+		if not frame.name:
+			continue
+		mod.skins[i] = gl_image.GL_FindImage (frame.name, gl_image.imagetype_t.it_sprite)
 
-	if (sprout->version != SPRITE_VERSION)
-		ri.Sys_Error (ERR_DROP, "%s has wrong version number (%i should be %i)",
-				 mod->name, sprout->version, SPRITE_VERSION);
+	mod.type = gl_model_h.modtype_t.mod_sprite
+	mod.numframes = sprite.numframes
+	mod.extradata = sprite
 
-	if (sprout->numframes > MAX_MD2SKINS)
-		ri.Sys_Error (ERR_DROP, "%s has too many frames (%i > %i)",
-				 mod->name, sprout->numframes, MAX_MD2SKINS);
-
-	// byte swap everything
-	for (i=0 ; i<sprout->numframes ; i++)
-	{
-		sprout->frames[i].width = q_shared.LittleLong (sprin->frames[i].width);
-		sprout->frames[i].height = q_shared.LittleLong (sprin->frames[i].height);
-		sprout->frames[i].origin_x = q_shared.LittleLong (sprin->frames[i].origin_x);
-		sprout->frames[i].origin_y = q_shared.LittleLong (sprin->frames[i].origin_y);
-		memcpy (sprout->frames[i].name, sprin->frames[i].name, MAX_SKINNAME);
-		mod->skins[i] = GL_FindImage (sprout->frames[i].name,
-			it_sprite);
-	}
-
-	mod->type = mod_sprite;
-}
-
-//=============================================================================
-
-/*
-@@@@@@@@@@@@@@@@@@@@@
-R_BeginRegistration
-
-Specifies the model that will be used as the world
-@@@@@@@@@@@@@@@@@@@@@
-"""
+# @@@@@@@@@@@@@@@@@@@@@
+# R_BeginRegistration
+#
+# Specifies the model that will be used as the world
+# @@@@@@@@@@@@@@@@@@@@@
 def R_BeginRegistration (model): #char *
-	
+
 	global registration_sequence
 
 	#char	fullname[MAX_QPATH];
@@ -1192,105 +1042,54 @@ def R_BeginRegistration (model): #char *
 
 	r_viewcluster = -1
 
-"""
-@@@@@@@@@@@@@@@@@@@@@
-R_RegisterModel
-
-@@@@@@@@@@@@@@@@@@@@@
-"""
+# @@@@@@@@@@@@@@@@@@@@@
+# R_RegisterModel
+# 
+# @@@@@@@@@@@@@@@@@@@@@
 def R_RegisterModel (name): # char * (returns struct model_s *)
-	
-	pass
-	"""
-	model_t	*mod;
-	int		i;
-	dsprite_t	*sprout;
-	dmdl_t		*pheader;
 
-	mod = Mod_ForName (name, false);
-	if (mod)
-	{
-		mod->registration_sequence = registration_sequence;
+	mod = Mod_ForName(name, False)
+	if not mod:
+		return None
 
-		// register any images used by the models
-		if (mod->type == mod_sprite)
-		{
-			sprout = (dsprite_t *)mod->extradata;
-			for (i=0 ; i<sprout->numframes ; i++)
-				mod->skins[i] = GL_FindImage (sprout->frames[i].name, it_sprite);
-		}
-		else if (mod->type == mod_alias)
-		{
-			pheader = (dmdl_t *)mod->extradata;
-			for (i=0 ; i<pheader->num_skins ; i++)
-				mod->skins[i] = GL_FindImage ((char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, it_skin);
-//PGM
-			mod->numframes = pheader->num_frames;
-//PGM
-		}
-		else if (mod->type == mod_brush)
-		{
-			for (i=0 ; i<mod->numtexinfo ; i++)
-				mod->texinfo[i].image->registration_sequence = registration_sequence;
-		}
-	}
-	return mod;
+	mod.registration_sequence = registration_sequence
+	if mod.type == gl_model_h.modtype_t.mod_brush:
+		for texinfo in mod.texinfo:
+			if texinfo.image is not None:
+				texinfo.image.registration_sequence = registration_sequence
+	elif mod.type in (gl_model_h.modtype_t.mod_alias, gl_model_h.modtype_t.mod_sprite):
+		for skin in mod.skins:
+			if skin is not None:
+				skin.registration_sequence = registration_sequence
+	return mod
 
-	"""
-
-"""
-@@@@@@@@@@@@@@@@@@@@@
-R_EndRegistration
-
-@@@@@@@@@@@@@@@@@@@@@
-"""
+# @@@@@@@@@@@@@@@@@@@@@
+# R_EndRegistration
+# @@@@@@@@@@@@@@@@@@@@@
 def R_EndRegistration ():
 
-	pass
-	"""
-	int		i;
-	model_t	*mod;
+	for mod in mod_known[:mod_numknown]:
+		if not mod or not mod.name:
+			continue
+		if mod.registration_sequence != registration_sequence:
+			Mod_Free(mod)
+	gl_image.GL_FreeUnusedImages()
 
-	for (i=0, mod=mod_known ; i<mod_numknown ; i++, mod++)
-	{
-		if (!mod->name[0])
-			continue;
-		if (mod->registration_sequence != registration_sequence)
-		{	// don't need this model
-			Mod_Free (mod);
-		}
-	}
-
-	GL_FreeUnusedImages ();
-	"""
-
-"""
-//=============================================================================
-
-
-/*
-================
-Mod_Free
-================
-"""
+# =============================================================================
+#
+# =================
+# Mod_Free
+# =================
 def Mod_Free (mod): # model_t *
 
 	mod.extradata = None
 	mod.reset()
 
-"""
-================
-Mod_FreeAll
-================
-*/
-void Mod_FreeAll (void)
-{
-	int		i;
+# =================
+# Mod_FreeAll
+# =================
+def Mod_FreeAll():
 
-	for (i=0 ; i<mod_numknown ; i++)
-	{
-		if (mod_known[i].extradatasize)
-			Mod_Free (&mod_known[i]);
-	}
-}
-"""
+	for mod in mod_known[:mod_numknown]:
+		if mod.extradatasize:
+			Mod_Free(mod)

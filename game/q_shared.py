@@ -517,6 +517,8 @@ COLLISION DETECTION
 
 #define	SURF_LIGHT		0x1		// value will hold the light strength
 
+#define	SURF_PLANEBACK	2
+#define	SURF_PLANEBACK		2
 #define	SURF_SLICK		0x2		// effects game physics
 
 #define	SURF_SKY		0x4		// don't draw, but add to skybox
@@ -571,6 +573,7 @@ CONTENTS_TRANSLUCENT = 0x10000000
 CONTENTS_LADDER = 0x20000000
 
 SURF_LIGHT = 0x1
+SURF_PLANEBACK = 0x2
 SURF_SLICK = 0x2
 SURF_SKY = 0x4
 SURF_WARP = 0x8

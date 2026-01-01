@@ -193,116 +193,156 @@ class pcx_t (object):
 """
 IDALIASHEADER = ((ord('2')<<24)+(ord('P')<<16)+(ord('D')<<8)+ord('I'))
 ALIAS_VERSION = 8
-"""
-#define	MAX_TRIANGLES	4096
-#define MAX_VERTS		2048
-#define MAX_FRAMES		512
-#define MAX_MD2SKINS	32
-#define	MAX_SKINNAME	64
+IDSPRITEHEADER = ((ord('2')<<24)+(ord('S')<<16)+(ord('D')<<8)+ord('I'))
+SPRITE_VERSION = 2
+MAX_SKINNAME = 64
+MAX_TRIANGLES = 4096
+MAX_VERTS = 2048
+MAX_FRAMES = 512
 
-typedef struct
-{
-	short	s;
-	short	t;
-} dstvert_t;
+class daliasframe_t(object):
 
-typedef struct 
-{
-	short	index_xyz[3];
-	short	index_st[3];
-} dtriangle_t;
-
-typedef struct
-{
-	byte	v[3];			// scaled byte to fit in frame mins/maxs
-	byte	lightnormalindex;
-} dtrivertx_t;
-
-#define DTRIVERTX_V0   0
-#define DTRIVERTX_V1   1
-#define DTRIVERTX_V2   2
-#define DTRIVERTX_LNI  3
-#define DTRIVERTX_SIZE 4
-
-typedef struct
-{
-	float		scale[3];	// multiply byte verts by this
-	float		translate[3];	// then add this
-	char		name[16];	// frame name from grabbing
-	dtrivertx_t	verts[1];	// variable sized
-} daliasframe_t;
+	def __init__(self):
+		self.scale = np.zeros((3,), dtype=np.float32)
+		self.translate = np.zeros((3,), dtype=np.float32)
+		self.name = ""
+		self.verts = []
 
 
-// the glcmd format:
-// a positive integer starts a tristrip command, followed by that many
-// vertex structures.
-// a negative integer starts a trifan command, followed by -x vertexes
-// a zero indicates the end of the command list.
-// a vertex consists of a floating point s, a floating point t,
-// and an integer vertex index.
+class dmdl_t(object):
+
+	def __init__(self):
+		self.ident = None
+		self.version = None
+		self.skinwidth = None
+		self.skinheight = None
+		self.framesize = None
+		self.num_skins = None
+		self.num_xyz = None
+		self.num_st = None
+		self.num_tris = None
+		self.num_glcmds = None
+		self.num_frames = None
+		self.ofs_skins = None
+		self.ofs_st = None
+		self.ofs_tris = None
+		self.ofs_frames = None
+		self.ofs_glcmds = None
+		self.ofs_end = None
+
+	@classmethod
+	def packed_size(cls):
+		return 17 * 4
+
+	def load(self, buff):
+		values = struct.unpack("<17i", buff[:self.packed_size()])
+		(
+			self.ident,
+			self.version,
+			self.skinwidth,
+			self.skinheight,
+			self.framesize,
+			self.num_skins,
+			self.num_xyz,
+			self.num_st,
+			self.num_tris,
+			self.num_glcmds,
+			self.num_frames,
+			self.ofs_skins,
+			self.ofs_st,
+			self.ofs_tris,
+			self.ofs_frames,
+			self.ofs_glcmds,
+			self.ofs_end,
+		) = values
 
 
-typedef struct
-{
-	int			ident;
-	int			version;
+class dsprframe_t(object):
 
-	int			skinwidth;
-	int			skinheight;
-	int			framesize;		// byte size of each frame
+	def __init__(self):
+		self.width = None
+		self.height = None
+		self.origin_x = None
+		self.origin_y = None
+		self.name = ""
 
-	int			num_skins;
-	int			num_xyz;
-	int			num_st;			// greater than num_xyz for seams
-	int			num_tris;
-	int			num_glcmds;		// dwords in strip/fan command list
-	int			num_frames;
 
-	int			ofs_skins;		// each skin is a MAX_SKINNAME string
-	int			ofs_st;			// byte offset from start for stverts
-	int			ofs_tris;		// offset for dtriangles
-	int			ofs_frames;		// offset for first frame
-	int			ofs_glcmds;	
-	int			ofs_end;		// end of file
+class dsprite_t(object):
 
-} dmdl_t;
+	def __init__(self):
+		self.ident = None
+		self.version = None
+		self.numframes = None
+		self.frames = []
 
-/*
-========================================================================
+	def load(self, buff):
+		self.ident, self.version, self.numframes = struct.unpack("<3i", buff[:12])
+		cursor = 12
+		for _ in range(self.numframes):
+			width, height, origin_x, origin_y = struct.unpack("<4i", buff[cursor:cursor+16])
+			cursor += 16
+			name_bytes = buff[cursor:cursor+MAX_SKINNAME]
+			cursor += MAX_SKINNAME
+			frame = dsprframe_t()
+			frame.width = width
+			frame.height = height
+			frame.origin_x = origin_x
+			frame.origin_y = origin_y
+			frame.name = name_bytes.split(b"\x00", 1)[0].decode("ascii", "ignore")
+			self.frames.append(frame)
 
-.SP2 sprite file format
 
-========================================================================
-*/
-"""
-IDSPRITEHEADER	= ((ord('2')<<24)+(ord('S')<<16)+(ord('D')<<8)+ord('I'))
-		# little-endian "IDS2"
-SPRITE_VERSION	= 2
-"""
-typedef struct
-{
-	int		width, height;
-	int		origin_x, origin_y;		// raster coordinates inside pic
-	char	name[MAX_SKINNAME];		// name of pcx file
-} dsprframe_t;
+class dstvert_t(object):
 
-typedef struct {
-	int			ident;
-	int			version;
-	int			numframes;
-	dsprframe_t	frames[1];			// variable sized
-} dsprite_t;
+	def __init__(self):
+		self.s = 0 # short
+		self.t = 0 # short
 
-/*
-==============================================================================
+	@classmethod
+	def packed_size(cls):
+		return 4
 
-  .WAL texture file format
+	def load(self, buff):
 
-==============================================================================
-"""
+		self.s = q_shared.LittleShort(buff[:2])
+		self.t = q_shared.LittleShort(buff[2:])
 
+
+class dtriangle_t(object):
+
+	def __init__(self):
+		self.index_xyz = np.zeros((3,), dtype=np.int16)
+		self.index_st = np.zeros((3,), dtype=np.int16)
+
+	@classmethod
+	def packed_size(cls):
+		return 12
+
+	def load(self, buff):
+
+		self.index_xyz[:] = struct.unpack("<3h", buff[:6])
+		self.index_st[:] = struct.unpack("<3h", buff[6:12])
+
+
+class dtrivertx_t(object):
+
+	def __init__(self):
+		self.v = np.zeros((3,), dtype=np.uint8)
+		self.lightnormalindex = 0
+
+	@classmethod
+	def packed_size(cls):
+		return 4
+
+	def load(self, buff):
+
+		self.v[0] = buff[0]
+		self.v[1] = buff[1]
+		self.v[2] = buff[2]
+		self.lightnormalindex = buff[3]
 
 MIPLEVELS = 4
+
 class miptex_t(object):
 
 	def __init__(self):
@@ -370,6 +410,9 @@ MAX_MAP_EDGES		= 128000
 MAX_MAP_SURFEDGES	= 256000
 MAX_MAP_LIGHTING	= 0x200000
 MAX_MAP_VISIBILITY	= 0x100000
+MAXLIGHTMAPS		= 4
+MAX_MD2SKINS		= 32
+MAX_LBM_HEIGHT		= 480
 """
 // key / value pair sizes
 
@@ -486,17 +529,6 @@ class dvertex_t(object):
 		self.point[1] = q_shared.LittleFloat(buff[4:8])
 		self.point[2] = q_shared.LittleFloat(buff[8:])
 
-"""
-// 0-2 are axial planes
-#define	PLANE_X			0
-#define	PLANE_Y			1
-#define	PLANE_Z			2
-
-// 3-5 are non-axial planes snapped to the nearest
-#define	PLANE_ANYX		3
-#define	PLANE_ANYY		4
-#define	PLANE_ANYZ		5
-"""
 # planes (x&~1) and (x&~1)+1 are always opposites
 
 class dplane_t(object):
@@ -534,44 +566,37 @@ CONTENTS_SLIME			= 16
 CONTENTS_WATER			= 32
 CONTENTS_MIST			= 64
 LAST_VISIBLE_CONTENTS	= 64
-"""
-// remaining contents are non-visible, and don't eat brushes
 
-#define	CONTENTS_AREAPORTAL		0x8000
+# remaining contents are non-visible, and don't eat brushes
+CONTENTS_AREAPORTAL		= 0x8000
 
-#define	CONTENTS_PLAYERCLIP		0x10000
-#define	CONTENTS_MONSTERCLIP	0x20000
+CONTENTS_PLAYERCLIP		= 0x10000
+CONTENTS_MONSTERCLIP	= 0x20000
 
-// currents can be added to any other contents, and may be mixed
-#define	CONTENTS_CURRENT_0		0x40000
-#define	CONTENTS_CURRENT_90		0x80000
-#define	CONTENTS_CURRENT_180	0x100000
-#define	CONTENTS_CURRENT_270	0x200000
-#define	CONTENTS_CURRENT_UP		0x400000
-#define	CONTENTS_CURRENT_DOWN	0x800000
+# currents can be added to any other contents, and may be mixed
+CONTENTS_CURRENT_0		= 0x40000
+CONTENTS_CURRENT_90		= 0x80000
+CONTENTS_CURRENT_180	= 0x100000
+CONTENTS_CURRENT_270	= 0x200000
+CONTENTS_CURRENT_UP		= 0x400000
+CONTENTS_CURRENT_DOWN	= 0x800000
 
-#define	CONTENTS_ORIGIN			0x1000000	// removed before bsping an entity
+CONTENTS_ORIGIN			= 0x1000000	# removed before bsping an entity
 
-#define	CONTENTS_MONSTER		0x2000000	// should never be on a brush, only in game
-#define	CONTENTS_DEADMONSTER	0x4000000
-#define	CONTENTS_DETAIL			0x8000000	// brushes to be added after vis leafs
-#define	CONTENTS_TRANSLUCENT	0x10000000	// auto set if any surface has trans
-#define	CONTENTS_LADDER			0x20000000
+CONTENTS_MONSTER		= 0x2000000	# should never be on a brush, only in game
+CONTENTS_DEADMONSTER	= 0x4000000
+CONTENTS_DETAIL			= 0x8000000	# brushes to be added after vis leafs
+CONTENTS_TRANSLUCENT	= 0x10000000	# auto set if any surface has trans
+CONTENTS_LADDER			= 0x20000000
 
-
-
-#define	SURF_LIGHT		0x1		// value will hold the light strength
-
-#define	SURF_SLICK		0x2		// effects game physics
-
-#define	SURF_SKY		0x4		// don't draw, but add to skybox
-#define	SURF_WARP		0x8		// turbulent water warp
-#define	SURF_TRANS33	0x10
-#define	SURF_TRANS66	0x20
-#define	SURF_FLOWING	0x40	// scroll towards angle
-#define	SURF_NODRAW		0x80	// don't bother referencing the texture
-
-"""
+SURF_LIGHT		= 0x1		# value will hold the light strength
+SURF_SLICK		= 0x2		# effects game physics
+SURF_SKY		= 0x4		# don't draw, but add to skybox
+SURF_WARP		= 0x8		# turbulent water warp
+SURF_TRANS33	= 0x10
+SURF_TRANS66	= 0x20
+SURF_FLOWING	= 0x40	# scroll towards angle
+SURF_NODRAW		= 0x80	# don't bother referencing the texture
 
 
 class dnode_t(object):
@@ -594,6 +619,16 @@ class dnode_t(object):
 		self.planenum = q_shared.LittleLong(buff[:4])
 		self.children[0] = q_shared.LittleSLong(buff[4:8])
 		self.children[1] = q_shared.LittleSLong(buff[8:12])
+		c = 12
+		for i in range(3):
+			self.mins[i] = q_shared.LittleSShort(buff[c:c+2])
+			c += 2
+		for i in range(3):
+			self.maxs[i] = q_shared.LittleSShort(buff[c:c+2])
+			c += 2
+		self.firstface = q_shared.LittleShort(buff[c:c+2])
+		c += 2
+		self.numfaces = q_shared.LittleShort(buff[c:c+2])
 
 
 class texinfo_t(object):
@@ -623,6 +658,33 @@ class texinfo_t(object):
 		self.nexttexinfo = q_shared.LittleSLong(buff[72:])
 
 
+class dface_t(object):
+
+	def __init__(self):
+
+		self.planenum = None # unsigned short
+		self.side = None # short
+		self.firstedge = None # int
+		self.numedges = None # short
+		self.texinfo = None # short
+		self.styles = [0]*MAXLIGHTMAPS # byte[MAXLIGHTMAPS]
+		self.lightofs = None # int
+
+	@classmethod
+	def packed_size(cls):
+		return 20
+
+	def load(self, buff):
+
+		self.planenum = q_shared.LittleShort(buff[:2])
+		self.side = q_shared.LittleSShort(buff[2:4])
+		self.firstedge = q_shared.LittleLong(buff[4:8])
+		self.numedges = q_shared.LittleSShort(buff[8:10])
+		self.texinfo = q_shared.LittleSShort(buff[10:12])
+		self.styles = [buff[12 + i] for i in range(MAXLIGHTMAPS)]
+		self.lightofs = q_shared.LittleLong(buff[16:20])
+
+
 # note that edge 0 is never used, because negative edge nums are used for
 # counterclockwise use of the edge in a face
 class dedge_t(object):
@@ -639,23 +701,6 @@ class dedge_t(object):
 
 		self.v[0] = q_shared.LittleShort(buff[:2])
 		self.v[1] = q_shared.LittleShort(buff[2:])
-
-"""
-#define	MAXLIGHTMAPS	4
-typedef struct
-{
-	unsigned short	planenum;
-	short		side;
-
-	int			firstedge;		// we must support > 64k edges
-	short		numedges;	
-	short		texinfo;
-
-// lighting info
-	byte		styles[MAXLIGHTMAPS];
-	int			lightofs;		// start of [numstyles*surfsize] samples
-} dface_t;
-"""
 
 class dleaf_t(object):
 
@@ -684,8 +729,20 @@ class dleaf_t(object):
 		self.contents = q_shared.LittleLong(buff[:4])
 		self.cluster = q_shared.LittleShort (buff[4:6])
 		self.area = q_shared.LittleShort (buff[6:8])
-		self.firstleafbrush = q_shared.LittleShort (buff[24:26])
-		self.numleafbrushes = q_shared.LittleShort (buff[26:])
+		c = 8
+		for i in range(3):
+			self.mins[i] = q_shared.LittleSShort(buff[c:c+2])
+			c += 2
+		for i in range(3):
+			self.maxs[i] = q_shared.LittleSShort(buff[c:c+2])
+			c += 2
+		self.firstleafface = q_shared.LittleSShort(buff[c:c+2])
+		c += 2
+		self.numleaffaces = q_shared.LittleSShort(buff[c:c+2])
+		c += 2
+		self.firstleafbrush = q_shared.LittleSShort(buff[c:c+2])
+		c += 2
+		self.numleafbrushes = q_shared.LittleSShort(buff[c:c+2])
 
 
 class dbrushside_t(object):
@@ -737,6 +794,7 @@ class dvis_t(object):
 
 		self.numclusters = None # int
 		self.bitofs = np.zeros((8,2), dtype=np.int32) # int[8][2], bitofs[numclusters][2]
+		self.data = None # bytes
 
 	@classmethod
 	def packed_size(cls):
@@ -745,6 +803,7 @@ class dvis_t(object):
 	def load(self, buff):
 
 		self.numclusters = q_shared.LittleSLong (buff[:4])
+		self.data = buff
 		if self.numclusters > 8: self.numclusters = 8 # Prevent over-read
 		c = 4
 
@@ -788,4 +847,3 @@ class darea_t(object):
 
 		self.numareaportals = q_shared.LittleSLong (buff[:4])
 		self.firstareaportal = q_shared.LittleSLong (buff[4:])
-
