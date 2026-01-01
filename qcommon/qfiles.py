@@ -592,8 +592,8 @@ class dnode_t(object):
 	def load(self, buff):
 
 		self.planenum = q_shared.LittleLong(buff[:4])
-		self.children[0] = q_shared.LittleLong(buff[4:8])
-		self.children[1] = q_shared.LittleLong(buff[8:12])
+		self.children[0] = q_shared.LittleSLong(buff[4:8])
+		self.children[1] = q_shared.LittleSLong(buff[8:12])
 
 
 class texinfo_t(object):

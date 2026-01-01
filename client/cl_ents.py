@@ -686,7 +686,6 @@ def CL_ParseFrame ():
 	if cmd != qcommon.svc_ops_e.svc_packetentities.value:
 		common.Com_Error (q_shared.ERR_DROP, "CL_ParseFrame: not packetentities")
 	CL_ParsePacketEntities (old, cl_main.cl.frame)
-	CL_ParseProjectiles ()
 
 	# save the frame off in the backup array for later delta comparisons
 	cl_main.cl.frames[cl_main.cl.frame.serverframe & qcommon.UPDATE_MASK] = copy.copy(cl_main.cl.frame)

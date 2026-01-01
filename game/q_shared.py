@@ -248,6 +248,56 @@ def AngleVectors(angles, forward, right, up):
 		up[2] = cr * cp
 def VectorClear(a):	a[0]=0;a[1]=0;a[2]=0
 vec3_origin = np.zeros((3,), dtype=np.float32)
+
+def BoxOnPlaneSide2(emins, emaxs, plane):
+	corners = np.empty((2, 3), dtype=np.float32)
+	for i in range(3):
+		if plane.normal[i] < 0:
+			corners[0][i] = emins[i]
+			corners[1][i] = emaxs[i]
+		else:
+			corners[0][i] = emaxs[i]
+			corners[1][i] = emins[i]
+
+	dist1 = DotProduct(plane.normal, corners[0]) - plane.dist
+	dist2 = DotProduct(plane.normal, corners[1]) - plane.dist
+	sides = 0
+	if dist1 >= 0:
+		sides = 1
+	if dist2 < 0:
+		sides |= 2
+	return sides
+
+def BoxOnPlaneSide(emins, emaxs, plane):
+	if plane.type < 3:
+		if plane.dist <= emins[plane.type]:
+			return 1
+		if plane.dist >= emaxs[plane.type]:
+			return 2
+		return 3
+
+	dist1 = 0.0
+	dist2 = 0.0
+	for axis in range(3):
+		normal = plane.normal[axis]
+		if (plane.signbits >> axis) & 1:
+			dist1 += normal * emins[axis]
+			dist2 += normal * emaxs[axis]
+		else:
+			dist1 += normal * emaxs[axis]
+			dist2 += normal * emins[axis]
+
+	sides = 0
+	if dist1 >= plane.dist:
+		sides = 1
+	if dist2 < plane.dist:
+		sides |= 2
+
+	if sides == 0:
+		raise AssertionError("BoxOnPlaneSide returned no sides")
+
+	return sides
+
 """
 #define VectorNegate(a,b)		(b[0]=-a[0],b[1]=-a[1],b[2]=-a[2])
 #define VectorSet(v, x, y, z)	(v[0]=(x), v[1]=(y), v[2]=(z))

@@ -882,6 +882,9 @@ def CM_PointLeafnum_r(p, num):
 
 	global c_pointcontents
 
+	if num is None:
+		return 0
+
 	while num >= 0:
 		node = map_nodes[num]
 		plane = node.plane

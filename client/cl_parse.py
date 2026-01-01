@@ -16,12 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-"""
+	"""
+import os
 import struct
-from client import cl_main, cl_scrn, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent, console, cl_inv
+from client import cl_main, cl_scrn, cl_view, client, cl_cin, cl_ents, cl_fx, snd_dma, cl_tent, console, cl_inv
 from game import q_shared
-from qcommon import net_chan, qcommon, common, cmd, files, cmodel
-from linux import cd_linux, sys_linux
+from qcommon import net_chan, qcommon, common, cmd, files, cmodel, cvar
+from linux import cd_linux, sys_linux, vid_so
 """
 // cl_parse.c  -- parse a message received from the server
 
@@ -56,128 +57,74 @@ svc_strings = \
 while len(svc_strings) < 256:
 	svc_strings.append(None)
 
+#=====================================
+
+def COM_StripExtension(name: str) -> str:
+	return name.split('.', 1)[0]
+
+def CL_DownloadFileName(filename: str) -> str:
+	if filename.startswith("players"):
+		return os.path.join(qcommon.BASEDIRNAME, filename)
+	return os.path.join(files.FS_Gamedir(), filename)
+
+def CL_CheckOrDownloadFile(filename: str) -> bool:
+
+	if ".." in filename:
+		common.Com_Printf("Refusing to download a path with ..\n")
+		return True
+
+	length, _ = files.FS_LoadFile(filename)
+	if length != -1:
+		return True
+
+	cl_main.cls.downloadname = filename
+	cl_main.cls.downloadtempname = COM_StripExtension(filename) + ".tmp"
+
+	download_path = CL_DownloadFileName(cl_main.cls.downloadtempname)
+	files.FS_CreatePath(download_path)
+	try:
+		fp = open(download_path, "r+b")
+		fp.seek(0, os.SEEK_END)
+		offset = fp.tell()
+		cl_main.cls.download = fp
+		common.Com_Printf("Resuming %s\n" % (cl_main.cls.downloadname,))
+		msg = "download %s %i" % (cl_main.cls.downloadname, offset)
+	except FileNotFoundError:
+		cl_main.cls.download = None
+		common.Com_Printf("Downloading %s\n" % cl_main.cls.downloadname)
+		msg = "download %s" % cl_main.cls.downloadname
+
+	common.MSG_WriteByte(cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd.value)
+	common.MSG_WriteString(cl_main.cls.netchan.message, msg)
+	cl_main.cls.downloadnumber += 1
+	return False
+
+def CL_Download_f():
+
+	if cmd.Cmd_Argc() != 2:
+		common.Com_Printf("Usage: download <filename>\n")
+		return
+
+	filename = cmd.Cmd_Argv(1)
+	if ".." in filename:
+		common.Com_Printf("Refusing to download a path with ..\n")
+		return
+
+	length, _ = files.FS_LoadFile(filename)
+	if length != -1:
+		common.Com_Printf("File already exists.\n")
+		return
+
+	cl_main.cls.downloadname = filename
+	common.Com_Printf("Downloading %s\n" % cl_main.cls.downloadname)
+
+	cl_main.cls.downloadtempname = COM_StripExtension(filename) + ".tmp"
+
+	common.MSG_WriteByte(cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd.value)
+	common.MSG_WriteString(cl_main.cls.netchan.message, "download %s" % cl_main.cls.downloadname)
+	cl_main.cls.downloadnumber += 1
+
 """
-//=============================================================================
-
-void CL_DownloadFileName(char *dest, int destlen, char *fn)
-{
-	if (strncmp(fn, "players", 7) == 0)
-		Com_sprintf (dest, destlen, "%s/%s", BASEDIRNAME, fn);
-	else
-		Com_sprintf (dest, destlen, "%s/%s", FS_Gamedir(), fn);
-}
-
-/*
-===============
-CL_CheckOrDownloadFile
-
-Returns true if the file exists, otherwise it attempts
-to start a download from the server.
-===============
-*/
-qboolean	CL_CheckOrDownloadFile (char *filename)
-{
-	FILE *fp;
-	char	name[MAX_OSPATH];
-
-	if (strstr (filename, ".."))
-	{
-		Com_Printf ("Refusing to download a path with ..\n");
-		return true;
-	}
-
-	if (FS_LoadFile (filename, NULL) != -1)
-	{	// it exists, no need to download
-		return true;
-	}
-
-	strcpy (cl_main.cls.downloadname, filename);
-
-	// download to a temp name, and only rename
-	// to the real name when done, so if interrupted
-	// a runt file wont be left
-	COM_StripExtension (cl_main.cls.downloadname, cl_main.cls.downloadtempname);
-	strcat (cl_main.cls.downloadtempname, ".tmp");
-
-//ZOID
-	// check to see if we already have a tmp for this file, if so, try to resume
-	// open the file if not opened yet
-	CL_DownloadFileName(name, sizeof(name), cl_main.cls.downloadtempname);
-
-//	FS_CreatePath (name);
-
-	fp = fopen (name, "r+b");
-	if (fp) { // it exists
-		int len;
-		fseek(fp, 0, SEEK_END);
-		len = ftell(fp);
-
-		cl_main.cls.download = fp;
-
-		// give the server an offset to start the download
-		Com_Printf ("Resuming %s\n", cl_main.cls.downloadname);
-		MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cl_main.cls.netchan.message,
-			va("download %s %i", cl_main.cls.downloadname, len));
-	} else {
-		Com_Printf ("Downloading %s\n", cl_main.cls.downloadname);
-		MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cl_main.cls.netchan.message,
-			va("download %s", cl_main.cls.downloadname));
-	}
-
-	cl_main.cls.downloadnumber++;
-
-	return false;
-}
-
-/*
-===============
-CL_Download_f
-
-Request a download from the server
-===============
-*/
-void	CL_Download_f (void)
-{
-	char filename[MAX_OSPATH];
-
-	if (Cmd_Argc() != 2) {
-		Com_Printf("Usage: download <filename>\n");
-		return;
-	}
-
-	Com_sprintf(filename, sizeof(filename), "%s", Cmd_Argv(1));
-
-	if (strstr (filename, ".."))
-	{
-		Com_Printf ("Refusing to download a path with ..\n");
-		return;
-	}
-
-	if (FS_LoadFile (filename, NULL) != -1)
-	{	// it exists, no need to download
-		Com_Printf("File already exists.\n");
-		return;
-	}
-
-	strcpy (cl_main.cls.downloadname, filename);
-	Com_Printf ("Downloading %s\n", cl_main.cls.downloadname);
-
-	// download to a temp name, and only rename
-	// to the real name when done, so if interrupted
-	// a runt file wont be left
-	COM_StripExtension (cl_main.cls.downloadname, cl_main.cls.downloadtempname);
-	strcat (cl_main.cls.downloadtempname, ".tmp");
-
-	MSG_WriteByte (&cl_main.cls.netchan.message, clc_stringcmd);
-	MSG_WriteString (&cl_main.cls.netchan.message,
-		va("download %s", cl_main.cls.downloadname));
-
-	cl_main.cls.downloadnumber++;
-}
-
-/*
 ======================
 CL_RegisterSounds
 ======================
@@ -303,61 +250,90 @@ void CL_ParseDownload (void)
 CL_ParseServerData
 ==================
 """
+def CL_ParseDownload ():
+
+	size = common.MSG_ReadShort (net_chan.net_message)
+	percent = common.MSG_ReadByte (net_chan.net_message)
+
+	if size == -1:
+		common.Com_Printf ("Server does not have this file.\n")
+		if cl_main.cls.download:
+			cl_main.cls.download.close ()
+			cl_main.cls.download = None
+		cl_main.CL_RequestNextDownload ()
+		return
+
+	if not cl_main.cls.download:
+		download_path = CL_DownloadFileName (cl_main.cls.downloadtempname)
+		files.FS_CreatePath (download_path)
+		try:
+			cl_main.cls.download = open (download_path, "wb")
+		except OSError:
+			net_chan.net_message.readcount += size
+			common.Com_Printf ("Failed to open %s\n" % cl_main.cls.downloadtempname)
+			cl_main.CL_RequestNextDownload ()
+			return
+
+	data_start = net_chan.net_message.readcount
+	data_end = data_start + size
+	cl_main.cls.download.write (net_chan.net_message.data[data_start:data_end])
+	net_chan.net_message.readcount = data_end
+
+	if percent != 100:
+		cl_main.cls.downloadpercent = percent
+		common.MSG_WriteByte (cl_main.cls.netchan.message, qcommon.clc_ops_e.clc_stringcmd.value)
+		common.MSG_WriteString (cl_main.cls.netchan.message, "nextdl")
+		return
+
+	cl_main.cls.download.close ()
+	cl_main.cls.download = None
+	cl_main.cls.downloadpercent = 0
+
+	old_name = CL_DownloadFileName (cl_main.cls.downloadtempname)
+	new_name = CL_DownloadFileName (cl_main.cls.downloadname)
+	try:
+		os.rename (old_name, new_name)
+	except OSError:
+		common.Com_Printf ("failed to rename.\n")
+
+	cl_main.CL_RequestNextDownload ()
+
 def CL_ParseServerData ():
 
-	#extern cvar_t	*fs_gamedirvar;
-	#char	*str;
-	#int		i;
-	
 	common.Com_DPrintf ("Serverdata packet received.\n")
-	#
-	# wipe the client_state_t struct
-	#
 
 	cl_main.CL_ClearState ()
 	cl_main.cls.state = client.connstate_t.ca_connected
 
-	# parse protocol version number
-	i = common.MSG_ReadLong (net_chan.net_message)
-	cl_main.cls.serverProtocol = i
+	protocol = common.MSG_ReadLong (net_chan.net_message)
+	cl_main.cls.serverProtocol = protocol
 
-	# BIG HACK to let demos from release work with the 3.0x patch!!!
-	if common.Com_ServerState() and qcommon.PROTOCOL_VERSION == 34:
-		pass
-	elif i != PROTOCOL_VERSION.PROTOCOL_VERSION:
-		Com_Error (qcommon.ERR_DROP,"Server returned version {:d}, not {:d}", i, PROTOCOL_VERSION)
+	if not (common.Com_ServerState() and qcommon.PROTOCOL_VERSION == 34):
+		if protocol != qcommon.PROTOCOL_VERSION:
+			common.Com_Error (qcommon.ERR_DROP, "Server returned version {}, not {}".format(protocol, qcommon.PROTOCOL_VERSION))
 
 	cl_main.cl.servercount = common.MSG_ReadLong (net_chan.net_message)
 	cl_main.cl.attractloop = common.MSG_ReadByte (net_chan.net_message)
 
-	# game directory
-	strn = common.MSG_ReadString (net_chan.net_message)
-	cl_main.cl.gamedir = strn[:q_shared.MAX_QPATH]
+	gamedir = common.MSG_ReadString (net_chan.net_message)
+	cl_main.cl.gamedir = gamedir[:q_shared.MAX_QPATH]
 
-	# set gamedir
-	if (len(strn)>0 and (len(files.fs_gamedirvar.string)==0 or (files.fs_gamedirvar.string!=strn))) \
-		or (len(strn)==0 and len(files.fs_gamedirvar.string)>0):
+	fsvar = files.fs_gamedirvar
+	if gamedir:
+		if not fsvar or not fsvar.string or fsvar.string != gamedir:
+			cvar.Cvar_Set ("game", gamedir)
+	elif fsvar and fsvar.string:
+		cvar.Cvar_Set ("game", gamedir)
 
-		cvar.Cvar_Set("game", strn)
-
-	# parse player entity number
 	cl_main.cl.playernum = common.MSG_ReadSShort (net_chan.net_message)
 
-	# get the full level name
-	strn = common.MSG_ReadString (net_chan.net_message)
+	level_name = common.MSG_ReadString (net_chan.net_message)
 
-	print ("cl_main.cl.playernum", cl_main.cl.playernum)
 	if cl_main.cl.playernum == -1:
-		# playing a cinematic or showing a pic, not a level
-		cl_cin.SCR_PlayCinematic (strn)
-	
+		cl_cin.SCR_PlayCinematic (level_name)
 	else:
-	
-		# seperate the printfs so the server message can have a color
-		common.Com_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n")
-		common.Com_Printf ("{}{}\n".format(chr(2), str))
-
-		# need to prep refresh at next oportunity
+		common.Com_Printf ("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n")
+		common.Com_Printf ("{}{}\n".format(chr(2), level_name))
 		cl_main.cl.refresh_prepped = False
 	
 
@@ -491,24 +467,113 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 		ci->icon = vid_so.re.RegisterPic (ci->iconname);
 	}
 
-	// must have loaded all data types to be valud
-	if (!ci->skin || !ci->icon || !ci->model || !ci->weaponmodel[0])
-	{
-		ci->skin = NULL;
-		ci->icon = NULL;
-		ci->model = NULL;
-		ci->weaponmodel[0] = NULL;
-		return;
+		// must have loaded all data types to be valud
+		if (!ci->skin || !ci->icon || !ci->model || !ci->weaponmodel[0])
+		{
+			ci->skin = NULL;
+			ci->icon = NULL;
+			ci->model = NULL;
+			ci->weaponmodel[0] = NULL;
+			return;
+		}
 	}
-}
 
-/*
+def CL_LoadClientinfo (ci, s):
+
+	if not s:
+		return
+
+	ci.cinfo = s[:q_shared.MAX_QPATH]
+	ci.name = ci.cinfo[:q_shared.MAX_QPATH]
+	playerinfo = s
+	sep = playerinfo.find ("\\")
+	if sep != -1:
+		ci.name = playerinfo[:sep][:q_shared.MAX_QPATH]
+		playerinfo = playerinfo[sep+1:]
+
+	noskins = bool (cl_main.cl_noskins and getattr (cl_main.cl_noskins, "value", False))
+	if noskins or not playerinfo:
+		model_filename = "players/male/tris.md2"
+		weapon_filename = "players/male/weapon.md2"
+		skin_filename = "players/male/grunt.pcx"
+		ci.iconname = "/players/male/grunt_i.pcx"
+		ci.model = vid_so.re.RegisterModel (model_filename)
+		for idx in range (len (ci.weaponmodel)):
+			ci.weaponmodel[idx] = None
+		if ci.weaponmodel:
+			ci.weaponmodel[0] = vid_so.re.RegisterModel (weapon_filename)
+		ci.skin = vid_so.re.RegisterSkin (skin_filename)
+		ci.icon = vid_so.re.RegisterPic (ci.iconname)
+	else:
+		model_skin = playerinfo
+		slash_idx = model_skin.find ("/")
+		backslash_idx = model_skin.find ("\\")
+		if slash_idx >= 0 and backslash_idx >= 0:
+			sep_idx = min (slash_idx, backslash_idx)
+		elif slash_idx >= 0:
+			sep_idx = slash_idx
+		else:
+			sep_idx = backslash_idx
+
+		if slash_idx == -1 and backslash_idx == -1:
+			model_name = model_skin
+			skin_name = ""
+		else:
+			model_name = model_skin[:sep_idx]
+			skin_name = model_skin[sep_idx+1:]
+
+		model_filename = "players/{}/tris.md2".format (model_name)
+		ci.model = vid_so.re.RegisterModel (model_filename)
+		if not ci.model:
+			model_name = "male"
+			model_filename = "players/male/tris.md2"
+			ci.model = vid_so.re.RegisterModel (model_filename)
+
+		skin_filename = "players/{}/{}.pcx".format (model_name, skin_name)
+		ci.skin = vid_so.re.RegisterSkin (skin_filename)
+
+		if not ci.skin and q_shared.Q_stricmp (model_name, "male"):
+			model_name = "male"
+			model_filename = "players/male/tris.md2"
+			ci.model = vid_so.re.RegisterModel (model_filename)
+			skin_filename = "players/{}/{}.pcx".format (model_name, skin_name)
+			ci.skin = vid_so.re.RegisterSkin (skin_filename)
+
+		if not ci.skin:
+			skin_filename = "players/{}/grunt.pcx".format (model_name)
+			ci.skin = vid_so.re.RegisterSkin (skin_filename)
+
+		weapon_models = getattr (cl_view, "cl_weaponmodels", [])
+		num_weapon_models = getattr (cl_view, "num_cl_weaponmodels", len (weapon_models))
+		for i in range (num_weapon_models):
+			if i >= len (weapon_models):
+				break
+			weapon_filename = "players/{}/{}".format (model_name, weapon_models[i])
+			ci.weaponmodel[i] = vid_so.re.RegisterModel (weapon_filename)
+			if not ci.weaponmodel[i] and q_shared.Q_stricmp (model_name, "cyborg") == 0:
+				weapon_filename = "players/male/{}".format (weapon_models[i])
+				ci.weaponmodel[i] = vid_so.re.RegisterModel (weapon_filename)
+			if cl_main.cl_vwep and not cl_main.cl_vwep.value:
+				break
+
+		ci.iconname = "/players/{}/{}_i.pcx".format (model_name, skin_name)
+		ci.icon = vid_so.re.RegisterPic (ci.iconname)
+
+	if not (ci.skin and ci.icon and ci.model and ci.weaponmodel and ci.weaponmodel[0]):
+		ci.skin = None
+		ci.icon = None
+		ci.model = None
+		if ci.weaponmodel:
+			ci.weaponmodel[0] = None
+		return
+"""
+
+"""
 ================
 CL_ParseClientinfo
 
 Load the skin, icon, and model for a client
 ================
-*/
 void CL_ParseClientinfo (int player)
 {
 	char			*s;
@@ -521,8 +586,23 @@ void CL_ParseClientinfo (int player)
 	CL_LoadClientinfo (ci, s);
 }
 
+"""
+def CL_ParseClientinfo (player):
 
-/*
+	if player < 0 or player >= q_shared.MAX_CLIENTS:
+		return
+
+	index = player + q_shared.CS_PLAYERSKINS
+	if index < 0 or index >= len (cl_main.cl.configstrings):
+		return
+
+	info = cl_main.cl.configstrings[index]
+	if not info:
+		return
+
+	CL_LoadClientinfo (cl_main.cl.clientinfo[player], info)
+
+"""
 ================
 CL_ParseConfigString
 ================
@@ -539,48 +619,48 @@ def CL_ParseConfigString ():
 	i = common.MSG_ReadShort (net_chan.net_message)
 	if i < 0 or i >= q_shared.MAX_CONFIGSTRINGS:
 		common.Com_Error (qcommon.ERR_DROP, "configstring > MAX_CONFIGSTRINGS")
-	s = common.MSG_ReadString(net_chan.net_message)
+	s = common.MSG_ReadString (net_chan.net_message)
 
-
-	olds = cl_main.cl.configstrings[i]
-	#olds[sizeof(olds) - 1] = 0;
-
+	olds = cl_main.cl.configstrings[i] or ""
 	cl_main.cl.configstrings[i] = s
 
-	# do something apropriate 
-
-	if i >= q_shared.CS_LIGHTS and i < q_shared.CS_LIGHTS+q_shared.MAX_LIGHTSTYLES:
+	if i >= q_shared.CS_LIGHTS and i < q_shared.CS_LIGHTS + q_shared.MAX_LIGHTSTYLES:
 		cl_fx.CL_SetLightstyle (i - q_shared.CS_LIGHTS)
+
 	elif i == q_shared.CS_CDTRACK:
-	
 		if cl_main.cl.refresh_prepped:
-			cd_linux.CDAudio_Play (atoi(cl_main.cl.configstrings[q_shared.CS_CDTRACK]), True)
-	
-	elif i >= q_shared.CS_MODELS and i < q_shared.CS_MODELS+q_shared.MAX_MODELS:
-	
+			track = 0
+			try:
+				track = int (cl_main.cl.configstrings[q_shared.CS_CDTRACK] or "")
+			except ValueError:
+				pass
+			cd_linux.CDAudio_Play (track, True)
+
+	elif i >= q_shared.CS_MODELS and i < q_shared.CS_MODELS + q_shared.MAX_MODELS:
 		if cl_main.cl.refresh_prepped:
-		
-			cl_main.cl.model_draw[i-q_shared.CS_MODELS] = vid_so.re.RegisterModel (cl_main.cl.configstrings[i])
-			if cl_main.cl.configstrings[i][0] == '*':
-				cl_main.cl.model_clip[i-q_shared.CS_MODELS] = cmodel.CM_InlineModel (cl_main.cl.configstrings[i])
-			else:
-				cl_main.cl.model_clip[i-q_shared.CS_MODELS] = None
-		
-	
-	elif i >= q_shared.CS_SOUNDS and i < q_shared.CS_SOUNDS+q_shared.MAX_MODELS:
-	
+			model_name = cl_main.cl.configstrings[i]
+			if model_name:
+				cl_main.cl.model_draw[i - q_shared.CS_MODELS] = vid_so.re.RegisterModel (model_name)
+				if model_name[0] == '*':
+					cl_main.cl.model_clip[i - q_shared.CS_MODELS] = cmodel.CM_InlineModel (model_name)
+				else:
+					cl_main.cl.model_clip[i - q_shared.CS_MODELS] = None
+
+	elif i >= q_shared.CS_SOUNDS and i < q_shared.CS_SOUNDS + q_shared.MAX_SOUNDS:
 		if cl_main.cl.refresh_prepped:
-			cl_main.cl.sound_precache[i-q_shared.CS_SOUNDS] = snd_dma.S_RegisterSound (cl_main.cl.configstrings[i])
-	
-	elif i >= q_shared.CS_IMAGES and i < q_shared.CS_IMAGES+q_shared.MAX_MODELS:
-	
+			sound_name = cl_main.cl.configstrings[i]
+			if sound_name:
+				cl_main.cl.sound_precache[i - q_shared.CS_SOUNDS] = snd_dma.S_RegisterSound (sound_name)
+
+	elif i >= q_shared.CS_IMAGES and i < q_shared.CS_IMAGES + q_shared.MAX_IMAGES:
 		if cl_main.cl.refresh_prepped:
-			cl_main.cl.image_precache[i-q_shared.CS_IMAGES] = vid_so.re.RegisterPic (cl_main.cl.configstrings[i])
-	
-	elif i >= q_shared.CS_PLAYERSKINS and i < q_shared.CS_PLAYERSKINS+q_shared.MAX_CLIENTS:
-	
-		if cl_main.cl.refresh_prepped and strcmp(olds, s):
-			CL_ParseClientinfo (i-q_shared.CS_PLAYERSKINS)
+			image_name = cl_main.cl.configstrings[i]
+			if image_name:
+				cl_main.cl.image_precache[i - q_shared.CS_IMAGES] = vid_so.re.RegisterPic (image_name)
+
+	elif i >= q_shared.CS_PLAYERSKINS and i < q_shared.CS_PLAYERSKINS + q_shared.MAX_CLIENTS:
+		if cl_main.cl.refresh_prepped and olds != s:
+			CL_ParseClientinfo (i - q_shared.CS_PLAYERSKINS)
 	
 
 
@@ -591,12 +671,14 @@ def CL_ParseConfigString ():
 ACTION MESSAGES
 
 =====================================================================
-*/
+"""
 
+"""
 /*
 ==================
 CL_ParseStartSoundPacket
 ==================
+*/
 """
 def CL_ParseStartSoundPacket():
 
@@ -611,8 +693,6 @@ def CL_ParseStartSoundPacket():
 	float	ofs;
 	"""
 
-	flags = common.MSG_ReadByte (net_chan.net_message)
-	sound_num = common.MSG_ReadByte (net_chan.net_message)
 
 	if flags & qcommon.SND_VOLUME:
 		volume = common.MSG_ReadByte (net_chan.net_message) / 255.0
@@ -653,6 +733,9 @@ def CL_ParseStartSoundPacket():
 	else:	# use entity number
 		pos = None
 
+	if sound_num < 0 or sound_num >= len (cl_main.cl.sound_precache):
+		return
+
 	if not cl_main.cl.sound_precache[sound_num]:
 		return
 
@@ -666,9 +749,9 @@ def SHOWNET(s): #char *
 		common.Com_Printf ("{:3d}:{}\n".format(net_chan.net_message.readcount-1, s))
 
 """
-=====================
+====================
 CL_ParseServerMessage
-=====================
+====================
 """
 def CL_ParseServerMessage ():
 
@@ -687,126 +770,83 @@ def CL_ParseServerMessage ():
 	#
 	# parse the message
 	#
-	while 1:
+	while True:
 		if net_chan.net_message.readcount > net_chan.net_message.cursize:
-		
 			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Bad server message")
 			break
 
-		cmdval = common.MSG_ReadByte (net_chan.net_message)
-
-		if cmdval == -1:
-		
+		cmd_raw = common.MSG_ReadByte (net_chan.net_message)
+		if cmd_raw == -1:
 			SHOWNET("END OF MESSAGE")
 			break
-		
+
 		if cl_main.cl_shownet.value>=2:
-		
-			if not svc_strings[cmdval]:
-				common.Com_Printf ("{:3d}:BAD CMD {:d}\n".format(net_chan.net_message.readcount-1,cmdval))
+
+			if not svc_strings[cmd_raw]:
+				common.Com_Printf ("{:3d}:BAD CMD {:d}".format(net_chan.net_message.readcount-1,cmd_raw))
 			else:
-				SHOWNET(svc_strings[cmdval])
-		
-		cmdval = qcommon.svc_ops_e(cmdval)
+				SHOWNET(svc_strings[cmd_raw])
 
-		# other commands
+		try:
+			cmdval = qcommon.svc_ops_e (cmd_raw)
+		except ValueError:
+			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Illegible server message")
+			break
+
 		if cmdval == qcommon.svc_ops_e.svc_nop:
-			##Com_Printf ("svc_nop\n");
 			pass
-			
 		elif cmdval == qcommon.svc_ops_e.svc_disconnect:
-			common.Com_Error (ERR_DISCONNECT,"Server disconnected\n");
-
-
+			common.Com_Error (qcommon.ERR_DISCONNECT,"Server disconnected\n")
 		elif cmdval == qcommon.svc_ops_e.svc_reconnect:
-			common.Com_Printf ("Server disconnected, reconnecting\n");
+			common.Com_Printf ("Server disconnected, reconnecting\n")
 			if cl_main.cls.download:
-				#ZOID, close download
-				cl_main.cls.download.close()
+				cl_main.cls.download.close ()
 				cl_main.cls.download = None
-			
-			cl_main.cls.state = ca_connecting
-			cl_main.cls.connect_time = -99999	# CL_CheckForResend() will fire immediately
 
-
+			cl_main.cls.state = client.connstate_t.ca_connecting
+			cl_main.cls.connect_time = -99999
 		elif cmdval == qcommon.svc_ops_e.svc_print:
 			i = common.MSG_ReadByte (net_chan.net_message)
 			if i == q_shared.PRINT_CHAT:
-			
 				snd_dma.S_StartLocalSound ("misc/talk.wav")
 				console.con.ormask = 128
-			
+
 			common.Com_Printf (common.MSG_ReadString(net_chan.net_message))
 			console.con.ormask = 0
-
-			
 		elif cmdval == qcommon.svc_ops_e.svc_centerprint:
-			SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message))
-
-			
+			cl_scrn.SCR_CenterPrint (common.MSG_ReadString(net_chan.net_message))
 		elif cmdval == qcommon.svc_ops_e.svc_stufftext:
 			s = common.MSG_ReadString(net_chan.net_message)
 			common.Com_DPrintf ("stufftext: {}\n".format(s))
 			cmd.Cbuf_AddText (s)
-
-			
 		elif cmdval == qcommon.svc_ops_e.svc_serverdata:
-			cmd.Cbuf_Execute ()		# make sure any stuffed commands are done
+			cmd.Cbuf_Execute ()
 			CL_ParseServerData ()
-
-			
 		elif cmdval == qcommon.svc_ops_e.svc_configstring:
 			CL_ParseConfigString ()
-
-			
 		elif cmdval == qcommon.svc_ops_e.svc_sound:
 			CL_ParseStartSoundPacket()
-
-			
 		elif cmdval == qcommon.svc_ops_e.svc_spawnbaseline:
 			CL_ParseBaseline ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_temp_entity:
 			cl_tent.CL_ParseTEnt ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash:
 			cl_fx.CL_ParseMuzzleFlash ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_muzzleflash2:
 			cl_fx.CL_ParseMuzzleFlash2 ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_download:
 			CL_ParseDownload ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_frame:
 			cl_ents.CL_ParseFrame ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_inventory:
 			cl_inv.CL_ParseInventory ()
-
-
 		elif cmdval == qcommon.svc_ops_e.svc_layout:
 			s = common.MSG_ReadString(net_chan.net_message)
 			cl_main.cl.layout = s
-
-
 		elif cmdval in [qcommon.svc_ops_e.svc_playerinfo, qcommon.svc_ops_e.svc_packetentities, qcommon.svc_ops_e.svc_deltapacketentities]:
-			common.Com_Error (qcommon.ERR_DROP, "Out of place frame data");
-
-
+			common.Com_Error (qcommon.ERR_DROP, "Out of place frame data")
 		else:
 			common.Com_Error (qcommon.ERR_DROP,"CL_ParseServerMessage: Illegible server message\n")
-
-
-		
-	
-	
 	cl_scrn.CL_AddNetgraph ()
 
 	#
@@ -814,8 +854,4 @@ def CL_ParseServerMessage ():
 	# after we have parsed the frame
 	#
 	if cl_main.cls.demorecording and not cl_main.cls.demowaiting:
-		CL_WriteDemoMessage ()
-
-
-
-
+		cl_main.CL_WriteDemoMessage ()

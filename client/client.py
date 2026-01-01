@@ -300,13 +300,11 @@ class client_static_t(object):
 		self.challenge = 0 #int, from the server to use for connecting
 
 		self.download = None # FILE	*, file transfer from server
-		"""
-		char		downloadtempname[MAX_OSPATH];
-		char		downloadname[MAX_OSPATH];
-		int			downloadnumber;
-		dltype_t	downloadtype;
-		int			downloadpercent;
-		"""
+		self.downloadname = ""
+		self.downloadtempname = ""
+		self.downloadnumber = 0
+		self.downloadtype = 0
+		self.downloadpercent = 0
 		# demo recording info must be here, so it isn't cleared on level change
 		self.demorecording = False # qboolean	
 		self.demowaiting = False # qboolean, don't record until a non-delta message is received
