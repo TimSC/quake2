@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 import math
 import OpenGL.GL as GL
 import numpy as np
-from ref_gl import gl_warp, gl_image, gl_rmain, gl_model, gl_model_h
+from ref_gl import gl_warp, gl_image, gl_rmain, gl_model, gl_model_h, gl_light
 from linux import qgl_linux
 from game import q_shared
 from qcommon import qfiles
@@ -123,14 +123,6 @@ def R_AddSkySurface(surf):
 GL_LIGHTMAP_FORMAT = GL.GL_RGBA
 
 
-def R_SetCacheState(surf):
-    pass
-
-
-def R_BuildLightMap(surf, dest, stride):
-    pass
-
-
 def LM_InitBlock():
 
     gl_lms.allocated = [0] * BLOCK_WIDTH
@@ -226,12 +218,13 @@ def GL_CreateSurfaceLightmap(surf):
     surf.light_s, surf.light_t = result
     surf.lightmaptexturenum = gl_lms.current_lightmap_texture
 
-    base = gl_lms.lightmap_buffer
     offset = (surf.light_t * BLOCK_WIDTH + surf.light_s) * LIGHTMAP_BYTES
-    dest = base[offset : offset + LIGHTMAP_BYTES * BLOCK_WIDTH * tmax]
+    dest = memoryview(gl_lms.lightmap_buffer)[
+        offset : offset + LIGHTMAP_BYTES * BLOCK_WIDTH * tmax
+    ]
 
-    R_SetCacheState(surf)
-    R_BuildLightMap(surf, dest, BLOCK_WIDTH * LIGHTMAP_BYTES)
+    gl_light.R_SetCacheState(surf)
+    gl_light.R_BuildLightMap(surf, dest, BLOCK_WIDTH * LIGHTMAP_BYTES)
 
     surfaces = gl_lms.lightmap_surfaces[surf.lightmaptexturenum]
     if surf not in surfaces:
@@ -256,6 +249,9 @@ def GL_BuildPolygonFromSurface(surf):
     poly.chain = surf.polys
     surf.polys = poly
     poly.numverts = numverts
+
+    if poly.verts.shape[0] != numverts:
+        poly.verts = np.zeros((numverts, gl_model_h.VERTEXSIZE), dtype=np.float32)
 
     for i in range(numverts):
         lindex = int(currentmodel.surfedges[surf.firstedge + i])
@@ -675,10 +671,10 @@ def R_BlendLightmaps ():
                     raise RuntimeError("LM_AllocBlock failed twice (dynamic)")
             surf.dlight_s, surf.dlight_t = result
             offset = (surf.dlight_t * BLOCK_WIDTH + surf.dlight_s) * LIGHTMAP_BYTES
-            dest = gl_lms.lightmap_buffer[
+            dest = memoryview(gl_lms.lightmap_buffer)[
                 offset : offset + BLOCK_WIDTH * LIGHTMAP_BYTES * tmax
             ]
-            R_BuildLightMap(surf, dest, BLOCK_WIDTH * LIGHTMAP_BYTES)
+            gl_light.R_BuildLightMap(surf, dest, BLOCK_WIDTH * LIGHTMAP_BYTES)
         if newdrawsurf_idx < len(dyn_surfaces):
             LM_UploadBlock(True)
         for drawsurf in dyn_surfaces[newdrawsurf_idx:]:

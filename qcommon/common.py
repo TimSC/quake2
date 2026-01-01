@@ -1814,3 +1814,8 @@ def Qcommon_Shutdown ():
 		pygame.quit()
 	except Exception:
 		pass
+
+
+def COM_Parse(data, cursor):
+	"""Expose COM_Parse from q_shared where needed."""
+	return q_shared.COM_Parse(data, cursor)

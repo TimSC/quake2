@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """
 import numpy as np
 from game import q_shared
+from qcommon import qfiles
 from ref_gl import gl_rmain
 """
 // r_light.c
@@ -28,6 +29,24 @@ from ref_gl import gl_rmain
 r_dlightframecount = None #int
 
 DLIGHT_CUTOFF = 64
+
+
+def _lightstyle_values(style_idx):
+    lightstyles = getattr(gl_rmain.r_newrefdef, "lightstyles", None)
+    if not lightstyles:
+        return (1.0, 1.0, 1.0), 1.0
+    if style_idx >= len(lightstyles):
+        return (1.0, 1.0, 1.0), 1.0
+    style = lightstyles[style_idx]
+    if style is None:
+        return (1.0, 1.0, 1.0), 1.0
+    if isinstance(style, dict):
+        rgb = tuple(style.get("rgb", (1.0, 1.0, 1.0)))
+        white = style.get("white", max(rgb))
+    else:
+        rgb = tuple(getattr(style, "rgb", (1.0, 1.0, 1.0)))
+        white = getattr(style, "white", max(rgb))
+    return rgb, white
 
 
 """
@@ -374,376 +393,207 @@ R_AddDynamicLights
 ===============
 """
 def R_AddDynamicLights (surf): #msurface_t *
-	pass
-	"""
-	int			lnum;
-	int			sd, td;
-	float		fdist, frad, fminlight;
-	vec3_t		impact, local;
-	int			s, t;
-	int			i;
-	int			smax, tmax;
-	mtexinfo_t	*tex;
-	dlight_t	*dl;
-	float		*pfBL;
-	float		fsacc, ftacc;
+	if not surf or not surf.texinfo:
+		return
 
-	smax = (surf->extents[0]>>4)+1;
-	tmax = (surf->extents[1]>>4)+1;
-	tex = surf->texinfo;
+	smax = (surf.extents[0] >> 4) + 1
+	tmax = (surf.extents[1] >> 4) + 1
+	tex = surf.texinfo
 
-	for (lnum=0 ; lnum<r_newrefdef.num_dlights ; lnum++)
-	{
-		if ( !(surf->dlightbits & (1<<lnum) ) )
-			continue;		// not lit by this light
+	for lnum in range(getattr(gl_rmain.r_newrefdef, "num_dlights", 0)):
+		if not (surf.dlightbits & (1 << lnum)):
+			continue
 
-		dl = &r_newrefdef.dlights[lnum];
-		frad = dl->intensity;
-		fdist = DotProduct (dl->origin, surf->plane->normal) -
-				surf->plane->dist;
-		frad -= fabs(fdist);
-		// rad is now the highest intensity on the plane
+		dl = gl_rmain.r_newrefdef.dlights[lnum]
+		frad = dl.intensity
+		fdist = q_shared.DotProduct(dl.origin, surf.plane.normal) - surf.plane.dist
+		frad -= abs(fdist)
 
-		fminlight = DLIGHT_CUTOFF;	// FIXME: make configurable?
-		if (frad < fminlight)
-			continue;
-		fminlight = frad - fminlight;
+		fminlight = DLIGHT_CUTOFF
+		if frad < fminlight:
+			continue
+		fminlight = frad - fminlight
 
-		for (i=0 ; i<3 ; i++)
-		{
-			impact[i] = dl->origin[i] -
-					surf->plane->normal[i]*fdist;
-		}
+		impact = dl.origin.copy()
+		for i in range(3):
+			impact[i] -= surf.plane.normal[i] * fdist
 
-		local[0] = DotProduct (impact, tex->vecs[0]) + tex->vecs[0][3] - surf->texturemins[0];
-		local[1] = DotProduct (impact, tex->vecs[1]) + tex->vecs[1][3] - surf->texturemins[1];
+		local0 = q_shared.DotProduct(impact, tex.vecs[0]) + tex.vecs[0][3] - surf.texturemins[0]
+		local1 = q_shared.DotProduct(impact, tex.vecs[1]) + tex.vecs[1][3] - surf.texturemins[1]
 
-		pfBL = s_blocklights;
-		for (t = 0, ftacc = 0 ; t<tmax ; t++, ftacc += 16)
-		{
-			td = local[1] - ftacc;
-			if ( td < 0 )
-				td = -td;
-
-			for ( s=0, fsacc = 0 ; s<smax ; s++, fsacc += 16, pfBL += 3)
-			{
-				sd = Q_ftol( local[0] - fsacc );
-
-				if ( sd < 0 )
-					sd = -sd;
-
-				if (sd > td)
-					fdist = sd + (td>>1);
-				else
-					fdist = td + (sd>>1);
-
-				if ( fdist < fminlight )
-				{
-					pfBL[0] += ( frad - fdist ) * dl->color[0];
-					pfBL[1] += ( frad - fdist ) * dl->color[1];
-					pfBL[2] += ( frad - fdist ) * dl->color[2];
-				}
-			}
-		}
-	}
-	"""
-
+		for t in range(tmax):
+			ftacc = t * 16.0
+			td = local1 - ftacc
+			if td < 0:
+				td = -td
+			for s in range(smax):
+				fsacc = s * 16.0
+				sd = q_shared.Q_ftol(local0 - fsacc)
+				if sd < 0:
+					sd = -sd
+				if sd > td:
+					fdist2 = sd + (td * 0.5)
+				else:
+					fdist2 = td + (sd * 0.5)
+				if fdist2 < fminlight:
+					base = (t * smax + s) * 3
+					add = frad - fdist2
+					s_blocklights[base + 0] += add * dl.color[0]
+					s_blocklights[base + 1] += add * dl.color[1]
+					s_blocklights[base + 2] += add * dl.color[2]
 
 """
 ** R_SetCacheState
 """
 def R_SetCacheState (surf): #msurface_t *
-	pass
-	"""
-	int maps;
+	if not surf or not hasattr(surf, "styles"):
+		return
 
-	for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-		 maps++)
-	{
-		surf->cached_light[maps] = r_newrefdef.lightstyles[surf->styles[maps]].white;
-	}
-	"""
+	for maps in range(qfiles.MAXLIGHTMAPS):
+		style_idx = surf.styles[maps] if maps < len(surf.styles) else 255
+		if style_idx == 255:
+			break
+		_, white = _lightstyle_values(style_idx)
+		surf.cached_light[maps] = white
 
-
-"""
-===============
-R_BuildLightMap
-
-Combine and scale multiple lightmaps into the floating format in blocklights
-===============
-"""
 def R_BuildLightMap (surf, dest, stride): #msurface_t *, byte *, int
-	pass
-	"""
-	int			smax, tmax;
-	int			r, g, b, a, max;
-	int			i, j, size;
-	byte		*lightmap;
-	float		scale[4];
-	int			nummaps;
-	float		*bl;
-	lightstyle_t	*style;
-	int monolightmap;
+	if not surf or not surf.texinfo:
+		return
 
-	if ( surf->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP) )
-		ri.Sys_Error (ERR_DROP, "R_BuildLightMap called for non-lit surface");
+	flags = surf.texinfo.flags
+	forbidden = (q_shared.SURF_SKY | q_shared.SURF_TRANS33 | q_shared.SURF_TRANS66 | q_shared.SURF_WARP)
+	if flags & forbidden:
+		gl_rmain.ri.Sys_Error(q_shared.ERR_DROP, "R_BuildLightMap called for non-lit surface")
 
-	smax = (surf->extents[0]>>4)+1;
-	tmax = (surf->extents[1]>>4)+1;
-	size = smax*tmax;
-	if (size > (sizeof(s_blocklights)>>4) )
-		ri.Sys_Error (ERR_DROP, "Bad s_blocklights size");
+	smax = (surf.extents[0] >> 4) + 1
+	tmax = (surf.extents[1] >> 4) + 1
+	size = smax * tmax
+	max_size = len(s_blocklights) // 3
+	if size > max_size:
+		gl_rmain.ri.Sys_Error(q_shared.ERR_DROP, "Bad s_blocklights size")
 
-// set to full bright if no light data
-	if (!surf->samples)
-	{
-		int maps;
+	modulate = gl_rmain.gl_modulate.value if gl_rmain.gl_modulate else 1.0
+	lightmap_data = surf.samples
+	if lightmap_data is None:
+		for idx in range(size * 3):
+			s_blocklights[idx] = 255.0
+	else:
+		if isinstance(lightmap_data, (bytes, bytearray)):
+			lightmap_data = memoryview(lightmap_data)
+		nummaps = 0
+		while nummaps < qfiles.MAXLIGHTMAPS:
+			style_idx = surf.styles[nummaps] if nummaps < len(surf.styles) else 255
+			if style_idx == 255:
+				break
+			nummaps += 1
 
-		for (i=0 ; i<size*3 ; i++)
-			s_blocklights[i] = 255;
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
-		{
-			style = &r_newrefdef.lightstyles[surf->styles[maps]];
-		}
-		goto store;
-	}
+		lightmap_offset = 0
+		if nummaps == 1:
+			for maps in range(qfiles.MAXLIGHTMAPS):
+				style_idx = surf.styles[maps] if maps < len(surf.styles) else 255
+				if style_idx == 255:
+					break
+				scale_rgb, _ = _lightstyle_values(style_idx)
+				scale = [modulate * c for c in scale_rgb]
+				all_one = all(abs(scale[i] - 1.0) < 1e-6 for i in range(3))
+				for i in range(size):
+					idx = i * 3
+					if all_one:
+						s_blocklights[idx + 0] = float(lightmap_data[lightmap_offset + idx + 0])
+						s_blocklights[idx + 1] = float(lightmap_data[lightmap_offset + idx + 1])
+						s_blocklights[idx + 2] = float(lightmap_data[lightmap_offset + idx + 2])
+					else:
+						s_blocklights[idx + 0] = lightmap_data[lightmap_offset + idx + 0] * scale[0]
+						s_blocklights[idx + 1] = lightmap_data[lightmap_offset + idx + 1] * scale[1]
+						s_blocklights[idx + 2] = lightmap_data[lightmap_offset + idx + 2] * scale[2]
+				lightmap_offset += size * 3
+		else:
+			for idx in range(size * 3):
+				s_blocklights[idx] = 0.0
+			for maps in range(qfiles.MAXLIGHTMAPS):
+				style_idx = surf.styles[maps] if maps < len(surf.styles) else 255
+				if style_idx == 255:
+					break
+				scale_rgb, _ = _lightstyle_values(style_idx)
+				scale = [modulate * c for c in scale_rgb]
+				all_one = all(abs(scale[i] - 1.0) < 1e-6 for i in range(3))
+				for i in range(size):
+					idx = i * 3
+					if all_one:
+						s_blocklights[idx + 0] += float(lightmap_data[lightmap_offset + idx + 0])
+						s_blocklights[idx + 1] += float(lightmap_data[lightmap_offset + idx + 1])
+						s_blocklights[idx + 2] += float(lightmap_data[lightmap_offset + idx + 2])
+					else:
+						s_blocklights[idx + 0] += lightmap_data[lightmap_offset + idx + 0] * scale[0]
+						s_blocklights[idx + 1] += lightmap_data[lightmap_offset + idx + 1] * scale[1]
+						s_blocklights[idx + 2] += lightmap_data[lightmap_offset + idx + 2] * scale[2]
+				lightmap_offset += size * 3
 
-	// count the # of maps
-	for ( nummaps = 0 ; nummaps < MAXLIGHTMAPS && surf->styles[nummaps] != 255 ;
-		 nummaps++)
-		;
+	if surf.dlightframe == gl_rmain.r_framecount:
+		R_AddDynamicLights(surf)
 
-	lightmap = surf->samples;
+	stride = int(stride)
+	dest_view = memoryview(dest)
+	dest_idx = 0	
+	bl_idx = 0
+	monolightmap = '0'
+	if gl_rmain.gl_monolightmap and getattr(gl_rmain.gl_monolightmap, "string", None):
+		monolightmap = gl_rmain.gl_monolightmap.string[0]
+	monolightmap = monolightmap.upper() if monolightmap else '0'
 
-	// add all the lightmaps
-	if ( nummaps == 1 )
-	{
-		int maps;
+	def _clamp(value):
+		value = int(value)
+		if value < 0:
+			return 0
+		if value > 255:
+			return 255
+		return value
 
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
-		{
-			bl = s_blocklights;
+	for _ in range(tmax):
+		row_base = dest_idx
+		for _ in range(smax):
+			r = q_shared.Q_ftol(s_blocklights[bl_idx])
+			g = q_shared.Q_ftol(s_blocklights[bl_idx + 1])
+			b = q_shared.Q_ftol(s_blocklights[bl_idx + 2])
+			if r < 0: r = 0
+			if g < 0: g = 0
+			if b < 0: b = 0
+			maxc = r if r > g else g
+			if b > maxc:
+				maxc = b
+			a = maxc
+			if maxc > 255:
+				t = 255.0 / maxc
+				r *= t
+				g *= t
+				b *= t
+				a *= t
 
-			for (i=0 ; i<3 ; i++)
-				scale[i] = gl_modulate->value*r_newrefdef.lightstyles[surf->styles[maps]].rgb[i];
-
-			if ( scale[0] == 1.0F &&
-				 scale[1] == 1.0F &&
-				 scale[2] == 1.0F )
-			{
-				for (i=0 ; i<size ; i++, bl+=3)
-				{
-					bl[0] = lightmap[i*3+0];
-					bl[1] = lightmap[i*3+1];
-					bl[2] = lightmap[i*3+2];
-				}
-			}
-			else
-			{
-				for (i=0 ; i<size ; i++, bl+=3)
-				{
-					bl[0] = lightmap[i*3+0] * scale[0];
-					bl[1] = lightmap[i*3+1] * scale[1];
-					bl[2] = lightmap[i*3+2] * scale[2];
-				}
-			}
-			lightmap += size*3;		// skip to next lightmap
-		}
-	}
-	else
-	{
-		int maps;
-
-		memset( s_blocklights, 0, sizeof( s_blocklights[0] ) * size * 3 );
-
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
-		{
-			bl = s_blocklights;
-
-			for (i=0 ; i<3 ; i++)
-				scale[i] = gl_modulate->value*r_newrefdef.lightstyles[surf->styles[maps]].rgb[i];
-
-			if ( scale[0] == 1.0F &&
-				 scale[1] == 1.0F &&
-				 scale[2] == 1.0F )
-			{
-				for (i=0 ; i<size ; i++, bl+=3 )
-				{
-					bl[0] += lightmap[i*3+0];
-					bl[1] += lightmap[i*3+1];
-					bl[2] += lightmap[i*3+2];
-				}
-			}
-			else
-			{
-				for (i=0 ; i<size ; i++, bl+=3)
-				{
-					bl[0] += lightmap[i*3+0] * scale[0];
-					bl[1] += lightmap[i*3+1] * scale[1];
-					bl[2] += lightmap[i*3+2] * scale[2];
-				}
-			}
-			lightmap += size*3;		// skip to next lightmap
-		}
-	}
-
-// add all the dynamic lights
-	if (surf->dlightframe == r_framecount)
-		R_AddDynamicLights (surf);
-
-// put into texture format
-store:
-	stride -= (smax<<2);
-	bl = s_blocklights;
-
-	monolightmap = gl_monolightmap->string[0];
-
-	if ( monolightmap == '0' )
-	{
-		for (i=0 ; i<tmax ; i++, dest += stride)
-		{
-			for (j=0 ; j<smax ; j++)
-			{
-				
-				r = Q_ftol( bl[0] );
-				g = Q_ftol( bl[1] );
-				b = Q_ftol( bl[2] );
-
-				// catch negative lights
-				if (r < 0)
-					r = 0;
-				if (g < 0)
-					g = 0;
-				if (b < 0)
-					b = 0;
-
-				/*
-				** determine the brightest of the three color components
-				*/
-				if (r > g)
-					max = r;
-				else
-					max = g;
-				if (b > max)
-					max = b;
-
-				/*
-				** alpha is ONLY used for the mono lightmap case.  For this reason
-				** we set it to the brightest of the color components so that 
-				** things don't get too dim.
-				*/
-				a = max;
-
-				/*
-				** rescale all the color components if the intensity of the greatest
-				** channel exceeds 1.0
-				*/
-				if (max > 255)
-				{
-					float t = 255.0F / max;
-
-					r = r*t;
-					g = g*t;
-					b = b*t;
-					a = a*t;
-				}
-
-				dest[0] = r;
-				dest[1] = g;
-				dest[2] = b;
-				dest[3] = a;
-
-				bl += 3;
-				dest += 4;
-			}
-		}
-	}
-	else
-	{
-		for (i=0 ; i<tmax ; i++, dest += stride)
-		{
-			for (j=0 ; j<smax ; j++)
-			{
-				
-				r = Q_ftol( bl[0] );
-				g = Q_ftol( bl[1] );
-				b = Q_ftol( bl[2] );
-
-				// catch negative lights
-				if (r < 0)
-					r = 0;
-				if (g < 0)
-					g = 0;
-				if (b < 0)
-					b = 0;
-
-				/*
-				** determine the brightest of the three color components
-				*/
-				if (r > g)
-					max = r;
-				else
-					max = g;
-				if (b > max)
-					max = b;
-
-				/*
-				** alpha is ONLY used for the mono lightmap case.  For this reason
-				** we set it to the brightest of the color components so that 
-				** things don't get too dim.
-				*/
-				a = max;
-
-				/*
-				** rescale all the color components if the intensity of the greatest
-				** channel exceeds 1.0
-				*/
-				if (max > 255)
-				{
-					float t = 255.0F / max;
-
-					r = r*t;
-					g = g*t;
-					b = b*t;
-					a = a*t;
-				}
-
-				/*
-				** So if we are doing alpha lightmaps we need to set the R, G, and B
-				** components to 0 and we need to set alpha to 1-alpha.
-				*/
-				switch ( monolightmap )
-				{
-				case 'L':
-				case 'I':
-					r = a;
-					g = b = 0;
-					break;
-				case 'C':
-					// try faking colored lighting
-					a = 255 - ((r+g+b)/3);
-					r *= a/255.0;
-					g *= a/255.0;
-					b *= a/255.0;
-					break;
-				case 'A':
-				default:
-					r = g = b = 0;
-					a = 255 - a;
-					break;
-				}
-
-				dest[0] = r;
-				dest[1] = g;
-				dest[2] = b;
-				dest[3] = a;
-
-				bl += 3;
-				dest += 4;
-			}
-		}
-	}
-	"""
+			if monolightmap == '0':
+				val_r, val_g, val_b, val_a = r, g, b, a
+			else:
+				if monolightmap in ('L', 'I'):
+					val_r, val_g, val_b = a, 0, 0
+					val_a = a
+				elif monolightmap == 'C':
+					val_a = 255 - ((r + g + b) / 3.0)
+					if val_a == 0:
+						val_r = val_g = val_b = 0
+					else:
+						val_r = r * (val_a / 255.0)
+						val_g = g * (val_a / 255.0)
+						val_b = b * (val_a / 255.0)
+				else:
+					val_r = val_g = val_b = 0
+					val_a = 255 - a
+			val_r = _clamp(val_r)
+			val_g = _clamp(val_g)
+			val_b = _clamp(val_b)
+			val_a = _clamp(val_a)
+			dest_view[row_base + 0] = val_r
+			dest_view[row_base + 1] = val_g
+			dest_view[row_base + 2] = val_b
+			dest_view[row_base + 3] = val_a
+			row_base += 4
+			bl_idx += 3
+		dest_idx += stride

@@ -950,8 +950,15 @@ def CL_AddViewWeapon (ps, ops):
 	if ps.fov > 90:
 		return
 
+	if ps.gunindex is None:
+		return
+
+	gun_index = ps.gunindex
+	if gun_index < 0 or gun_index >= len(cl_main.cl.model_draw):
+		return
+
 	gun = ref.entity_t()
-	gun.model = cl_main.cl.model_draw[ps.gunindex]
+	gun.model = cl_main.cl.model_draw[gun_index]
 	if gun.model is None:
 		return
 

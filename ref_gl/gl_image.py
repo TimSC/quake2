@@ -248,6 +248,20 @@ def GL_Bind (texnum): #int
 	gl_rmain.gl_state.currenttextures[gl_rmain.gl_state.currenttmu] = texnum
 	GL.glBindTexture (GL.GL_TEXTURE_2D, texnum)
 
+
+def GL_MBind( target, texnum ): #GLenum, int
+
+	GL_SelectTexture( target )
+	if target == GL.GL_TEXTURE0:
+		tmu = 0
+	else:
+		tmu = 1
+
+	if gl_rmain.gl_state.currenttextures[tmu] == texnum:
+		return
+	gl_rmain.gl_state.currenttextures[tmu] = texnum
+	GL.glBindTexture (GL.GL_TEXTURE_2D, texnum)
+
 """
 void GL_MBind( GLenum target, int texnum )
 {
