@@ -671,4 +671,9 @@ def R_SetSky (name, rotate, axis): # char *, float, vec3_t
 		else:
 			sky_min = 1.0/512
 			sky_max = 511.0/512
+
+
+def R_AddSkySurface(surf):
+    """Placeholder for sky surface handling until warping is ported."""
+    return
 		

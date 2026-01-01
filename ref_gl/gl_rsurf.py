@@ -49,6 +49,7 @@ BLOCK_HEIGHT = 128
 LIGHTMAP_BYTES = 4
 MAX_LIGHTMAPS = 128
 TURB_SCALE = 256.0 / (2 * math.pi)
+BACKFACE_EPSILON = 0.01
 
 r_alpha_surfaces = None
 
@@ -68,7 +69,12 @@ gl_lms = gllightmapstate_t()
 
 
 def R_CullBox(mins, maxs):
-    """Stubbed frustum check; always draws for now."""
+    if gl_rmain.r_nocull and gl_rmain.r_nocull.value:
+        return False
+
+    for i in range(4):
+        if q_shared.BoxOnPlaneSide(mins, maxs, gl_rmain.frustum[i]) == 2:
+            return True
     return False
 
 
@@ -79,45 +85,79 @@ def R_TextureAnimation(texinfo):
 
 
 def GL_RenderLightmappedPoly(surf):
-    # placeholder for per-surface multitexture drawing path (defer to R_RenderBrushPoly)
-    GL_BuildPolygonFromSurface(surf)
+    if not surf:
+        return
 
-    if not surf.polys:
+    GL_BuildPolygonFromSurface(surf)
+    if not surf.polys or surf.texinfo is None:
         return
 
     image = R_TextureAnimation(surf.texinfo)
     if image is None:
         return
 
+    gl_rmain.c_brush_polys += 1
+
     tex_base = gl_rmain.gl_state.lightmap_textures or gl_image.TEXNUM_LIGHTMAPS
-
     gl_image.GL_MBind(GL.GL_TEXTURE0, image.texnum)
-    gl_image.GL_MBind(GL.GL_TEXTURE1, tex_base + surf.lightmaptexturenum)
+    gl_image.GL_TexEnv(GL.GL_REPLACE)
 
-    flowing = surf.texinfo and (surf.texinfo.flags & q_shared.SURF_FLOWING)
-    scroll = 0.0
-    if flowing:
-        scroll = -64 * ((gl_rmain.r_newrefdef.time / 40.0) - int(gl_rmain.r_newrefdef.time / 40.0))
-        if scroll == 0.0:
-            scroll = -64.0
+    style_changed = False
+    mismatch_index = None
+    lightstyles = getattr(gl_rmain.r_newrefdef, "lightstyles", [])
 
-    poly = surf.polys
-    while poly:
-        v = poly.verts
-        GL.glBegin(GL.GL_POLYGON)
-        for i in range(poly.numverts):
-            s = v[i, 3]
-            if flowing:
-                s += scroll
-            GL.glMultiTexCoord2f(GL.GL_TEXTURE0, s, v[i, 4])
-            GL.glMultiTexCoord2f(GL.GL_TEXTURE1, v[i, 5], v[i, 6])
-            GL.glVertex3fv(v[i, :3])
-        GL.glEnd()
-        poly = poly.chain
+    def _lightstyle_white(idx):
+        if not lightstyles or idx >= len(lightstyles):
+            return 0.0
+        style = lightstyles[idx]
+        if style is None:
+            return 0.0
+        if isinstance(style, dict):
+            return style.get("white", 0.0)
+        return getattr(style, "white", 0.0)
+
+    for i in range(qfiles.MAXLIGHTMAPS):
+        style = surf.styles[i] if i < len(surf.styles) else 255
+        if style == 255:
+            break
+        if _lightstyle_white(style) != surf.cached_light[i]:
+            style_changed = True
+            mismatch_index = i
+            break
+
+    if surf.dlightframe == gl_rmain.r_framecount:
+        style_changed = True
+
+    is_dynamic = (
+        style_changed
+        and gl_rmain.gl_dynamic
+        and gl_rmain.gl_dynamic.value
+        and not (
+            surf.texinfo.flags
+            & (q_shared.SURF_SKY | q_shared.SURF_TRANS33 | q_shared.SURF_TRANS66 | q_shared.SURF_WARP)
+        )
+    )
+
+    if not is_dynamic:
+        gl_image.GL_MBind(GL.GL_TEXTURE1, tex_base + surf.lightmaptexturenum)
+        surf.lightmapchain = gl_lms.lightmap_surfaces[surf.lightmaptexturenum]
+        gl_lms.lightmap_surfaces[surf.lightmaptexturenum].append(surf)
+    else:
+        surf.lightmapchain = gl_lms.lightmap_surfaces[0]
+        gl_lms.lightmap_surfaces[0].append(surf)
+
+    if surf.flags & gl_model_h.SURF_DRAWTURB:
+        EmitWaterPolys(surf)
+    elif surf.texinfo.flags & q_shared.SURF_FLOWING:
+        DrawGLFlowingPoly(surf)
+    else:
+        DrawGLPoly(surf.polys)
 
 
 def R_AddSkySurface(surf):
-    pass
+    if surf is None:
+        return
+    gl_warp.R_AddSkySurface(surf)
 
 
 GL_LIGHTMAP_FORMAT = GL.GL_RGBA
@@ -201,7 +241,7 @@ def LM_UploadBlock(dynamic=False):
 
 
 def GL_CreateSurfaceLightmap(surf):
-    if surf.flags & (q_shared.SURF_SKY | gl_model_h.SURF_DRAWTURB):
+    if surf.flags & (gl_model_h.SURF_DRAWSKY | gl_model_h.SURF_DRAWTURB):
         return
 
     smax = (surf.extents[0] >> 4) + 1
@@ -213,7 +253,10 @@ def GL_CreateSurfaceLightmap(surf):
         LM_InitBlock()
         result = LM_AllocBlock(smax, tmax)
         if result is None:
-            raise RuntimeError("LM_AllocBlock failed twice")
+            gl_rmain.ri.Sys_Error(
+                q_shared.ERR_FATAL,
+                "Consecutive calls to LM_AllocBlock(%d,%d) failed" % (smax, tmax),
+            )
 
     surf.light_s, surf.light_t = result
     surf.lightmaptexturenum = gl_lms.current_lightmap_texture
@@ -225,10 +268,6 @@ def GL_CreateSurfaceLightmap(surf):
 
     gl_light.R_SetCacheState(surf)
     gl_light.R_BuildLightMap(surf, dest, BLOCK_WIDTH * LIGHTMAP_BYTES)
-
-    surfaces = gl_lms.lightmap_surfaces[surf.lightmaptexturenum]
-    if surf not in surfaces:
-        surfaces.append(surf)
 
 
 def GL_BuildPolygonFromSurface(surf):
@@ -328,8 +367,6 @@ def GL_BeginBuildingLightmaps(m):
 def GL_EndBuildingLightmaps():
     LM_UploadBlock(False)
     gl_image.GL_EnableMultitexture(False)
-
-r_alpha_surfaces = None
 
 
 def R_DrawWorld ():
@@ -532,7 +569,103 @@ def R_RecursiveWorldNode (node):
 
 
 def R_RenderBrushPoly(surf):
-    GL_BuildPolygonFromSurface(surf)
+    if surf is None:
+        return
+
+    gl_rmain.c_brush_polys += 1
+
+    image = R_TextureAnimation(surf.texinfo)
+    if not image:
+        return
+
+    if surf.flags & gl_model_h.SURF_DRAWTURB:
+        gl_image.GL_Bind(image.texnum)
+        gl_image.GL_TexEnv(GL.GL_MODULATE)
+        intensity = getattr(gl_rmain.gl_state, "inverse_intensity", 1.0) or 1.0
+        GL.glColor4f(intensity, intensity, intensity, 1.0)
+        EmitWaterPolys(surf)
+        gl_image.GL_TexEnv(GL.GL_REPLACE)
+        return
+
+    gl_image.GL_Bind(image.texnum)
+    gl_image.GL_TexEnv(GL.GL_REPLACE)
+
+    if surf.texinfo and (surf.texinfo.flags & q_shared.SURF_FLOWING):
+        DrawGLFlowingPoly(surf)
+    else:
+        DrawGLPoly(surf.polys)
+
+    style_changed = False
+    style_index = None
+    for i in range(qfiles.MAXLIGHTMAPS):
+        style = surf.styles[i] if i < len(surf.styles) else 255
+        if style == 255:
+            break
+        lightstyle = gl_rmain.r_newrefdef.lightstyles[style]
+        if lightstyle.get("white", 0) != surf.cached_light[i]:
+            style_changed = True
+            style_index = style
+            break
+
+    if surf.dlightframe == gl_rmain.r_framecount:
+        style_changed = True
+
+    is_dynamic = False
+    texinfo_flags = surf.texinfo.flags if surf.texinfo else 0
+    if style_changed:
+        dynamic_flags = (
+            q_shared.SURF_SKY
+            | q_shared.SURF_TRANS33
+            | q_shared.SURF_TRANS66
+            | q_shared.SURF_WARP
+        )
+        if (
+            getattr(gl_rmain.gl_dynamic, "value", False)
+            and not (texinfo_flags & dynamic_flags)
+        ):
+            is_dynamic = True
+
+    tex_base = gl_rmain.gl_state.lightmap_textures or gl_image.TEXNUM_LIGHTMAPS
+
+    if is_dynamic:
+        style = (
+            surf.styles[mismatch_index]
+            if mismatch_index is not None and mismatch_index < len(surf.styles)
+            else 255
+        )
+        need_rebuild = (
+            style != 255
+            and (style >= 32 or style == 0)
+            and surf.dlightframe != gl_rmain.r_framecount
+        )
+
+        if need_rebuild:
+            smax = (surf.extents[0] >> 4) + 1
+            tmax = (surf.extents[1] >> 4) + 1
+            temp = bytearray(smax * tmax * LIGHTMAP_BYTES)
+            gl_light.R_BuildLightMap(surf, temp, smax * LIGHTMAP_BYTES)
+            gl_light.R_SetCacheState(surf)
+
+            gl_image.GL_Bind(tex_base + surf.lightmaptexturenum)
+            GL.glTexSubImage2D(
+                GL.GL_TEXTURE_2D,
+                0,
+                surf.light_s,
+                surf.light_t,
+                smax,
+                tmax,
+                GL_LIGHTMAP_FORMAT,
+                GL.GL_UNSIGNED_BYTE,
+                temp,
+            )
+            surf.lightmapchain = gl_lms.lightmap_surfaces[surf.lightmaptexturenum]
+            gl_lms.lightmap_surfaces[surf.lightmaptexturenum].append(surf)
+        else:
+            surf.lightmapchain = gl_lms.lightmap_surfaces[0]
+            gl_lms.lightmap_surfaces[0].append(surf)
+    else:
+        surf.lightmapchain = gl_lms.lightmap_surfaces[surf.lightmaptexturenum]
+        gl_lms.lightmap_surfaces[surf.lightmaptexturenum].append(surf)
 
 
 def DrawTextureChains ():
@@ -553,6 +686,129 @@ def DrawTextureChains ():
 
         image.texturechain = None
 
+
+def R_DrawInlineBModel ():
+    global r_alpha_surfaces
+
+    currentmodel = gl_rmain.currentmodel
+    if currentmodel is None:
+        return
+
+    if not (gl_rmain.gl_flashblend and gl_rmain.gl_flashblend.value):
+        node = None
+        if currentmodel.nodes and 0 <= currentmodel.firstnode < len(currentmodel.nodes):
+            node = currentmodel.nodes[currentmodel.firstnode]
+        dlights = getattr(gl_rmain.r_newrefdef, "dlights", [])
+        num_dlights = getattr(gl_rmain.r_newrefdef, "num_dlights", 0)
+        for k in range(min(num_dlights, len(dlights))):
+            lt = dlights[k]
+            if node is None:
+                break
+            gl_light.R_MarkLights(lt, 1 << k, node)
+
+    start = max(0, currentmodel.firstmodelsurface)
+    end = min(len(currentmodel.surfaces), start + currentmodel.nummodelsurfaces)
+
+    ent_flags = getattr(gl_rmain.currententity, "flags", 0)
+    if ent_flags & q_shared.RF_TRANSLUCENT:
+        GL.glEnable(GL.GL_BLEND)
+        GL.glColor4f(1.0, 1.0, 1.0, 0.25)
+        gl_image.GL_TexEnv(GL.GL_MODULATE)
+
+    for surf in currentmodel.surfaces[start:end]:
+        plane = surf.plane
+        if plane is None:
+            continue
+        dot = q_shared.DotProduct(modelorg, plane.normal) - plane.dist
+        is_backface = bool(surf.flags & gl_model_h.SURF_PLANEBACK)
+        match = (is_backface and dot < -BACKFACE_EPSILON) or (
+            not is_backface and dot > BACKFACE_EPSILON
+        )
+        if not match:
+            continue
+
+        texinfo = surf.texinfo
+        flags = texinfo.flags if texinfo else 0
+
+        if flags & (q_shared.SURF_TRANS33 | q_shared.SURF_TRANS66):
+            surf.texturechain = r_alpha_surfaces
+            r_alpha_surfaces = surf
+        elif qgl_linux.qglMTexCoord2fSGIS and not (surf.flags & gl_model_h.SURF_DRAWTURB):
+            GL_RenderLightmappedPoly(surf)
+        else:
+            gl_image.GL_EnableMultitexture(False)
+            R_RenderBrushPoly(surf)
+            gl_image.GL_EnableMultitexture(True)
+
+    if not (ent_flags & q_shared.RF_TRANSLUCENT):
+        if not qgl_linux.qglMTexCoord2fSGIS:
+            R_BlendLightmaps()
+    else:
+        GL.glDisable(GL.GL_BLEND)
+        GL.glColor4f(1.0, 1.0, 1.0, 1.0)
+        gl_image.GL_TexEnv(GL.GL_REPLACE)
+
+
+def R_DrawBrushModel (ent):
+    currentmodel = gl_rmain.currentmodel
+    if currentmodel is None or currentmodel.nummodelsurfaces == 0:
+        return
+
+    gl_rmain.currententity = ent
+    gl_rmain.gl_state.currenttextures[0] = -1
+    gl_rmain.gl_state.currenttextures[1] = -1
+
+    origin = ent.origin
+    mins = np.empty((3,), dtype=np.float32)
+    maxs = np.empty((3,), dtype=np.float32)
+    angles = ent.angles
+    rotated = bool(angles[0] or angles[1] or angles[2])
+
+    if rotated:
+        radius = currentmodel.radius
+        for i in range(3):
+            mins[i] = origin[i] - radius
+            maxs[i] = origin[i] + radius
+    else:
+        q_shared.VectorAdd(origin, currentmodel.mins, mins)
+        q_shared.VectorAdd(origin, currentmodel.maxs, maxs)
+
+    if R_CullBox(mins, maxs):
+        return
+
+    gl_lms.lightmap_surfaces = [[] for _ in range(MAX_LIGHTMAPS)]
+
+    GL.glColor3f(1.0, 1.0, 1.0)
+
+    q_shared.VectorSubtract(gl_rmain.r_newrefdef.vieworg, origin, modelorg)
+
+    if rotated:
+        temp = modelorg.copy()
+        forward = np.zeros((3,), dtype=np.float32)
+        right = np.zeros((3,), dtype=np.float32)
+        up = np.zeros((3,), dtype=np.float32)
+        q_shared.AngleVectors(angles, forward, right, up)
+        modelorg[0] = q_shared.DotProduct(temp, forward)
+        modelorg[1] = -q_shared.DotProduct(temp, right)
+        modelorg[2] = q_shared.DotProduct(temp, up)
+
+    GL.glPushMatrix()
+    angles[0] = -angles[0]
+    angles[2] = -angles[2]
+    gl_rmain.R_RotateForEntity(ent)
+    angles[0] = -angles[0]
+    angles[2] = -angles[2]
+
+    gl_image.GL_EnableMultitexture(True)
+    gl_image.GL_SelectTexture(GL.GL_TEXTURE0)
+    gl_image.GL_TexEnv(GL.GL_REPLACE)
+    gl_image.GL_SelectTexture(GL.GL_TEXTURE1)
+    gl_image.GL_TexEnv(GL.GL_MODULATE)
+
+    R_DrawInlineBModel()
+    gl_image.GL_EnableMultitexture(False)
+
+    GL.glPopMatrix()
 
 def DrawGLPolyChain(polys, soffset=0.0, toffset=0.0):
     while polys:
@@ -727,5 +983,25 @@ def R_DrawAlphaSurfaces():
 
 
 def R_DrawTriangleOutlines ():
-    """Stub that will later draw debug triangle outlines."""
-    pass
+    if gl_rmain.gl_showtris is None or not gl_rmain.gl_showtris.value:
+        return
+
+    GL.glDisable(GL.GL_TEXTURE_2D)
+    GL.glDisable(GL.GL_DEPTH_TEST)
+    GL.glColor4f(1.0, 1.0, 1.0, 1.0)
+
+    for surfaces in gl_lms.lightmap_surfaces:
+        for surf in surfaces:
+            poly = surf.polys
+            while poly:
+                for j in range(2, poly.numverts):
+                    GL.glBegin(GL.GL_LINE_STRIP)
+                    GL.glVertex3fv(poly.verts[0, :3])
+                    GL.glVertex3fv(poly.verts[j - 1, :3])
+                    GL.glVertex3fv(poly.verts[j, :3])
+                    GL.glVertex3fv(poly.verts[0, :3])
+                    GL.glEnd()
+                poly = poly.chain
+
+    GL.glEnable(GL.GL_DEPTH_TEST)
+    GL.glEnable(GL.GL_TEXTURE_2D)

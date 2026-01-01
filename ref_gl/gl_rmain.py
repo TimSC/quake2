@@ -28,7 +28,7 @@ from enum import Enum
 from client import ref
 from linux import gl_glx, qgl_linux
 from game import q_shared
-from qcommon import cvar, cmd, files, qcommon
+from qcommon import cvar, cmd, files, qcommon, qfiles
 from ref_gl import gl_draw, gl_image, gl_rmisc, gl_model, gl_warp, gl_rsurf
 
 REF_VERSION = "GL 0.01"
@@ -95,6 +95,10 @@ ri = ref.refimport_t()
 """
 int GL_TEXTURE0, GL_TEXTURE1;
 """
+frustum = [q_shared.cplane_t() for _ in range(4)]
+
+frustum = [q_shared.cplane_t() for _ in range(4)]
+
 r_worldmodel = None #model_t *
 
 gldepthmin, gldepthmax = 0.0, 0.0 #float
@@ -109,6 +113,9 @@ r_particletexture = None # image_t *, little dot for particles
 currententity = None # entity_t *
 
 currentmodel = None # model_t *
+ 
+c_brush_polys = 0 # int
+c_alias_polys = 0 # int
 """
 cplane_t	frustum[4];
 
@@ -137,211 +144,54 @@ r_base_world_matrix = np.zeros((16,), dtype=np.float32)
 #
 r_newrefdef = ref.refdef_t()
 
-r_viewcluster, r_viewcluster2, r_oldviewcluster, r_oldviewcluster2 = None, None, None, None #int
-r_visframecount = 0 #int			// bumped when going to a new PVS
-r_framecount = 0 #int			// used for dlight push checking
+r_viewcluster = -1
+r_viewcluster2 = -1
+r_oldviewcluster = -1
+r_oldviewcluster2 = -1
 
-r_norefresh = None #cvar_t *
-r_drawentities = None #cvar_t *
-r_drawworld = None #cvar_t *
-r_speeds = None #cvar_t *
-r_fullbright = None #cvar_t *
-r_novis = None #cvar_t *
-r_nocull = None #cvar_t *
-r_lerpmodels = None #cvar_t *
-r_lefthand = None #cvar_t *
+r_visframecount = 0
+r_framecount = 0
 
-r_lightlevel = None #cvar_t *, FIXME: This is a HACK to get the client's light level
 
-gl_nosubimage = None #cvar_t *
-gl_allow_software = None #cvar_t *
+def SignbitsForPlane(out):
+    bits = 0
+    for j in range(3):
+        if out.normal[j] < 0:
+            bits |= 1 << j
+    return bits
 
-gl_vertex_arrays = None #cvar_t *
 
-gl_particle_min_size = None #cvar_t *
-gl_particle_max_size = None #cvar_t *
-gl_particle_size = None #cvar_t *
-gl_particle_att_a = None #cvar_t *
-gl_particle_att_b = None #cvar_t *
-gl_particle_att_c = None #cvar_t *
+def R_SetFrustum():
+    q_shared.RotatePointAroundVector(
+        frustum[0].normal,
+        vup,
+        vpn,
+        -(90 - r_newrefdef.fov_x / 2.0),
+    )
+    q_shared.RotatePointAroundVector(
+        frustum[1].normal,
+        vup,
+        vpn,
+        90 - r_newrefdef.fov_x / 2.0,
+    )
+    q_shared.RotatePointAroundVector(
+        frustum[2].normal,
+        vright,
+        vpn,
+        90 - r_newrefdef.fov_y / 2.0,
+    )
+    q_shared.RotatePointAroundVector(
+        frustum[3].normal,
+        vright,
+        vpn,
+        -(90 - r_newrefdef.fov_y / 2.0),
+    )
 
-gl_ext_swapinterval = None #cvar_t *
-gl_ext_palettedtexture = None #cvar_t *
-gl_ext_multitexture = None #cvar_t *
-gl_ext_pointparameters = None #cvar_t *
-gl_ext_compiled_vertex_array = None #cvar_t *
-
-gl_log = None #cvar_t *
-gl_bitdepth = None #cvar_t *
-gl_drawbuffer = None #cvar_t *
-gl_driver = None #cvar_t *
-gl_lightmap = None #cvar_t *
-gl_shadows = None #cvar_t *
-gl_mode = None #cvar_t *
-gl_dynamic = None #cvar_t *
-gl_monolightmap = None #cvar_t *
-gl_modulate = None #cvar_t *
-gl_nobind = None #cvar_t *
-gl_round_down = None #cvar_t *
-gl_picmip = None #cvar_t *
-gl_skymip = None #cvar_t *
-gl_showtris = None #cvar_t *
-gl_ztrick = None #cvar_t *
-gl_finish = None #cvar_t *
-gl_clear = None #cvar_t *
-gl_cull = None #cvar_t *
-gl_polyblend = None #cvar_t *
-gl_flashblend = None #cvar_t *
-gl_playermip = None #cvar_t *
-
-gl_saturatelighting = None #cvar_t *
-gl_swapinterval = None #cvar_t *
-gl_texturemode = None #cvar_t *
-gl_texturealphamode = None #cvar_t *
-gl_texturesolidmode = None #cvar_t *
-gl_lockpvs = None #cvar_t *
-
-gl_3dlabs_broken = None #cvar_t *
-
-vid_fullscreen = None #cvar_t *
-vid_gamma = None #cvar_t *
-vid_ref = None #cvar_t *
-
+    for i in range(4):
+        frustum[i].type = qfiles.PLANE_ANYZ
+        frustum[i].dist = q_shared.DotProduct(r_origin, frustum[i].normal)
+        frustum[i].signbits = SignbitsForPlane(frustum[i])
 """
-=================
-R_CullBox
-
-Returns true if the box is completely outside the frustom
-=================
-*/
-qboolean R_CullBox (vec3_t mins, vec3_t maxs)
-{
-	int		i;
-
-	if (r_nocull->value)
-		return false;
-
-	for (i=0 ; i<4 ; i++)
-		if ( BOX_ON_PLANE_SIDE(mins, maxs, &frustum[i]) == 2)
-			return true;
-	return false;
-}
-
-
-void R_RotateForEntity (entity_t *e)
-{
-	qglTranslatef (e->origin[0],  e->origin[1],  e->origin[2]);
-
-	qglRotatef (e->angles[1],  0, 0, 1);
-	qglRotatef (-e->angles[0],  0, 1, 0);
-	qglRotatef (-e->angles[2],  1, 0, 0);
-}
-
-/*
-=============================================================
-
-  SPRITE MODELS
-
-=============================================================
-*/
-
-
-/*
-=================
-R_DrawSpriteModel
-
-=================
-*/
-void R_DrawSpriteModel (entity_t *e)
-{
-	float alpha = 1.0F;
-	vec3_t	point;
-	dsprframe_t	*frame;
-	float		*up, *right;
-	dsprite_t		*psprite;
-
-	// don't even bother culling, because it's just a single
-	// polygon without a surface cache
-
-	psprite = (dsprite_t *)currentmodel->extradata;
-
-#if 0
-	if (e->frame < 0 || e->frame >= psprite->numframes)
-	{
-		ri.Con_Printf (q_shared.PRINT_ALL, "no such sprite frame %i\n", e->frame);
-		e->frame = 0;
-	}
-#endif
-	e->frame %= psprite->numframes;
-
-	frame = &psprite->frames[e->frame];
-
-#if 0
-	if (psprite->type == SPR_ORIENTED)
-	{	// bullet marks on walls
-	vec3_t		v_forward, v_right, v_up;
-
-	AngleVectors (currententity->angles, v_forward, v_right, v_up);
-		up = v_up;
-		right = v_right;
-	}
-	else
-#endif
-	{	// normal sprite
-		up = vup;
-		right = vright;
-	}
-
-	if ( e->flags & RF_TRANSLUCENT )
-		alpha = e->alpha;
-
-	if ( alpha != 1.0F )
-		qglEnable( GL_BLEND );
-
-	qglColor4f( 1, 1, 1, alpha );
-
-	GL_Bind(currentmodel->skins[e->frame]->texnum);
-
-	GL_TexEnv( GL_MODULATE );
-
-	if ( alpha == 1.0 )
-		qglEnable (GL_ALPHA_TEST);
-	else
-		qglDisable( GL_ALPHA_TEST );
-
-	qglBegin (GL_QUADS);
-
-	qglTexCoord2f (0, 1);
-	VectorMA (e->origin, -frame->origin_y, up, point);
-	VectorMA (point, -frame->origin_x, right, point);
-	qglVertex3fv (point);
-
-	qglTexCoord2f (0, 0);
-	VectorMA (e->origin, frame->height - frame->origin_y, up, point);
-	VectorMA (point, -frame->origin_x, right, point);
-	qglVertex3fv (point);
-
-	qglTexCoord2f (1, 0);
-	VectorMA (e->origin, frame->height - frame->origin_y, up, point);
-	VectorMA (point, frame->width - frame->origin_x, right, point);
-	qglVertex3fv (point);
-
-	qglTexCoord2f (1, 1);
-	VectorMA (e->origin, -frame->origin_y, up, point);
-	VectorMA (point, frame->width - frame->origin_x, right, point);
-	qglVertex3fv (point);
-	
-	qglEnd ();
-
-	qglDisable (GL_ALPHA_TEST);
-	GL_TexEnv( GL_REPLACE );
-
-	if ( alpha != 1.0F )
-		qglDisable( GL_BLEND );
-
-	qglColor4f( 1, 1, 1, 1 );
-}
-
 //==================================================================================
 
 /*
@@ -355,7 +205,7 @@ void R_DrawNullModel (void)
 	int		i;
 
 	if ( currententity->flags & RF_FULLBRIGHT )
-		shadelight[0] = shadelight[1] = shadelight[2] = 1.0F;
+		shadelight[0] = shadelight[1] = shadelight[2] = 1.0;
 	else
 		R_LightPoint (currententity->origin, shadelight);
 
@@ -614,66 +464,6 @@ void R_PolyBlend (void)
 	qglEnable (GL_ALPHA_TEST);
 
 	qglColor4f(1,1,1,1);
-}
-
-//=======================================================================
-
-int SignbitsForPlane (cplane_t *out)
-{
-	int	bits, j;
-
-	// for fast box on planeside test
-
-	bits = 0;
-	for (j=0 ; j<3 ; j++)
-	{
-		if (out->normal[j] < 0)
-			bits |= 1<<j;
-	}
-	return bits;
-}
-
-"""
-def R_SetFrustum ():
-
-	pass
-	"""
-	int		i;
-
-#if 0
-	/*
-	** this code is wrong, since it presume a 90 degree FOV both in the
-	** horizontal and vertical plane
-	*/
-	// front side is visible
-	VectorAdd (vpn, vright, frustum[0].normal);
-	VectorSubtract (vpn, vright, frustum[1].normal);
-	VectorAdd (vpn, vup, frustum[2].normal);
-	VectorSubtract (vpn, vup, frustum[3].normal);
-
-	// we theoretically don't need to normalize these vectors, but I do it
-	// anyway so that debugging is a little easier
-	VectorNormalize( frustum[0].normal );
-	VectorNormalize( frustum[1].normal );
-	VectorNormalize( frustum[2].normal );
-	VectorNormalize( frustum[3].normal );
-#else
-	// rotate VPN right by FOV_X/2 degrees
-	RotatePointAroundVector( frustum[0].normal, vup, vpn, -(90-r_newrefdef.fov_x / 2 ) );
-	// rotate VPN left by FOV_X/2 degrees
-	RotatePointAroundVector( frustum[1].normal, vup, vpn, 90-r_newrefdef.fov_x / 2 );
-	// rotate VPN up by FOV_X/2 degrees
-	RotatePointAroundVector( frustum[2].normal, vright, vpn, 90-r_newrefdef.fov_y / 2 );
-	// rotate VPN down by FOV_X/2 degrees
-	RotatePointAroundVector( frustum[3].normal, vright, vpn, -( 90 - r_newrefdef.fov_y / 2 ) );
-#endif
-
-	for (i=0 ; i<4 ; i++)
-	{
-		frustum[i].type = PLANE_ANYZ;
-		frustum[i].dist = DotProduct (r_origin, frustum[i].normal);
-		frustum[i].signbits = SignbitsForPlane (&frustum[i]);
-	}
 }
 
 //=======================================================================

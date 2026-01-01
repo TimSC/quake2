@@ -199,6 +199,63 @@ def VectorNormalize2(v, out):
 def VectorLength(v):
 	return math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
 
+
+def ProjectPointOnPlane(dst, p, normal):
+	if dst is None or p is None or normal is None:
+		return
+
+	denom = DotProduct(normal, normal)
+	if denom == 0.0:
+		dst[0] = p[0]
+		dst[1] = p[1]
+		dst[2] = p[2]
+		return
+
+	inv_denom = 1.0 / denom
+	d = DotProduct(normal, p) * inv_denom
+
+	dst[0] = p[0] - d * normal[0] * inv_denom
+	dst[1] = p[1] - d * normal[1] * inv_denom
+	dst[2] = p[2] - d * normal[2] * inv_denom
+
+
+def PerpendicularVector(dst, src):
+	minelem = 1.0
+	pos = 0
+	for i in range(3):
+		val = abs(src[i])
+		if val < minelem:
+			pos = i
+			minelem = val
+
+	tempvec = np.zeros((3,), dtype=np.float32)
+	tempvec[pos] = 1.0
+
+	ProjectPointOnPlane(dst, tempvec, src)
+	VectorNormalize(dst)
+
+
+def RotatePointAroundVector(dst, dir, point, degrees):
+	axis = np.array(dir, dtype=np.float32)
+	length = math.sqrt(axis[0]**2 + axis[1]**2 + axis[2]**2)
+	if length == 0.0:
+		dst[0] = point[0]
+		dst[1] = point[1]
+		dst[2] = point[2]
+		return
+
+	axis /= length
+	radians = math.radians(degrees)
+	cos_ang = math.cos(radians)
+	sin_ang = math.sin(radians)
+	dot = DotProduct(axis, point)
+	cross = np.zeros((3,), dtype=np.float32)
+	CrossProduct(axis, point, cross)
+
+	dst[0] = point[0] * cos_ang + cross[0] * sin_ang + axis[0] * dot * (1.0 - cos_ang)
+	dst[1] = point[1] * cos_ang + cross[1] * sin_ang + axis[1] * dot * (1.0 - cos_ang)
+	dst[2] = point[2] * cos_ang + cross[2] * sin_ang + axis[2] * dot * (1.0 - cos_ang)
+
 def VectorInverse(v):
 	v[0] = -v[0]
 	v[1] = -v[1]
@@ -611,8 +668,8 @@ class cplane_t(object):
 	def __init__(self):
 
 		self.normal = np.zeros((3,), dtype=np.float32) # vec3_t
-		self.dist = None # float
-		self.type = None # byte, for fast side tests
+		self.dist = 0.0 # float
+		self.type = 0 # byte, for fast side tests
 		self.signbits = None # byte, signx + (signy<<1) + (signz<<1)
 		self.pad = [None, None] #byte [2]
 
