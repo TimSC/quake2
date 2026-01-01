@@ -598,7 +598,8 @@ def CL_FireEntityEvents (frame):
 		s1 = cl_main.cl_parse_entities[num]
 		if s1.event and hasattr(cl_fx, "CL_EntityEvent"):
 			cl_fx.CL_EntityEvent(s1)
-		if s1.effects & q_shared.EF_TELEPORTER and hasattr(cl_fx, "CL_TeleporterParticles"):
+		effects = s1.effects or 0
+		if effects & q_shared.EF_TELEPORTER and hasattr(cl_fx, "CL_TeleporterParticles"):
 			cl_fx.CL_TeleporterParticles(s1)
 
 
@@ -720,614 +721,39 @@ INTERPOLATE BETWEEN FRAMES TO GET RENDERING PARMS
 
 ==========================================================================
 
+"""
 
-struct model_s *S_RegisterSexedModel (entity_state_t *ent, char *base)
-{
-	int				n;
-	char			*p;
-	struct model_s	*mdl;
-	char			model[MAX_QPATH];
-	char			buffer[MAX_QPATH];
+def S_RegisterSexedModel (ent, base):
+	model = ""
+	n = q_shared.CS_PLAYERSKINS + ent.number - 1
+	if 0 <= n < len(cl_main.cl.configstrings):
+		config = cl_main.cl.configstrings[n]
+		if config:
+			idx = config.find('\\')
+			if idx != -1:
+				model_name = config[idx + 1:]
+				end = model_name.find('/')
+				if end != -1:
+					model = model_name[:end]
+	if not model:
+		model = "male"
 
-	// determine what model the client is using
-	model[0] = 0;
-	n = CS_PLAYERSKINS + ent.number - 1;
-	if (cl_main.cl.configstrings[n][0])
-	{
-		p = strchr(cl_main.cl.configstrings[n], '\\');
-		if (p)
-		{
-			p += 1;
-			strcpy(model, p);
-			p = strchr(model, '/');
-			if (p)
-				*p = 0;
-		}
-	}
-	// if we can't figure it out, they're male
-	if (!model[0])
-		strcpy(model, "male");
+	base_name = base[1:] if base and len(base) > 1 else (base or "")
+	re_interface = getattr(cl_main.vid_so, 're', None)
+	if not re_interface:
+		return None
 
-	Com_sprintf (buffer, sizeof(buffer), "players/%s/%s", model, base+1);
-	mdl = re.RegisterModel(buffer);
-	if (!mdl) {
-		// not found, try default weapon model
-		Com_sprintf (buffer, sizeof(buffer), "players/%s/weapon.md2", model);
-		mdl = re.RegisterModel(buffer);
-		if (!mdl) {
-			// no, revert to the male model
-			Com_sprintf (buffer, sizeof(buffer), "players/%s/%s", "male", base+1);
-			mdl = re.RegisterModel(buffer);
-			if (!mdl) {
-				// last try, default male weapon.md2
-				Com_sprintf (buffer, sizeof(buffer), "players/male/weapon.md2");
-				mdl = re.RegisterModel(buffer);
-			}
-		} 
-	}
-
-	return mdl;
-}
-
-// PMM - used in shell code 
-extern int Developer_searchpath (int who);
-// pmm
-/*
-===============
-CL_AddPacketEntities
-
-===============
-*/
-void CL_AddPacketEntities (frame_t *frame)
-{
-	entity_t			ent;
-	entity_state_t		*s1;
-	float				autorotate;
-	int					i;
-	int					pnum;
-	centity_t			*cent;
-	int					autoanim;
-	clientinfo_t		*ci;
-	unsigned int		effects, renderfx;
-
-	// bonus items rotate at a fixed rate
-	autorotate = anglemod(cl_main.cl.time/10);
-
-	// brush models can auto animate their frames
-	autoanim = 2*cl_main.cl.time/1000;
-
-	memset (&ent, 0, sizeof(ent));
-
-	for (pnum = 0 ; pnum<frame.num_entities ; pnum++)
-	{
-		s1 = &cl_main.cl_parse_entities[(frame.parse_entities+pnum)&(client.MAX_PARSE_ENTITIES-1)];
-
-		cent = &cl_main.cl_entities[s1.number];
-
-		effects = s1.effects;
-		renderfx = s1.renderfx;
-
-			// set frame
-		if (effects & EF_ANIM01)
-			ent.frame = autoanim & 1;
-		else if (effects & EF_ANIM23)
-			ent.frame = 2 + (autoanim & 1);
-		else if (effects & EF_ANIM_ALL)
-			ent.frame = autoanim;
-		else if (effects & EF_ANIM_ALLFAST)
-			ent.frame = cl_main.cl.time / 100;
-		else
-			ent.frame = s1.frame;
-
-		// quad and pent can do different things on client
-		if (effects & EF_PENT)
-		{
-			effects &= ~EF_PENT;
-			effects |= EF_COLOR_SHELL;
-			renderfx |= RF_SHELL_RED;
-		}
-
-		if (effects & EF_QUAD)
-		{
-			effects &= ~EF_QUAD;
-			effects |= EF_COLOR_SHELL;
-			renderfx |= RF_SHELL_BLUE;
-		}
-//======
-// PMM
-		if (effects & EF_DOUBLE)
-		{
-			effects &= ~EF_DOUBLE;
-			effects |= EF_COLOR_SHELL;
-			renderfx |= RF_SHELL_DOUBLE;
-		}
-
-		if (effects & EF_HALF_DAMAGE)
-		{
-			effects &= ~EF_HALF_DAMAGE;
-			effects |= EF_COLOR_SHELL;
-			renderfx |= RF_SHELL_HALF_DAM;
-		}
-// pmm
-//======
-		ent.oldframe = cent.prev.frame;
-		ent.backlerp = 1.0 - cl_main.cl.lerpfrac;
-
-		if (renderfx & (RF_FRAMELERP|RF_BEAM))
-		{	// step origin discretely, because the frames
-			// do the animation properly
-			q_shared.VectorCopy (cent.current.origin, ent.origin);
-			q_shared.VectorCopy (cent.current.old_origin, ent.oldorigin);
-		}
-		else
-		{	// interpolate origin
-			for (i=0 ; i<3 ; i++)
-			{
-				ent.origin[i] = ent.oldorigin[i] = cent.prev.origin[i] + cl_main.cl.lerpfrac * 
-					(cent.current.origin[i] - cent.prev.origin[i]);
-			}
-		}
-
-		// create a new entity
-	
-		// tweak the color of beams
-		if ( renderfx & RF_BEAM )
-		{	// the four beam colors are encoded in 32 bits of skinnum (hack)
-			ent.alpha = 0.30;
-			ent.skinnum = (s1.skinnum >> ((rand() % 4)*8)) & 0xff;
-			ent.model = NULL;
-		}
-		else
-		{
-			// set skin
-			if (s1.modelindex == 255)
-			{	// use custom player skin
-				ent.skinnum = 0;
-				ci = &cl_main.cl.clientinfo[s1.skinnum & 0xff];
-				ent.skin = ci.skin;
-				ent.model = ci.model;
-				if (!ent.skin or !ent.model)
-				{
-					ent.skin = cl_main.cl.baseclientinfo.skin;
-					ent.model = cl_main.cl.baseclientinfo.model;
-				}
-
-//============
-//PGM
-				if (renderfx & RF_USE_DISGUISE)
-				{
-					if(!strncmp((char *)ent.skin, "players/male", 12))
-					{
-						ent.skin = re.RegisterSkin ("players/male/disguise.pcx");
-						ent.model = re.RegisterModel ("players/male/tris.md2");
-					}
-					else if(!strncmp((char *)ent.skin, "players/female", 14))
-					{
-						ent.skin = re.RegisterSkin ("players/female/disguise.pcx");
-						ent.model = re.RegisterModel ("players/female/tris.md2");
-					}
-					else if(!strncmp((char *)ent.skin, "players/cyborg", 14))
-					{
-						ent.skin = re.RegisterSkin ("players/cyborg/disguise.pcx");
-						ent.model = re.RegisterModel ("players/cyborg/tris.md2");
-					}
-				}
-//PGM
-//============
-			}
-			else
-			{
-				ent.skinnum = s1.skinnum;
-				ent.skin = NULL;
-				ent.model = cl_main.cl.model_draw[s1.modelindex];
-			}
-		}
-
-		// only used for black hole model right now, FIXME: do better
-		if (renderfx == RF_TRANSLUCENT)
-			ent.alpha = 0.70;
-
-		// render effects (fullbright, translucent, etc)
-		if ((effects & EF_COLOR_SHELL))
-			ent.flags = 0;	// renderfx go on color shell entity
-		else
-			ent.flags = renderfx;
-
-		// calculate angles
-		if (effects & EF_ROTATE)
-		{	// some bonus items auto-rotate
-			ent.angles[0] = 0;
-			ent.angles[1] = autorotate;
-			ent.angles[2] = 0;
-		}
-		// RAFAEL
-		else if (effects & EF_SPINNINGLIGHTS)
-		{
-			ent.angles[0] = 0;
-			ent.angles[1] = anglemod(cl_main.cl.time/2) + s1.angles[1];
-			ent.angles[2] = 180;
-			{
-				vec3_t forward;
-				vec3_t start;
-
-				AngleVectors (ent.angles, forward, NULL, NULL);
-				VectorMA (ent.origin, 64, forward, start);
-				V_AddLight (start, 100, 1, 0, 0);
-			}
-		}
-		else
-		{	// interpolate angles
-			float	a1, a2;
-
-			for (i=0 ; i<3 ; i++)
-			{
-				a1 = cent.current.angles[i];
-				a2 = cent.prev.angles[i];
-				ent.angles[i] = LerpAngle (a2, a1, cl_main.cl.lerpfrac);
-			}
-		}
-
-		if (s1.number == cl_main.cl.playernum+1)
-		{
-			ent.flags |= RF_VIEWERMODEL;	// only draw from mirrors
-			// FIXME: still pass to refresh
-
-			if (effects & EF_FLAG1)
-				V_AddLight (ent.origin, 225, 1.0, 0.1, 0.1);
-			else if (effects & EF_FLAG2)
-				V_AddLight (ent.origin, 225, 0.1, 0.1, 1.0);
-			else if (effects & EF_TAGTRAIL)						//PGM
-				V_AddLight (ent.origin, 225, 1.0, 1.0, 0.0);	//PGM
-			else if (effects & EF_TRACKERTRAIL)					//PGM
-				V_AddLight (ent.origin, 225, -1.0, -1.0, -1.0);	//PGM
-
-			continue;
-		}
-
-		// if set to invisible, skip
-		if (!s1.modelindex)
-			continue;
-
-		if (effects & EF_BFG)
-		{
-			ent.flags |= RF_TRANSLUCENT;
-			ent.alpha = 0.30;
-		}
-
-		// RAFAEL
-		if (effects & EF_PLASMA)
-		{
-			ent.flags |= RF_TRANSLUCENT;
-			ent.alpha = 0.6;
-		}
-
-		if (effects & EF_SPHERETRANS)
-		{
-			ent.flags |= RF_TRANSLUCENT;
-			// PMM - *sigh*  yet more EF overloading
-			if (effects & EF_TRACKERTRAIL)
-				ent.alpha = 0.6;
-			else
-				ent.alpha = 0.3;
-		}
-//pmm
-
-		// add to refresh list
-		V_AddEntity (&ent);
-
-
-		// color shells generate a seperate entity for the main model
-		if (effects & EF_COLOR_SHELL)
-		{
-			// PMM - at this point, all of the shells have been handled
-			// if we're in the rogue pack, set up the custom mixing, otherwise just
-			// keep going
-//			if(Developer_searchpath(2) == 2)
-//			{
-				// all of the solo colors are fine.  we need to catch any of the combinations that look bad
-				// (double & half) and turn them into the appropriate color, and make double/quad something special
-				if (renderfx & RF_SHELL_HALF_DAM)
-				{
-					if(Developer_searchpath(2) == 2)
-					{
-						// ditch the half damage shell if any of red, blue, or double are on
-						if (renderfx & (RF_SHELL_RED|RF_SHELL_BLUE|RF_SHELL_DOUBLE))
-							renderfx &= ~RF_SHELL_HALF_DAM;
-					}
-				}
-
-				if (renderfx & RF_SHELL_DOUBLE)
-				{
-					if(Developer_searchpath(2) == 2)
-					{
-						// lose the yellow shell if we have a red, blue, or green shell
-						if (renderfx & (RF_SHELL_RED|RF_SHELL_BLUE|RF_SHELL_GREEN))
-							renderfx &= ~RF_SHELL_DOUBLE;
-						// if we have a red shell, turn it to purple by adding blue
-						if (renderfx & RF_SHELL_RED)
-							renderfx |= RF_SHELL_BLUE;
-						// if we have a blue shell (and not a red shell), turn it to cyan by adding green
-						else if (renderfx & RF_SHELL_BLUE)
-							// go to green if it's on already, otherwise do cyan (flash green)
-							if (renderfx & RF_SHELL_GREEN)
-								renderfx &= ~RF_SHELL_BLUE;
-							else
-								renderfx |= RF_SHELL_GREEN;
-					}
-				}
-//			}
-			// pmm
-			ent.flags = renderfx | RF_TRANSLUCENT;
-			ent.alpha = 0.30;
-			V_AddEntity (&ent);
-		}
-
-		ent.skin = NULL;		// never use a custom skin on others
-		ent.skinnum = 0;
-		ent.flags = 0;
-		ent.alpha = 0;
-
-		// duplicate for linked models
-		if (s1.modelindex2)
-		{
-			if (s1.modelindex2 == 255)
-			{	// custom weapon
-				ci = &cl_main.cl.clientinfo[s1.skinnum & 0xff];
-				i = (s1.skinnum >> 8); // 0 is default weapon model
-				if (!cl_vwep.value or i > MAX_CLIENTWEAPONMODELS - 1)
-					i = 0;
-				ent.model = ci.weaponmodel[i];
-				if (!ent.model) {
-					if (i != 0)
-						ent.model = ci.weaponmodel[0];
-					if (!ent.model)
-						ent.model = cl_main.cl.baseclientinfo.weaponmodel[0];
-				}
-			}
-			else
-				ent.model = cl_main.cl.model_draw[s1.modelindex2];
-
-			// PMM - check for the defender sphere shell .. make it translucent
-			// replaces the previous version which used the high bit on modelindex2 to determine transparency
-			if (!Q_strcasecmp (cl_main.cl.configstrings[CS_MODELS+(s1.modelindex2)], "models/items/shell/tris.md2"))
-			{
-				ent.alpha = 0.32;
-				ent.flags = RF_TRANSLUCENT;
-			}
-			// pmm
-
-			V_AddEntity (&ent);
-
-			//PGM - make sure these get reset.
-			ent.flags = 0;
-			ent.alpha = 0;
-			//PGM
-		}
-		if (s1.modelindex3)
-		{
-			ent.model = cl_main.cl.model_draw[s1.modelindex3];
-			V_AddEntity (&ent);
-		}
-		if (s1.modelindex4)
-		{
-			ent.model = cl_main.cl.model_draw[s1.modelindex4];
-			V_AddEntity (&ent);
-		}
-
-		if ( effects & EF_POWERSCREEN )
-		{
-			ent.model = cl_mod_powerscreen;
-			ent.oldframe = 0;
-			ent.frame = 0;
-			ent.flags |= (RF_TRANSLUCENT | RF_SHELL_GREEN);
-			ent.alpha = 0.30;
-			V_AddEntity (&ent);
-		}
-
-		// add automatic particle trails
-		if ( (effects&~EF_ROTATE) )
-		{
-			if (effects & EF_ROCKET)
-			{
-				CL_RocketTrail (cent.lerp_origin, ent.origin, cent);
-				V_AddLight (ent.origin, 200, 1, 1, 0);
-			}
-			// PGM - Do not reorder EF_BLASTER and EF_HYPERBLASTER. 
-			// EF_BLASTER | EF_TRACKER is a special case for EF_BLASTER2... Cheese!
-			else if (effects & EF_BLASTER)
-			{
-//				CL_BlasterTrail (cent.lerp_origin, ent.origin);
-//PGM
-				if (effects & EF_TRACKER)	// lame... problematic?
-				{
-					CL_BlasterTrail2 (cent.lerp_origin, ent.origin);
-					V_AddLight (ent.origin, 200, 0, 1, 0);		
-				}
-				else
-				{
-					CL_BlasterTrail (cent.lerp_origin, ent.origin);
-					V_AddLight (ent.origin, 200, 1, 1, 0);
-				}
-//PGM
-			}
-			else if (effects & EF_HYPERBLASTER)
-			{
-				if (effects & EF_TRACKER)						// PGM	overloaded for blaster2.
-					V_AddLight (ent.origin, 200, 0, 1, 0);		// PGM
-				else											// PGM
-					V_AddLight (ent.origin, 200, 1, 1, 0);
-			}
-			else if (effects & EF_GIB)
-			{
-				CL_DiminishingTrail (cent.lerp_origin, ent.origin, cent, effects);
-			}
-			else if (effects & EF_GRENADE)
-			{
-				CL_DiminishingTrail (cent.lerp_origin, ent.origin, cent, effects);
-			}
-			else if (effects & EF_FLIES)
-			{
-				CL_FlyEffect (cent, ent.origin);
-			}
-			else if (effects & EF_BFG)
-			{
-				static int bfg_lightramp[6] = {300, 400, 600, 300, 150, 75};
-
-				if (effects & EF_ANIM_ALLFAST)
-				{
-					CL_BfgParticles (&ent);
-					i = 200;
-				}
-				else
-				{
-					i = bfg_lightramp[s1.frame];
-				}
-				V_AddLight (ent.origin, i, 0, 1, 0);
-			}
-			// RAFAEL
-			else if (effects & EF_TRAP)
-			{
-				ent.origin[2] += 32;
-				CL_TrapParticles (&ent);
-				i = (rand()%100) + 100;
-				V_AddLight (ent.origin, i, 1, 0.8, 0.1);
-			}
-			else if (effects & EF_FLAG1)
-			{
-				CL_FlagTrail (cent.lerp_origin, ent.origin, 242);
-				V_AddLight (ent.origin, 225, 1, 0.1, 0.1);
-			}
-			else if (effects & EF_FLAG2)
-			{
-				CL_FlagTrail (cent.lerp_origin, ent.origin, 115);
-				V_AddLight (ent.origin, 225, 0.1, 0.1, 1);
-			}
-//======
-//ROGUE
-			else if (effects & EF_TAGTRAIL)
-			{
-				CL_TagTrail (cent.lerp_origin, ent.origin, 220);
-				V_AddLight (ent.origin, 225, 1.0, 1.0, 0.0);
-			}
-			else if (effects & EF_TRACKERTRAIL)
-			{
-				if (effects & EF_TRACKER)
-				{
-					float intensity;
-
-					intensity = 50 + (500 * (sin(cl_main.cl.time/500.0) + 1.0));
-					// FIXME - check out this effect in rendition
-					if(vidref_val == VIDREF_GL)
-						V_AddLight (ent.origin, intensity, -1.0, -1.0, -1.0);
-					else
-						V_AddLight (ent.origin, -1.0 * intensity, 1.0, 1.0, 1.0);
-					}
-				else
-				{
-					CL_Tracker_Shell (cent.lerp_origin);
-					V_AddLight (ent.origin, 155, -1.0, -1.0, -1.0);
-				}
-			}
-			else if (effects & EF_TRACKER)
-			{
-				CL_TrackerTrail (cent.lerp_origin, ent.origin, 0);
-				// FIXME - check out this effect in rendition
-				if(vidref_val == VIDREF_GL)
-					V_AddLight (ent.origin, 200, -1, -1, -1);
-				else
-					V_AddLight (ent.origin, -200, 1, 1, 1);
-			}
-//ROGUE
-//======
-			// RAFAEL
-			else if (effects & EF_GREENGIB)
-			{
-				CL_DiminishingTrail (cent.lerp_origin, ent.origin, cent, effects);				
-			}
-			// RAFAEL
-			else if (effects & EF_IONRIPPER)
-			{
-				CL_IonripperTrail (cent.lerp_origin, ent.origin);
-				V_AddLight (ent.origin, 100, 1, 0.5, 0.5);
-			}
-			// RAFAEL
-			else if (effects & EF_BLUEHYPERBLASTER)
-			{
-				V_AddLight (ent.origin, 200, 0, 0, 1);
-			}
-			// RAFAEL
-			else if (effects & EF_PLASMA)
-			{
-				if (effects & EF_ANIM_ALLFAST)
-				{
-					CL_BlasterTrail (cent.lerp_origin, ent.origin);
-				}
-				V_AddLight (ent.origin, 130, 1, 0.5, 0.5);
-			}
-		}
-
-		q_shared.VectorCopy (ent.origin, cent.lerp_origin);
-	}
-}
-
-
-
-/*
-==============
-CL_AddViewWeapon
-==============
-*/
-void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
-{
-	entity_t	gun;		// view model
-	int			i;
-
-	// allow the gun to be completely removed
-	if (!cl_gun.value)
-		return;
-
-	// don't draw gun if in wide angle view
-	if (ps.fov > 90)
-		return;
-
-	memset (&gun, 0, sizeof(gun));
-
-	if (gun_model)
-		gun.model = gun_model;	// development tool
-	else
-		gun.model = cl_main.cl.model_draw[ps.gunindex];
-	if (!gun.model)
-		return;
-
-	// set up gun position
-	for (i=0 ; i<3 ; i++)
-	{
-		gun.origin[i] = cl_main.cl.refdef.vieworg[i] + ops.gunoffset[i]
-			+ cl_main.cl.lerpfrac * (ps.gunoffset[i] - ops.gunoffset[i]);
-		gun.angles[i] = cl_main.cl.refdef.viewangles[i] + LerpAngle (ops.gunangles[i],
-			ps.gunangles[i], cl_main.cl.lerpfrac);
-	}
-
-	if (gun_frame)
-	{
-		gun.frame = gun_frame;	// development tool
-		gun.oldframe = gun_frame;	// development tool
-	}
-	else
-	{
-		gun.frame = ps.gunframe;
-		if (gun.frame == 0)
-			gun.oldframe = 0;	// just changed weapons, don't lerp from old
-		else
-			gun.oldframe = ops.gunframe;
-	}
-
-	gun.flags = RF_MINLIGHT | RF_DEPTHHACK | RF_WEAPONMODEL;
-	gun.backlerp = 1.0 - cl_main.cl.lerpfrac;
-	q_shared.VectorCopy (gun.origin, gun.oldorigin);	// don't lerp at all
-	V_AddEntity (&gun);
-}
-
+	path = f"players/{model}/{base_name}"
+	mdl = re_interface.RegisterModel(path)
+	if not mdl:
+		path = f"players/{model}/weapon.md2"
+		mdl = re_interface.RegisterModel(path)
+		if not mdl:
+			path = f"players/male/{base_name}"
+			mdl = re_interface.RegisterModel(path)
+			if not mdl:
+				mdl = re_interface.RegisterModel("players/male/weapon.md2")
+	return mdl
 
 def CL_AddPacketEntities (frame):
 	autorotate = q_shared.anglemod(cl_main.cl.time / 10)
@@ -1549,7 +975,7 @@ def CL_AddViewWeapon (ps, ops):
 	cl_view.V_AddEntity(gun)
 
 
-/*
+"""
 ===============
 CL_CalcViewValues
 
@@ -1559,86 +985,94 @@ Sets cl_main.cl.refdef view values
 def CL_CalcViewValues ():
 
 	"""
-	int			i;
-	float		lerp, backlerp;
-	centity_t	*ent;
-	frame_t		*oldframe;
-	player_state_t	*ps, *ops;
+	Interpolate entity states and account for prediction to update the view definition.
 	"""
 
-	# find the previous frame to interpolate from
 	ps = cl_main.cl.frame.playerstate
-	i = (cl_main.cl.frame.serverframe - 1) & qcommon.UPDATE_MASK
-	oldframe = cl_main.cl.frames[i]
-	if oldframe.serverframe != cl_main.cl.frame.serverframe-1 or not oldframe.valid:
-		oldframe = cl_main.cl.frame		# previous frame was dropped or invalid
+	frame_index = (cl_main.cl.frame.serverframe - 1) & qcommon.UPDATE_MASK
+	oldframe = cl_main.cl.frames[frame_index]
+	if oldframe.serverframe != cl_main.cl.frame.serverframe - 1 or not oldframe.valid:
+		oldframe = cl_main.cl.frame
 	ops = oldframe.playerstate
 
-	# see if the player entity was teleported this frame
-	if abs(ops.pmove.origin[0] - ps.pmove.origin[0]) > 256*8 \
-		or abs(ops.pmove.origin[1] - ps.pmove.origin[1]) > 256*8 \
-		or abs(ops.pmove.origin[2] - ps.pmove.origin[2]) > 256*8:
-		ops = ps		# don't interpolate
+	if abs(ops.pmove.origin[0] - ps.pmove.origin[0]) > 256 * 8 \
+		or abs(ops.pmove.origin[1] - ps.pmove.origin[1]) > 256 * 8 \
+		or abs(ops.pmove.origin[2] - ps.pmove.origin[2]) > 256 * 8:
+		ops = ps
 
-	ent = cl_main.cl_entities[cl_main.cl.playernum+1]
+	ent = cl_main.cl_entities[cl_main.cl.playernum + 1]
 	lerp = cl_main.cl.lerpfrac
 
-	"""
-	// calculate the origin
-	if ((cl_predict.value) && !(cl_main.cl.frame.playerstate.pmove.pm_flags & PMF_NO_PREDICTION))
-	{	// use predicted values
-		unsigned	delta;
+	prediction_allowed = (
+		cl_main.cl_predict
+		and cl_main.cl_predict.value
+		and not (cl_main.cl.frame.playerstate.pmove.pm_flags & q_shared.PMF_NO_PREDICTION)
+	)
 
-		backlerp = 1.0 - lerp;
-		for (i=0 ; i<3 ; i++)
-		{
-			cl_main.cl.refdef.vieworg[i] = cl_main.cl.predicted_origin[i] + ops.viewoffset[i] 
+	if prediction_allowed:
+		backlerp = 1.0 - lerp
+		for i in range(3):
+			cl_main.cl.refdef.vieworg[i] = (
+				cl_main.cl.predicted_origin[i]
+				+ ops.viewoffset[i]
 				+ cl_main.cl.lerpfrac * (ps.viewoffset[i] - ops.viewoffset[i])
-				- backlerp * cl_main.cl.prediction_error[i];
-		}
+				- backlerp * cl_main.cl.prediction_error[i]
+			)
 
-		// smooth out stair climbing
-		delta = cls.realtime - cl_main.cl.predicted_step_time;
-		if (delta < 100)
-			cl_main.cl.refdef.vieworg[2] -= cl_main.cl.predicted_step * (100 - delta) * 0.01;
-	}
-	else
-	{	// just use interpolated values
-		for (i=0 ; i<3 ; i++)
-			cl_main.cl.refdef.vieworg[i] = ops.pmove.origin[i]*0.125 + ops.viewoffset[i] 
-				+ lerp * (ps.pmove.origin[i]*0.125 + ps.viewoffset[i] 
-				- (ops.pmove.origin[i]*0.125 + ops.viewoffset[i]) );
-	}
+		step_time = cl_main.cl.predicted_step_time or 0
+		delta = cl_main.cls.realtime - step_time
+		if delta < 100:
+			predicted_step = (
+				cl_main.cl.predicted_step
+				if cl_main.cl.predicted_step is not None
+				else 0.0
+			)
+			cl_main.cl.refdef.vieworg[2] -= predicted_step * (100 - delta) * 0.01
+	else:
+		for i in range(3):
+			cl_main.cl.refdef.vieworg[i] = (
+				ops.pmove.origin[i] * 0.125
+				+ ops.viewoffset[i]
+				+ lerp
+				* (
+					ps.pmove.origin[i] * 0.125
+					+ ps.viewoffset[i]
+					- (ops.pmove.origin[i] * 0.125 + ops.viewoffset[i])
+				)
+			)
 
-	// if not running a demo or on a locked frame, add the local angle movement
-	if ( cl_main.cl.frame.playerstate.pmove.pm_type < PM_DEAD )
-	{	// use predicted values
-		for (i=0 ; i<3 ; i++)
-			cl_main.cl.refdef.viewangles[i] = cl_main.cl.predicted_angles[i];
-	}
-	else
-	{	// just use interpolated values
-		for (i=0 ; i<3 ; i++)
-			cl_main.cl.refdef.viewangles[i] = LerpAngle (ops.viewangles[i], ps.viewangles[i], lerp);
-	}
+	if cl_main.cl.frame.playerstate.pmove.pm_type < q_shared.PM_DEAD:
+		for i in range(3):
+			cl_main.cl.refdef.viewangles[i] = cl_main.cl.predicted_angles[i]
+	else:
+		for i in range(3):
+			cl_main.cl.refdef.viewangles[i] = q_shared.LerpAngle(
+				ops.viewangles[i], ps.viewangles[i], lerp
+			)
 
-	for (i=0 ; i<3 ; i++)
-		cl_main.cl.refdef.viewangles[i] += LerpAngle (ops.kick_angles[i], ps.kick_angles[i], lerp);
+	for i in range(3):
+		cl_main.cl.refdef.viewangles[i] += q_shared.LerpAngle(
+			ops.kick_angles[i], ps.kick_angles[i], lerp
+		)
 
-	AngleVectors (cl_main.cl.refdef.viewangles, cl_main.cl.v_forward, cl_main.cl.v_right, cl_main.cl.v_up);
+	if cl_main.cl.v_forward is None:
+		cl_main.cl.v_forward = np.zeros((3,), dtype=np.float32)
+	if cl_main.cl.v_right is None:
+		cl_main.cl.v_right = np.zeros((3,), dtype=np.float32)
+	if cl_main.cl.v_up is None:
+		cl_main.cl.v_up = np.zeros((3,), dtype=np.float32)
 
-	"""
-	# interpolate field of view
+	q_shared.AngleVectors(
+		cl_main.cl.refdef.viewangles,
+		cl_main.cl.v_forward,
+		cl_main.cl.v_right,
+		cl_main.cl.v_up,
+	)
+
 	cl_main.cl.refdef.fov_x = ops.fov + lerp * (ps.fov - ops.fov)
-	"""
+	cl_main.cl.refdef.blend[:] = ps.blend
 
-	// don't interpolate blend color
-	for (i=0 ; i<4 ; i++)
-		cl_main.cl.refdef.blend[i] = ps.blend[i];
-
-	// add the weapon
-	CL_AddViewWeapon (ps, ops);
-	"""
+	CL_AddViewWeapon (ps, ops)
 
 """
 ===============

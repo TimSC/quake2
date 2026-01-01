@@ -16,269 +16,231 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-*/
+"""
+import copy
+import numpy as np
+from qcommon import common, cmodel, pmove
+from game import q_shared
+from client import cl_main, client
 
-#include "client.h"
+def _copy_trace(src: q_shared.trace_t, dest: q_shared.trace_t):
+    dest.allsolid = src.allsolid
+    dest.startsolid = src.startsolid
+    dest.fraction = src.fraction
+    q_shared.VectorCopy(src.endpos, dest.endpos)
+    dest.plane = src.plane
+    dest.surface = src.surface
+    dest.contents = src.contents
+    dest.ent = src.ent
 
-
-/*
+"""
 ===================
 CL_CheckPredictionError
 ===================
 """
-def CL_CheckPredictionError ():
-	
-	print ("CL_CheckPredictionError")
-	"""
-	int		frame;
-	int		delta[3];
-	int		i;
-	int		len;
+def CL_CheckPredictionError():
+    if not cl_main.cl_predict or not cl_main.cl_predict.value:
+        return
+    pm_flags = cl_main.cl.frame.playerstate.pmove.pm_flags
+    if pm_flags is None:
+        pm_flags = 0
+    if pm_flags & q_shared.PMF_NO_PREDICTION:
+        return
 
-	if (!cl_predict->value || (cl.frame.playerstate.pmove.pm_flags & PMF_NO_PREDICTION))
-		return;
+    frame = cl_main.cls.netchan.incoming_acknowledged & (client.CMD_BACKUP - 1)
 
-	// calculate the last usercmd_t we sent that the server has processed
-	frame = cls.netchan.incoming_acknowledged;
-	frame &= (CMD_BACKUP-1);
+    delta = np.zeros((3,), dtype=np.float32)
+    predicted_origin = cl_main.cl.predicted_origins[frame]
+    if predicted_origin is None:
+        predicted_origin = np.zeros((3,), dtype=np.float32)
+        cl_main.cl.predicted_origins[frame] = predicted_origin
 
-	// compare what the server returned with what we had predicted it to be
-	VectorSubtract (cl.frame.playerstate.pmove.origin, cl.predicted_origins[frame], delta);
+    q_shared.VectorSubtract(cl_main.cl.frame.playerstate.pmove.origin, predicted_origin, delta)
 
-	// save the prediction error for interpolation
-	len = abs(delta[0]) + abs(delta[1]) + abs(delta[2]);
-	if (len > 640)	// 80 world units
-	{	// a teleport or something
-		VectorClear (cl.prediction_error);
-	}
-	else
-	{
-		if (cl_showmiss->value && (delta[0] || delta[1] || delta[2]) )
-			Com_Printf ("prediction miss on %i: %i\n", cl.frame.serverframe, 
-			delta[0] + delta[1] + delta[2]);
+    length = abs(delta[0]) + abs(delta[1]) + abs(delta[2])
+    if length > 640:
+        q_shared.VectorClear(cl_main.cl.prediction_error)
+    else:
+        if (delta[0] or delta[1] or delta[2]) and cl_main.cl_showmiss and cl_main.cl_showmiss.value:
+            common.Com_Printf(
+                "prediction miss on %i: %i\n"
+                % (cl_main.cl.frame.serverframe, int(delta[0] + delta[1] + delta[2]))
+            )
+        q_shared.VectorCopy(cl_main.cl.frame.playerstate.pmove.origin, predicted_origin)
+        for i in range(3):
+            cl_main.cl.prediction_error[i] = delta[i] * 0.125
 
-		q_shared.VectorCopy (cl.frame.playerstate.pmove.origin, cl.predicted_origins[frame]);
-
-		// save for error itnerpolation
-		for (i=0 ; i<3 ; i++)
-			cl.prediction_error[i] = delta[i]*0.125;
-	}
-}
-
-
-/*
+"""
 ====================
 CL_ClipMoveToEntities
 
+Checks collisions against solid entities for movement tracing.
 ====================
-*/
-void CL_ClipMoveToEntities ( vec3_t start, vec3_t mins, vec3_t maxs, vec3_t end, trace_t *tr )
-{
-	int			i, x, zd, zu;
-	trace_t		trace;
-	int			headnode;
-	float		*angles;
-	entity_state_t	*ent;
-	int			num;
-	cmodel_t		*cmodel;
-	vec3_t		bmins, bmaxs;
+"""
+def CL_ClipMoveToEntities(start, mins, maxs, end, tr):
+    bmins = np.zeros((3,), dtype=np.float32)
+    bmaxs = np.zeros((3,), dtype=np.float32)
 
-	for (i=0 ; i<cl.frame.num_entities ; i++)
-	{
-		num = (cl.frame.parse_entities + i)&(MAX_PARSE_ENTITIES-1);
-		ent = &cl_parse_entities[num];
+    for i in range(cl_main.cl.frame.num_entities):
+        num = (cl_main.cl.frame.parse_entities + i) & (client.MAX_PARSE_ENTITIES - 1)
+        ent = cl_main.cl_parse_entities[num]
+        solid = ent.solid or 0
+        if not solid:
+            continue
 
-		if (!ent->solid)
-			continue;
+        if ent.number == cl_main.cl.playernum + 1:
+            continue
 
-		if (ent->number == cl.playernum+1)
-			continue;
+        if solid == 31:
+            cmodel_obj = cl_main.cl.model_clip[ent.modelindex]
+            if not cmodel_obj:
+                continue
+            headnode = cmodel_obj.headnode
+            angles = ent.angles
+        else:
+            x = 8 * (solid & 31)
+            zd = 8 * ((solid >> 5) & 31)
+            zu = 8 * ((solid >> 10) & 63) - 32
 
-		if (ent->solid == 31)
-		{	// special value for bmodel
-			cmodel = cl.model_clip[ent->modelindex];
-			if (!cmodel)
-				continue;
-			headnode = cmodel->headnode;
-			angles = ent->angles;
-		}
-		else
-		{	// encoded bbox
-			x = 8*(ent->solid & 31);
-			zd = 8*((ent->solid>>5) & 31);
-			zu = 8*((ent->solid>>10) & 63) - 32;
+            bmins[0] = bmins[1] = -x
+            bmaxs[0] = bmaxs[1] = x
+            bmins[2] = -zd
+            bmaxs[2] = zu
 
-			bmins[0] = bmins[1] = -x;
-			bmaxs[0] = bmaxs[1] = x;
-			bmins[2] = -zd;
-			bmaxs[2] = zu;
+            headnode = cmodel.CM_HeadnodeForBox(bmins, bmaxs)
+            angles = q_shared.vec3_origin
 
-			headnode = CM_HeadnodeForBox (bmins, bmaxs);
-			angles = vec3_origin;	// boxes don't rotate
-		}
+        if tr.allsolid:
+            return
 
-		if (tr->allsolid)
-			return;
+        trace = cmodel.CM_TransformedBoxTrace(
+            start,
+            end,
+            mins,
+            maxs,
+            headnode,
+            q_shared.MASK_PLAYERSOLID,
+            ent.origin,
+            angles,
+        )
 
-		trace = CM_TransformedBoxTrace (start, end,
-			mins, maxs, headnode,  MASK_PLAYERSOLID,
-			ent->origin, angles);
+        if trace.allsolid or trace.startsolid or trace.fraction < tr.fraction:
+            trace.ent = ent
+            if tr.startsolid:
+                _copy_trace(trace, tr)
+                tr.startsolid = True
+            else:
+                _copy_trace(trace, tr)
+        elif trace.startsolid:
+            tr.startsolid = True
 
-		if (trace.allsolid || trace.startsolid ||
-		trace.fraction < tr->fraction)
-		{
-			trace.ent = (struct edict_s *)ent;
-		 	if (tr->startsolid)
-			{
-				*tr = trace;
-				tr->startsolid = true;
-			}
-			else
-				*tr = trace;
-		}
-		else if (trace.startsolid)
-			tr->startsolid = true;
-	}
-}
-
-
-/*
+"""
 ================
 CL_PMTrace
 ================
-*/
-trace_t		CL_PMTrace (vec3_t start, vec3_t mins, vec3_t maxs, vec3_t end)
-{
-	trace_t	t;
+"""
+def CL_PMTrace(start, mins, maxs, end):
+    trace = cmodel.CM_BoxTrace(start, end, mins, maxs, 0, q_shared.MASK_PLAYERSOLID)
+    if trace.fraction < 1.0:
+        trace.ent = 1
+    CL_ClipMoveToEntities(start, mins, maxs, end, trace)
+    return trace
 
-	// check against world
-	t = CM_BoxTrace (start, end, mins, maxs, 0, MASK_PLAYERSOLID);
-	if (t.fraction < 1.0)
-		t.ent = (struct edict_s *)1;
+"""
+====================
+CL_PMpointcontents
+====================
+"""
+def CL_PMpointcontents(point):
+    contents = cmodel.CM_PointContents(point, 0)
+    for i in range(cl_main.cl.frame.num_entities):
+        num = (cl_main.cl.frame.parse_entities + i) & (client.MAX_PARSE_ENTITIES - 1)
+        ent = cl_main.cl_parse_entities[num]
 
-	// check all other solid models
-	CL_ClipMoveToEntities (start, mins, maxs, end, &t);
+        if (ent.solid or 0) != 31:
+            continue
 
-	return t;
-}
+        cmodel_obj = cl_main.cl.model_clip[ent.modelindex]
+        if not cmodel_obj:
+            continue
 
-int		CL_PMpointcontents (vec3_t point)
-{
-	int			i;
-	entity_state_t	*ent;
-	int			num;
-	cmodel_t		*cmodel;
-	int			contents;
+        contents |= cmodel.CM_TransformedPointContents(
+            point, cmodel_obj.headnode, ent.origin, ent.angles
+        )
 
-	contents = CM_PointContents (point, 0);
+    return contents
 
-	for (i=0 ; i<cl.frame.num_entities ; i++)
-	{
-		num = (cl.frame.parse_entities + i)&(MAX_PARSE_ENTITIES-1);
-		ent = &cl_parse_entities[num];
-
-		if (ent->solid != 31) // special value for bmodel
-			continue;
-
-		cmodel = cl.model_clip[ent->modelindex];
-		if (!cmodel)
-			continue;
-
-		contents |= CM_TransformedPointContents (point, cmodel->headnode, ent->origin, ent->angles);
-	}
-
-	return contents;
-}
-
-
-/*
+"""
 =================
 CL_PredictMovement
 
 Sets cl.predicted_origin and cl.predicted_angles
 =================
 """
-def CL_PredictMovement ():
+def CL_PredictMovement():
+    if cl_main.cls.state != client.connstate_t.ca_active:
+        return
+    if cl_main.cl_paused and cl_main.cl_paused.value:
+        return
 
-	pass
-	#print ("CL_PredictMovement")
-	"""
-	int			ack, current;
-	int			frame;
-	int			oldframe;
-	usercmd_t	*cmd;
-	pmove_t		pm;
-	int			i;
-	int			step;
-	int			oldz;
+    pm_state = cl_main.cl.frame.playerstate.pmove
+    pm_flags = pm_state.pm_flags if pm_state.pm_flags is not None else 0
+    if (
+        not cl_main.cl_predict
+        or not cl_main.cl_predict.value
+        or pm_flags & q_shared.PMF_NO_PREDICTION
+    ):
+        for i in range(3):
+            cl_main.cl.predicted_angles[i] = (
+                cl_main.cl.viewangles[i]
+                + q_shared.SHORT2ANGLE(pm_state.delta_angles[i])
+            )
+        return
 
-	if (cls.state != ca_active)
-		return;
+    ack = cl_main.cls.netchan.incoming_acknowledged
+    current = cl_main.cls.netchan.outgoing_sequence
 
-	if (cl_paused->value)
-		return;
+    if current - ack >= client.CMD_BACKUP:
+        if cl_main.cl_showmiss and cl_main.cl_showmiss.value:
+            common.Com_Printf("exceeded CMD_BACKUP\n")
+        return
 
-	if (!cl_predict->value || (cl.frame.playerstate.pmove.pm_flags & PMF_NO_PREDICTION))
-	{	// just set angles
-		for (i=0 ; i<3 ; i++)
-		{
-			cl.predicted_angles[i] = cl.viewangles[i] + SHORT2ANGLE(cl.frame.playerstate.pmove.delta_angles[i]);
-		}
-		return;
-	}
+    pm = pmove.pmove_t()
+    pm.trace = CL_PMTrace
+    pm.pointcontents = CL_PMpointcontents
 
-	ack = cls.netchan.incoming_acknowledged;
-	current = cls.netchan.outgoing_sequence;
+    airaccel = cl_main.cl.configstrings[q_shared.CS_AIRACCEL]
+    pmove.pm_airaccelerate = float(airaccel) if airaccel else 0.0
 
-	// if we are too far out of date, just freeze
-	if (current - ack >= CMD_BACKUP)
-	{
-		if (cl_showmiss->value)
-			Com_Printf ("exceeded CMD_BACKUP\n");
-		return;	
-	}
+    pm.s = copy.deepcopy(pm_state)
 
-	// copy current state to pmove
-	memset (&pm, 0, sizeof(pm));
-	pm.trace = CL_PMTrace;
-	pm.pointcontents = CL_PMpointcontents;
+    frame_index = 0
+    while ack + 1 < current:
+        ack += 1
+        frame_index = ack & (client.CMD_BACKUP - 1)
+        pm.cmd = copy.deepcopy(cl_main.cl.cmds[frame_index])
+        pmove.Pmove(pm)
 
-	pm_airaccelerate = atof(cl.configstrings[CS_AIRACCEL]);
+        if cl_main.cl.predicted_origins[frame_index] is None:
+            cl_main.cl.predicted_origins[frame_index] = np.zeros(
+                (3,), dtype=np.float32
+            )
+        q_shared.VectorCopy(
+            pm.s.origin, cl_main.cl.predicted_origins[frame_index]
+        )
 
-	pm.s = cl.frame.playerstate.pmove;
+    oldframe = (ack - 2) & (client.CMD_BACKUP - 1)
+    old_origin = cl_main.cl.predicted_origins[oldframe]
+    oldz = old_origin[2] if old_origin is not None else 0
 
-//	SCR_DebugGraph (current - ack - 1, 0);
+    step = pm.s.origin[2] - oldz
+    if step > 63 and step < 160 and (pm.s.pm_flags & q_shared.PMF_ON_GROUND):
+        cl_main.cl.predicted_step = step * 0.125
+        cl_main.cl.predicted_step_time = (
+            cl_main.cls.realtime - cl_main.cls.frametime * 500
+        )
 
-	frame = 0;
+    for i in range(3):
+        cl_main.cl.predicted_origin[i] = pm.s.origin[i] * 0.125
 
-	// run frames
-	while (++ack < current)
-	{
-		frame = ack & (CMD_BACKUP-1);
-		cmd = &cl.cmds[frame];
-
-		pm.cmd = *cmd;
-		Pmove (&pm);
-
-		// save for debug checking
-		q_shared.VectorCopy (pm.s.origin, cl.predicted_origins[frame]);
-	}
-
-	oldframe = (ack-2) & (CMD_BACKUP-1);
-	oldz = cl.predicted_origins[oldframe][2];
-	step = pm.s.origin[2] - oldz;
-	if (step > 63 && step < 160 && (pm.s.pm_flags & PMF_ON_GROUND) )
-	{
-		cl.predicted_step = step * 0.125;
-		cl.predicted_step_time = cls.realtime - cls.frametime * 500;
-	}
-
-
-	// copy results out for rendering
-	cl.predicted_origin[0] = pm.s.origin[0]*0.125;
-	cl.predicted_origin[1] = pm.s.origin[1]*0.125;
-	cl.predicted_origin[2] = pm.s.origin[2]*0.125;
-
-	q_shared.VectorCopy (pm.viewangles, cl.predicted_angles);
-}
-"""
+    q_shared.VectorCopy(pm.viewangles, cl_main.cl.predicted_angles)

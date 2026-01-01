@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
+import numpy as np
 from game import q_shared
 from qcommon import qfiles, files, common, cvar, md4
 """
@@ -66,7 +67,7 @@ class carea_t(object):
 		self.floodvalid: int = None
 
 
-checkcount: int = None
+checkcount: int = 0
 
 map_name: str = None # char		[MAX_QPATH];
 
@@ -145,9 +146,9 @@ map_noareas = None # cvar_t	*
 #void	CM_InitBoxHull (void)
 #void	FloodAreaConnections (void)
 
-c_pointcontents: int = None
-c_traces: int = None
-c_brush_traces: int = None
+c_pointcontents: int = 0
+c_traces: int = 0
+c_brush_traces: int = 0
 last_checksum = None
 
 
@@ -341,7 +342,7 @@ CMod_LoadLeafs
 """
 def CMod_LoadLeafs (l): #lump_t *
 
-	global numclusters, map_leafs, cmod_base
+	global numclusters, map_leafs, cmod_base, numleafs, solidleaf, emptyleaf
 	print ("CMod_LoadLeafs", l)
 	"""
 	int			i;
@@ -755,22 +756,21 @@ def CM_LoadMap (name, clientload): #char *, qboolean (returns cmodel_t *, unsign
 CM_InlineModel
 ==================
 """
-def CM_InlineModel (name): # (cmodel_t	*)
+def CM_InlineModel(name):
+	"""Return the inline model identified by *<number>."""
 
-	print ("CM_InlineModel")
-	"""
-	int		num;
+	if not name or not name.startswith('*'):
+		common.Com_Error(q_shared.ERR_DROP, "CM_InlineModel: bad name")
 
-	if (!name || name[0] != '*')
-		common.Com_Error (q_shared.ERR_DROP, "CM_InlineModel: bad name");
-	num = atoi (name+1);
-	if (num < 1 || num >= numcmodels)
-		common.Com_Error (q_shared.ERR_DROP, "CM_InlineModel: bad number");
+	try:
+		num = int(name[1:])
+	except (ValueError, TypeError):
+		common.Com_Error(q_shared.ERR_DROP, "CM_InlineModel: bad number")
 
-	return &map_cmodels[num];
-}
+	if num < 1 or num >= numcmodels:
+		common.Com_Error(q_shared.ERR_DROP, "CM_InlineModel: bad number")
 
-"""
+	return map_cmodels[num]
 def CM_NumClusters ():
 
 	return numclusters
@@ -785,31 +785,25 @@ def CM_EntityString ():
 
 	return map_entitystring
 
-"""
-int		CM_LeafContents (int leafnum)
-{
-	if (leafnum < 0 || leafnum >= numleafs)
-		common.Com_Error (q_shared.ERR_DROP, "CM_LeafContents: bad number");
-	return map_leafs[leafnum].contents;
-}
+def CM_LeafContents(leafnum: int):
+    if leafnum < 0 or leafnum >= numleafs:
+        common.Com_Error(q_shared.ERR_DROP, "CM_LeafContents: bad number")
+    return map_leafs[leafnum].contents
 
-int		CM_LeafCluster (int leafnum)
-{
-	if (leafnum < 0 || leafnum >= numleafs)
-		common.Com_Error (q_shared.ERR_DROP, "CM_LeafCluster: bad number");
-	return map_leafs[leafnum].cluster;
-}
 
-int		CM_LeafArea (int leafnum)
-{
-	if (leafnum < 0 || leafnum >= numleafs)
-		common.Com_Error (q_shared.ERR_DROP, "CM_LeafArea: bad number");
-	return map_leafs[leafnum].area;
-}
+def CM_LeafCluster(leafnum: int):
+    if leafnum < 0 or leafnum >= numleafs:
+        common.Com_Error(q_shared.ERR_DROP, "CM_LeafCluster: bad number")
+    return map_leafs[leafnum].cluster
 
-//=======================================================================
 
-"""
+def CM_LeafArea(leafnum: int):
+    if leafnum < 0 or leafnum >= numleafs:
+        common.Com_Error(q_shared.ERR_DROP, "CM_LeafArea: bad number")
+    return map_leafs[leafnum].area
+
+
+#=======================================================================
 box_planes = None # cplane_t*
 box_headnode = None # int			
 box_brush = None #cbrush_t *
@@ -823,944 +817,262 @@ Set up the planes and nodes so that the six floats of a bounding box
 can just be stored out and get a proper clipping hull structure.
 ===================
 """
-def CM_InitBoxHull ():
+def CM_InitBoxHull():
 
-	global numnodes, box_headnode, box_planes, map_planes
-
-	"""
-	int			i;
-	int			side;
-	cnode_t		*c;
-	cplane_t	*p;
-	cbrushside_t	*s;
-	"""
+	global box_headnode, box_brush, box_leaf, box_planes
 
 	box_headnode = numnodes
-	box_planes = map_planes[numplanes]
-
-	"""
-	if (numnodes+6 > MAX_MAP_NODES
-		|| numbrushes+1 > MAX_MAP_BRUSHES
-		|| numleafbrushes+1 > MAX_MAP_LEAFBRUSHES
-		|| numbrushsides+6 > MAX_MAP_BRUSHSIDES
-		|| numplanes+12 > MAX_MAP_PLANES)
-		common.Com_Error (q_shared.ERR_DROP, "Not enough room for box tree");
-
-	box_brush = &map_brushes[numbrushes];
-	box_brush->numsides = 6;
-	box_brush->firstbrushside = numbrushsides;
-	box_brush->contents = CONTENTS_MONSTER;
-
-	box_leaf = &map_leafs[numleafs];
-	box_leaf->contents = CONTENTS_MONSTER;
-	box_leaf->firstleafbrush = numleafbrushes;
-	box_leaf->numleafbrushes = 1;
-
-	map_leafbrushes[numleafbrushes] = numbrushes;
-
-	for (i=0 ; i<6 ; i++)
-	{
-		side = i&1;
-
-		// brush sides
-		s = &map_brushsides[numbrushsides+i];
-		s->plane = 	map_planes + (numplanes+i*2+side);
-		s->surface = &nullsurface;
-
-		// nodes
-		c = &map_nodes[box_headnode+i];
-		c->plane = map_planes + (numplanes+i*2);
-		c->children[side] = -1 - emptyleaf;
-		if (i != 5)
-			c->children[side^1] = box_headnode+i + 1;
-		else
-			c->children[side^1] = -1 - numleafs;
-
-		// planes
-		p = &box_planes[i*2];
-		p->type = i>>1;
-		p->signbits = 0;
-		VectorClear (p->normal);
-		p->normal[i>>1] = 1;
-
-		p = &box_planes[i*2+1];
-		p->type = 3 + (i>>1);
-		p->signbits = 0;
-		VectorClear (p->normal);
-		p->normal[i>>1] = -1;
-	}	
-}
-
-
-/*
-===================
-CM_HeadnodeForBox
-
-To keep everything totally uniform, bounding boxes are turned into small
-BSP trees instead of being compared directly.
-===================
-*/
-int	CM_HeadnodeForBox (vec3_t mins, vec3_t maxs)
-{
-	box_planes[0].dist = maxs[0];
-	box_planes[1].dist = -maxs[0];
-	box_planes[2].dist = mins[0];
-	box_planes[3].dist = -mins[0];
-	box_planes[4].dist = maxs[1];
-	box_planes[5].dist = -maxs[1];
-	box_planes[6].dist = mins[1];
-	box_planes[7].dist = -mins[1];
-	box_planes[8].dist = maxs[2];
-	box_planes[9].dist = -maxs[2];
-	box_planes[10].dist = mins[2];
-	box_planes[11].dist = -mins[2];
-
-	return box_headnode;
-}
-
-
-/*
-==================
-CM_PointLeafnum_r
-
-==================
-*/
-int CM_PointLeafnum_r (vec3_t p, int num)
-{
-	float		d;
-	cnode_t		*node;
-	cplane_t	*plane;
-
-	while (num >= 0)
-	{
-		node = map_nodes + num;
-		plane = node->plane;
-		
-		if (plane->type < 3)
-			d = p[plane->type] - plane->dist;
-		else
-			d = DotProduct (plane->normal, p) - plane->dist;
-		if (d < 0)
-			num = node->children[1];
-		else
-			num = node->children[0];
-	}
-
-	c_pointcontents++;		// optimize counter
-
-	return -1 - num;
-}
-
-int CM_PointLeafnum (vec3_t p)
-{
-	if (!numplanes)
-		return 0;		// sound may call this without map loaded
-	return CM_PointLeafnum_r (p, 0);
-}
-
-
-
-/*
-=============
-CM_BoxLeafnums
-
-Fills in a list of all the leafs touched
-=============
-*/
-int		leaf_count, leaf_maxcount;
-int		*leaf_list;
-float	*leaf_mins, *leaf_maxs;
-int		leaf_topnode;
-
-void CM_BoxLeafnums_r (int nodenum)
-{
-	cplane_t	*plane;
-	cnode_t		*node;
-	int		s;
-
-	while (1)
-	{
-		if (nodenum < 0)
-		{
-			if (leaf_count >= leaf_maxcount)
-			{
-//				Com_Printf ("CM_BoxLeafnums_r: overflow\n");
-				return;
-			}
-			leaf_list[leaf_count++] = -1 - nodenum;
-			return;
-		}
-	
-		node = &map_nodes[nodenum];
-		plane = node->plane;
-//		s = BoxOnPlaneSide (leaf_mins, leaf_maxs, plane);
-		s = BOX_ON_PLANE_SIDE(leaf_mins, leaf_maxs, plane);
-		if (s == 1)
-			nodenum = node->children[0];
-		else if (s == 2)
-			nodenum = node->children[1];
-		else
-		{	// go down both
-			if (leaf_topnode == -1)
-				leaf_topnode = nodenum;
-			CM_BoxLeafnums_r (node->children[0]);
-			nodenum = node->children[1];
-		}
-
-	}
-}
-
-int	CM_BoxLeafnums_headnode (vec3_t mins, vec3_t maxs, int *list, int listsize, int headnode, int *topnode)
-{
-	leaf_list = list;
-	leaf_count = 0;
-	leaf_maxcount = listsize;
-	leaf_mins = mins;
-	leaf_maxs = maxs;
-
-	leaf_topnode = -1;
-
-	CM_BoxLeafnums_r (headnode);
-
-	if (topnode)
-		*topnode = leaf_topnode;
-
-	return leaf_count;
-}
-
-int	CM_BoxLeafnums (vec3_t mins, vec3_t maxs, int *list, int listsize, int *topnode)
-{
-	return CM_BoxLeafnums_headnode (mins, maxs, list,
-		listsize, map_cmodels[0].headnode, topnode);
-}
-
-
-
-/*
-==================
-CM_PointContents
-
-==================
-*/
-int CM_PointContents (vec3_t p, int headnode)
-{
-	int		l;
-
-	if (!numnodes)	// map not loaded
-		return 0;
-
-	l = CM_PointLeafnum_r (p, headnode);
-
-	return map_leafs[l].contents;
-}
-
-/*
-==================
-CM_TransformedPointContents
-
-Handles offseting and rotation of the end points for moving and
-rotating entities
-==================
-*/
-int	CM_TransformedPointContents (vec3_t p, int headnode, vec3_t origin, vec3_t angles)
-{
-	vec3_t		p_l;
-	vec3_t		temp;
-	vec3_t		forward, right, up;
-	int			l;
-
-	// subtract origin offset
-	VectorSubtract (p, origin, p_l);
-
-	// rotate start and end into the models frame of reference
-	if (headnode != box_headnode && 
-	(angles[0] || angles[1] || angles[2]) )
-	{
-		AngleVectors (angles, forward, right, up);
-
-		VectorCopy (p_l, temp);
-		p_l[0] = DotProduct (temp, forward);
-		p_l[1] = -DotProduct (temp, right);
-		p_l[2] = DotProduct (temp, up);
-	}
-
-	l = CM_PointLeafnum_r (p_l, headnode);
-
-	return map_leafs[l].contents;
-}
-
-
-/*
-===============================================================================
-
-BOX TRACING
-
-===============================================================================
-*/
-
-// 1/32 epsilon to keep floating point happy
-#define	DIST_EPSILON	(0.03125)
-
-vec3_t	trace_start, trace_end;
-vec3_t	trace_mins, trace_maxs;
-vec3_t	trace_extents;
-
-trace_t	trace_trace;
-int		trace_contents;
-qboolean	trace_ispoint;		// optimized case
-
-/*
-================
-CM_ClipBoxToBrush
-================
-*/
-void CM_ClipBoxToBrush (vec3_t mins, vec3_t maxs, vec3_t p1, vec3_t p2,
-					  trace_t *trace, cbrush_t *brush)
-{
-	int			i, j;
-	cplane_t	*plane, *clipplane;
-	float		dist;
-	float		enterfrac, leavefrac;
-	vec3_t		ofs;
-	float		d1, d2;
-	qboolean	getout, startout;
-	float		f;
-	cbrushside_t	*side, *leadside;
-
-	enterfrac = -1;
-	leavefrac = 1;
-	clipplane = NULL;
-
-	if (!brush->numsides)
-		return;
-
-	c_brush_traces++;
-
-	getout = false;
-	startout = false;
-	leadside = NULL;
-
-	for (i=0 ; i<brush->numsides ; i++)
-	{
-		side = &map_brushsides[brush->firstbrushside+i];
-		plane = side->plane;
-
-		// FIXME: special case for axial
-
-		if (!trace_ispoint)
-		{	// general box case
-
-			// push the plane out apropriately for mins/maxs
-
-			// FIXME: use signbits into 8 way lookup for each mins/maxs
-			for (j=0 ; j<3 ; j++)
-			{
-				if (plane->normal[j] < 0)
-					ofs[j] = maxs[j];
-				else
-					ofs[j] = mins[j];
-			}
-			dist = DotProduct (ofs, plane->normal);
-			dist = plane->dist - dist;
-		}
-		else
-		{	// special point case
-			dist = plane->dist;
-		}
-
-		d1 = DotProduct (p1, plane->normal) - dist;
-		d2 = DotProduct (p2, plane->normal) - dist;
-
-		if (d2 > 0)
-			getout = true;	// endpoint is not in solid
-		if (d1 > 0)
-			startout = true;
-
-		// if completely in front of face, no intersection
-		if (d1 > 0 && d2 >= d1)
-			return;
-
-		if (d1 <= 0 && d2 <= 0)
-			continue;
-
-		// crosses face
-		if (d1 > d2)
-		{	// enter
-			f = (d1-DIST_EPSILON) / (d1-d2);
-			if (f > enterfrac)
-			{
-				enterfrac = f;
-				clipplane = plane;
-				leadside = side;
-			}
-		}
-		else
-		{	// leave
-			f = (d1+DIST_EPSILON) / (d1-d2);
-			if (f < leavefrac)
-				leavefrac = f;
-		}
-	}
-
-	if (!startout)
-	{	// original point was inside brush
-		trace->startsolid = true;
-		if (!getout)
-			trace->allsolid = true;
-		return;
-	}
-	if (enterfrac < leavefrac)
-	{
-		if (enterfrac > -1 && enterfrac < trace->fraction)
-		{
-			if (enterfrac < 0)
-				enterfrac = 0;
-			trace->fraction = enterfrac;
-			trace->plane = *clipplane;
-			trace->surface = &(leadside->surface->c);
-			trace->contents = brush->contents;
-		}
-	}
-}
-
-/*
-================
-CM_TestBoxInBrush
-================
-*/
-void CM_TestBoxInBrush (vec3_t mins, vec3_t maxs, vec3_t p1,
-					  trace_t *trace, cbrush_t *brush)
-{
-	int			i, j;
-	cplane_t	*plane;
-	float		dist;
-	vec3_t		ofs;
-	float		d1;
-	cbrushside_t	*side;
-
-	if (!brush->numsides)
-		return;
-
-	for (i=0 ; i<brush->numsides ; i++)
-	{
-		side = &map_brushsides[brush->firstbrushside+i];
-		plane = side->plane;
-
-		// FIXME: special case for axial
-
-		// general box case
-
-		// push the plane out apropriately for mins/maxs
-
-		// FIXME: use signbits into 8 way lookup for each mins/maxs
-		for (j=0 ; j<3 ; j++)
-		{
-			if (plane->normal[j] < 0)
-				ofs[j] = maxs[j];
-			else
-				ofs[j] = mins[j];
-		}
-		dist = DotProduct (ofs, plane->normal);
-		dist = plane->dist - dist;
-
-		d1 = DotProduct (p1, plane->normal) - dist;
-
-		// if completely in front of face, no intersection
-		if (d1 > 0)
-			return;
-
-	}
-
-	// inside this brush
-	trace->startsolid = trace->allsolid = true;
-	trace->fraction = 0;
-	trace->contents = brush->contents;
-}
-
-
-/*
-================
-CM_TraceToLeaf
-================
-*/
-void CM_TraceToLeaf (int leafnum)
-{
-	int			k;
-	int			brushnum;
-	cleaf_t		*leaf;
-	cbrush_t	*b;
-
-	leaf = &map_leafs[leafnum];
-	if ( !(leaf->contents & trace_contents))
-		return;
-	// trace line against all brushes in the leaf
-	for (k=0 ; k<leaf->numleafbrushes ; k++)
-	{
-		brushnum = map_leafbrushes[leaf->firstleafbrush+k];
-		b = &map_brushes[brushnum];
-		if (b->checkcount == checkcount)
-			continue;	// already checked this brush in another leaf
-		b->checkcount = checkcount;
-
-		if ( !(b->contents & trace_contents))
-			continue;
-		CM_ClipBoxToBrush (trace_mins, trace_maxs, trace_start, trace_end, &trace_trace, b);
-		if (!trace_trace.fraction)
-			return;
-	}
-
-}
-
-
-/*
-================
-CM_TestInLeaf
-================
-*/
-void CM_TestInLeaf (int leafnum)
-{
-	int			k;
-	int			brushnum;
-	cleaf_t		*leaf;
-	cbrush_t	*b;
-
-	leaf = &map_leafs[leafnum];
-	if ( !(leaf->contents & trace_contents))
-		return;
-	// trace line against all brushes in the leaf
-	for (k=0 ; k<leaf->numleafbrushes ; k++)
-	{
-		brushnum = map_leafbrushes[leaf->firstleafbrush+k];
-		b = &map_brushes[brushnum];
-		if (b->checkcount == checkcount)
-			continue;	// already checked this brush in another leaf
-		b->checkcount = checkcount;
-
-		if ( !(b->contents & trace_contents))
-			continue;
-		CM_TestBoxInBrush (trace_mins, trace_maxs, trace_start, &trace_trace, b);
-		if (!trace_trace.fraction)
-			return;
-	}
-
-}
-
-
-/*
-==================
-CM_RecursiveHullCheck
-
-==================
-*/
-void CM_RecursiveHullCheck (int num, float p1f, float p2f, vec3_t p1, vec3_t p2)
-{
-	cnode_t		*node;
-	cplane_t	*plane;
-	float		t1, t2, offset;
-	float		frac, frac2;
-	float		idist;
-	int			i;
-	vec3_t		mid;
-	int			side;
-	float		midf;
-
-	if (trace_trace.fraction <= p1f)
-		return;		// already hit something nearer
-
-	// if < 0, we are in a leaf node
-	if (num < 0)
-	{
-		CM_TraceToLeaf (-1-num);
-		return;
-	}
-
-	//
-	// find the point distances to the seperating plane
-	// and the offset for the size of the box
-	//
-	node = map_nodes + num;
-	plane = node->plane;
-
-	if (plane->type < 3)
-	{
-		t1 = p1[plane->type] - plane->dist;
-		t2 = p2[plane->type] - plane->dist;
-		offset = trace_extents[plane->type];
-	}
-	else
-	{
-		t1 = DotProduct (plane->normal, p1) - plane->dist;
-		t2 = DotProduct (plane->normal, p2) - plane->dist;
-		if (trace_ispoint)
-			offset = 0;
-		else
-			offset = fabs(trace_extents[0]*plane->normal[0]) +
-				fabs(trace_extents[1]*plane->normal[1]) +
-				fabs(trace_extents[2]*plane->normal[2]);
-	}
-
-
-#if 0
-CM_RecursiveHullCheck (node->children[0], p1f, p2f, p1, p2);
-CM_RecursiveHullCheck (node->children[1], p1f, p2f, p1, p2);
-return;
-#endif
-
-	// see which sides we need to consider
-	if (t1 >= offset && t2 >= offset)
-	{
-		CM_RecursiveHullCheck (node->children[0], p1f, p2f, p1, p2);
-		return;
-	}
-	if (t1 < -offset && t2 < -offset)
-	{
-		CM_RecursiveHullCheck (node->children[1], p1f, p2f, p1, p2);
-		return;
-	}
-
-	// put the crosspoint DIST_EPSILON pixels on the near side
-	if (t1 < t2)
-	{
-		idist = 1.0/(t1-t2);
-		side = 1;
-		frac2 = (t1 + offset + DIST_EPSILON)*idist;
-		frac = (t1 - offset + DIST_EPSILON)*idist;
-	}
-	else if (t1 > t2)
-	{
-		idist = 1.0/(t1-t2);
-		side = 0;
-		frac2 = (t1 - offset - DIST_EPSILON)*idist;
-		frac = (t1 + offset + DIST_EPSILON)*idist;
-	}
-	else
-	{
-		side = 0;
-		frac = 1;
-		frac2 = 0;
-	}
-
-	// move up to the node
-	if (frac < 0)
-		frac = 0;
-	if (frac > 1)
-		frac = 1;
-		
-	midf = p1f + (p2f - p1f)*frac;
-	for (i=0 ; i<3 ; i++)
-		mid[i] = p1[i] + frac*(p2[i] - p1[i]);
-
-	CM_RecursiveHullCheck (node->children[side], p1f, midf, p1, mid);
-
-
-	// go past the node
-	if (frac2 < 0)
-		frac2 = 0;
-	if (frac2 > 1)
-		frac2 = 1;
-		
-	midf = p1f + (p2f - p1f)*frac2;
-	for (i=0 ; i<3 ; i++)
-		mid[i] = p1[i] + frac2*(p2[i] - p1[i]);
-
-	CM_RecursiveHullCheck (node->children[side^1], midf, p2f, mid, p2);
-}
-
-
-
-//======================================================================
-
-/*
-==================
-CM_BoxTrace
-==================
-*/
-trace_t		CM_BoxTrace (vec3_t start, vec3_t end,
-						  vec3_t mins, vec3_t maxs,
-						  int headnode, int brushmask)
-{
-	int		i;
-
-	checkcount++;		// for multi-check avoidance
-
-	c_traces++;			// for statistics, may be zeroed
-
-	// fill in a default trace
-	memset (&trace_trace, 0, sizeof(trace_trace));
-	trace_trace.fraction = 1;
-	trace_trace.surface = &(nullsurface.c);
-
-	if (!numnodes)	// map not loaded
-		return trace_trace;
-
-	trace_contents = brushmask;
-	VectorCopy (start, trace_start);
-	VectorCopy (end, trace_end);
-	VectorCopy (mins, trace_mins);
-	VectorCopy (maxs, trace_maxs);
-
-	//
-	// check for position test special case
-	//
-	if (start[0] == end[0] && start[1] == end[1] && start[2] == end[2])
-	{
-		int		leafs[1024];
-		int		i, numleafs;
-		vec3_t	c1, c2;
-		int		topnode;
-
-		VectorAdd (start, mins, c1);
-		VectorAdd (start, maxs, c2);
-		for (i=0 ; i<3 ; i++)
-		{
-			c1[i] -= 1;
-			c2[i] += 1;
-		}
-
-		numleafs = CM_BoxLeafnums_headnode (c1, c2, leafs, 1024, headnode, &topnode);
-		for (i=0 ; i<numleafs ; i++)
-		{
-			CM_TestInLeaf (leafs[i]);
-			if (trace_trace.allsolid)
-				break;
-		}
-		VectorCopy (start, trace_trace.endpos);
-		return trace_trace;
-	}
-
-	//
-	// check for point special case
-	//
-	if (mins[0] == 0 && mins[1] == 0 && mins[2] == 0
-		&& maxs[0] == 0 && maxs[1] == 0 && maxs[2] == 0)
-	{
-		trace_ispoint = true;
-		VectorClear (trace_extents);
-	}
-	else
-	{
-		trace_ispoint = false;
-		trace_extents[0] = -mins[0] > maxs[0] ? -mins[0] : maxs[0];
-		trace_extents[1] = -mins[1] > maxs[1] ? -mins[1] : maxs[1];
-		trace_extents[2] = -mins[2] > maxs[2] ? -mins[2] : maxs[2];
-	}
-
-	//
-	// general sweeping through world
-	//
-	CM_RecursiveHullCheck (headnode, 0, 1, start, end);
-
-	if (trace_trace.fraction == 1)
-	{
-		VectorCopy (end, trace_trace.endpos);
-	}
-	else
-	{
-		for (i=0 ; i<3 ; i++)
-			trace_trace.endpos[i] = start[i] + trace_trace.fraction * (end[i] - start[i]);
-	}
-	return trace_trace;
-}
-
-
-/*
-==================
-CM_TransformedBoxTrace
-
-Handles offseting and rotation of the end points for moving and
-rotating entities
-==================
-*/
-#ifdef _WIN32
-#pragma optimize( "", off )
-#endif
-
-
-trace_t		CM_TransformedBoxTrace (vec3_t start, vec3_t end,
-						  vec3_t mins, vec3_t maxs,
-						  int headnode, int brushmask,
-						  vec3_t origin, vec3_t angles)
-{
-	trace_t		trace;
-	vec3_t		start_l, end_l;
-	vec3_t		a;
-	vec3_t		forward, right, up;
-	vec3_t		temp;
-	qboolean	rotated;
-
-	// subtract origin offset
-	VectorSubtract (start, origin, start_l);
-	VectorSubtract (end, origin, end_l);
-
-	// rotate start and end into the models frame of reference
-	if (headnode != box_headnode && 
-	(angles[0] || angles[1] || angles[2]) )
-		rotated = true;
-	else
-		rotated = false;
-
-	if (rotated)
-	{
-		AngleVectors (angles, forward, right, up);
-
-		VectorCopy (start_l, temp);
-		start_l[0] = DotProduct (temp, forward);
-		start_l[1] = -DotProduct (temp, right);
-		start_l[2] = DotProduct (temp, up);
-
-		VectorCopy (end_l, temp);
-		end_l[0] = DotProduct (temp, forward);
-		end_l[1] = -DotProduct (temp, right);
-		end_l[2] = DotProduct (temp, up);
-	}
-
-	// sweep the box through the model
-	trace = CM_BoxTrace (start_l, end_l, mins, maxs, headnode, brushmask);
-
-	if (rotated && trace.fraction != 1.0)
-	{
-		// FIXME: figure out how to do this with existing angles
-		VectorNegate (angles, a);
-		AngleVectors (a, forward, right, up);
-
-		VectorCopy (trace.plane.normal, temp);
-		trace.plane.normal[0] = DotProduct (temp, forward);
-		trace.plane.normal[1] = -DotProduct (temp, right);
-		trace.plane.normal[2] = DotProduct (temp, up);
-	}
-
-	trace.endpos[0] = start[0] + trace.fraction * (end[0] - start[0]);
-	trace.endpos[1] = start[1] + trace.fraction * (end[1] - start[1]);
-	trace.endpos[2] = start[2] + trace.fraction * (end[2] - start[2]);
-
-	return trace;
-}
-
-#ifdef _WIN32
-#pragma optimize( "", on )
-#endif
-
-
-
-/*
-===============================================================================
-
-PVS / PHS
-
-===============================================================================
-*/
-
-/*
-===================
-CM_DecompressVis
-===================
-*/
-void CM_DecompressVis (byte *in, byte *out)
-{
-	int		c;
-	byte	*out_p;
-	int		row;
-
-	row = (numclusters+7)>>3;	
-	out_p = out;
-
-	if (!in || !numvisibility)
-	{	// no vis info, so make all visible
-		while (row)
-		{
-			*out_p++ = 0xff;
-			row--;
-		}
-		return;		
-	}
-
-	do
-	{
-		if (*in)
-		{
-			*out_p++ = *in++;
-			continue;
-		}
-	
-		c = in[1];
-		in += 2;
-		if ((out_p - out) + c > row)
-		{
-			c = row - (out_p - out);
-			Com_DPrintf ("warning: Vis decompression overrun\n");
-		}
-		while (c)
-		{
-			*out_p++ = 0;
-			c--;
-		}
-	} while (out_p - out < row);
-}
-
-byte	pvsrow[MAX_MAP_LEAFS/8];
-byte	phsrow[MAX_MAP_LEAFS/8];
-
-byte	*CM_ClusterPVS (int cluster)
-{
-	if (cluster == -1)
-		memset (pvsrow, 0, (numclusters+7)>>3);
-	else
-		CM_DecompressVis (map_visibility + map_vis->bitofs[cluster][DVIS_PVS], pvsrow);
-	return pvsrow;
-}
-
-byte	*CM_ClusterPHS (int cluster)
-{
-	if (cluster == -1)
-		memset (phsrow, 0, (numclusters+7)>>3);
-	else
-		CM_DecompressVis (map_visibility + map_vis->bitofs[cluster][DVIS_PHS], phsrow);
-	return phsrow;
-}
-
-
-/*
-===============================================================================
-
-AREAPORTALS
-
-===============================================================================
-*/
-
-void FloodArea_r (carea_t *area, int floodnum)
-{
-	int		i;
-	dareaportal_t	*p;
-
-	if (area->floodvalid == floodvalid)
-	{
-		if (area->floodnum == floodnum)
-			return;
-		common.Com_Error (q_shared.ERR_DROP, "FloodArea_r: reflooded");
-	}
-
-	area->floodnum = floodnum;
-	area->floodvalid = floodvalid;
-	p = &map_areaportals[area->firstareaportal];
-	for (i=0 ; i<area->numareaportals ; i++, p++)
-	{
-		if (portalopen[p->portalnum])
-			FloodArea_r (&map_areas[p->otherarea], floodnum);
-	}
-}
-
-/*
-====================
-FloodAreaConnections
-
-
-====================
-"""
-def FloodArea_r (area: carea_t, floodnum: int):
+	box_planes = map_planes[numplanes:]
+
+	box_brush = map_brushes[numbrushes]
+	box_brush.numsides = 6
+	box_brush.firstbrushside = numbrushsides
+	box_brush.contents = q_shared.CONTENTS_MONSTER
+
+	box_leaf = map_leafs[numleafs]
+	box_leaf.contents = q_shared.CONTENTS_MONSTER
+	box_leaf.firstleafbrush = numleafbrushes
+	box_leaf.numleafbrushes = 1
+
+	map_leafbrushes[numleafbrushes] = numbrushes
+
+	for i in range(6):
+		side = i & 1
+
+		s = map_brushsides[numbrushsides + i]
+		s.plane = map_planes[numplanes + i * 2 + side]
+		s.surface = nullsurface
+
+		c = map_nodes[box_headnode + i]
+		c.plane = map_planes[numplanes + i * 2]
+		c.children[side] = -1 - emptyleaf
+		if i != 5:
+			c.children[side ^ 1] = box_headnode + i + 1
+		else:
+			c.children[side ^ 1] = -1 - numleafs
+
+		p = box_planes[i * 2]
+		p.type = i >> 1
+		p.signbits = 0
+		q_shared.VectorClear(p.normal)
+		p.normal[i >> 1] = 1
+
+		p = box_planes[i * 2 + 1]
+		p.type = 3 + (i >> 1)
+		p.signbits = 0
+		q_shared.VectorClear(p.normal)
+		p.normal[i >> 1] = -1
+def CM_HeadnodeForBox(mins, maxs):
+
+	box_planes[0].dist = maxs[0]
+	box_planes[1].dist = -maxs[0]
+	box_planes[2].dist = mins[0]
+	box_planes[3].dist = -mins[0]
+	box_planes[4].dist = maxs[1]
+	box_planes[5].dist = -maxs[1]
+	box_planes[6].dist = mins[1]
+	box_planes[7].dist = -mins[1]
+	box_planes[8].dist = maxs[2]
+	box_planes[9].dist = -maxs[2]
+	box_planes[10].dist = mins[2]
+	box_planes[11].dist = -mins[2]
+
+	return box_headnode
+def CM_PointLeafnum_r(p, num):
+
+	global c_pointcontents
+
+	while num >= 0:
+		node = map_nodes[num]
+		plane = node.plane
+
+		if plane.type < 3:
+			d = p[plane.type] - plane.dist
+		else:
+			d = q_shared.DotProduct(plane.normal, p) - plane.dist
+		if d < 0:
+			num = node.children[1]
+		else:
+			num = node.children[0]
+
+	c_pointcontents += 1
+
+	return -1 - num
+
+
+def CM_PointLeafnum(p):
+	if not numplanes:
+		return 0
+	return CM_PointLeafnum_r(p, 0)
+
+leaf_count = 0
+leaf_maxcount = 0
+leaf_list = None
+leaf_mins = None
+leaf_maxs = None
+leaf_topnode = -1
+
+def CM_BoxLeafnums_r(nodenum):
+	global leaf_count, leaf_topnode
+
+	while True:
+		if nodenum < 0:
+			if leaf_count >= leaf_maxcount:
+				return
+			leaf_list[leaf_count] = -1 - nodenum
+			leaf_count += 1
+			return
+
+		node = map_nodes[nodenum]
+		plane = node.plane
+		s = q_shared.BoxOnPlaneSide(leaf_mins, leaf_maxs, plane)
+		if s == 1:
+			nodenum = node.children[0]
+		elif s == 2:
+			nodenum = node.children[1]
+		else:
+			if leaf_topnode == -1:
+				leaf_topnode = nodenum
+			CM_BoxLeafnums_r(node.children[0])
+			nodenum = node.children[1]
+			continue
+
+	return
+
+
+def CM_BoxLeafnums_headnode(mins, maxs, list_, listsize, headnode, topnode):
+	global leaf_list, leaf_count, leaf_maxcount, leaf_mins, leaf_maxs, leaf_topnode
+
+	leaf_list = list_
+	leaf_count = 0
+	leaf_maxcount = listsize
+	leaf_mins = mins
+	leaf_maxs = maxs
+	leaf_topnode = -1
+
+	CM_BoxLeafnums_r(headnode)
+
+	if topnode is not None:
+		if isinstance(topnode, list) and topnode:
+			topnode[0] = leaf_topnode
+		else:
+			try:
+				topnode[0] = leaf_topnode
+			except Exception:
+				pass
+
+	return leaf_count
+
+
+def CM_BoxLeafnums(mins, maxs, list_, listsize, topnode):
+	return CM_BoxLeafnums_headnode(mins, maxs, list_, listsize, map_cmodels[0].headnode, topnode)
+
+def CM_PointContents(p, headnode):
+	if not numnodes:
+		return 0
+	l = CM_PointLeafnum_r(p, headnode)
+	return map_leafs[l].contents
+
+
+pvsrow = bytearray((qfiles.MAX_MAP_LEAFS + 7) // 8)
+phsrow = bytearray((qfiles.MAX_MAP_LEAFS + 7) // 8)
+
+
+def CM_TransformedPointContents(p, headnode, origin, angles):
+	pt = np.zeros((3,), dtype=np.float32)
+	temp = np.zeros((3,), dtype=np.float32)
+	forward = np.zeros((3,), dtype=np.float32)
+	right = np.zeros((3,), dtype=np.float32)
+	up = np.zeros((3,), dtype=np.float32)
+
+	q_shared.VectorSubtract(p, origin, pt)
+
+	if headnode != box_headnode and (angles[0] or angles[1] or angles[2]):
+		q_shared.AngleVectors(angles, forward, right, up)
+		q_shared.VectorCopy(pt, temp)
+		pt[0] = q_shared.DotProduct(temp, forward)
+		pt[1] = -q_shared.DotProduct(temp, right)
+		pt[2] = q_shared.DotProduct(temp, up)
+
+	l = CM_PointLeafnum_r(pt, headnode)
+	return map_leafs[l].contents
+
+
+def CM_DecompressVis(data, out):
+	row = (numclusters + 7) >> 3
+	if row <= 0:
+		return
+
+	if not data or not numvisibility:
+		for i in range(row):
+			out[i] = 0xff
+		return
+
+	in_index = 0
+	out_index = 0
+	data_len = len(data)
+
+	while out_index < row and in_index < data_len:
+		value = data[in_index]
+		in_index += 1
+		if value:
+			out[out_index] = value
+			out_index += 1
+			continue
+
+		if in_index >= data_len:
+			break
+
+		c = data[in_index]
+		in_index += 1
+		if out_index + c > row:
+			c = row - out_index
+			common.Com_DPrintf("warning: Vis decompression overrun\n")
+		while c and out_index < row:
+			out[out_index] = 0
+			out_index += 1
+			c -= 1
+
+
+def CM_ClusterPVS(cluster):
+	row = (numclusters + 7) >> 3
+	if row < 1:
+		return pvsrow
+	if cluster == -1:
+		for i in range(row):
+			pvsrow[i] = 0
+		return pvsrow
+
+	if map_vis is None or map_visibility is None:
+		return pvsrow
+
+	offset = map_vis.bitofs[cluster][qfiles.DVIS_PVS]
+	CM_DecompressVis(map_visibility[offset:], pvsrow)
+	return pvsrow
+
+
+def CM_ClusterPHS(cluster):
+	row = (numclusters + 7) >> 3
+	if row < 1:
+		return phsrow
+	if cluster == -1:
+		for i in range(row):
+			phsrow[i] = 0
+		return phsrow
+
+	if map_vis is None or map_visibility is None:
+		return phsrow
+
+	offset = map_vis.bitofs[cluster][qfiles.DVIS_PHS]
+	CM_DecompressVis(map_visibility[offset:], phsrow)
+	return phsrow
+
+
+def FloodArea_r(area: carea_t, floodnum: int):
 	if area.floodvalid == floodvalid:
 		if area.floodnum == floodnum:
 			return
-		common.Com_Error (q_shared.ERR_DROP, "FloodArea_r: reflooded")
+		common.Com_Error(q_shared.ERR_DROP, "FloodArea_r: reflooded")
 
 	area.floodnum = floodnum
 	area.floodvalid = floodvalid
@@ -1770,13 +1082,10 @@ def FloodArea_r (area: carea_t, floodnum: int):
 	for i in range(num_portals):
 		portal = map_areaportals[first_portal + i]
 		if portalopen[portal.portalnum]:
-			FloodArea_r (map_areas[portal.otherarea], floodnum)
+			FloodArea_r(map_areas[portal.otherarea], floodnum)
 
 
-def FloodAreaConnections ():
-	"""
-	Recursively flood areas connected through open portals.
-	"""
+def FloodAreaConnections():
 	global floodvalid
 
 	floodvalid += 1
@@ -1787,144 +1096,391 @@ def FloodAreaConnections ():
 		if area.floodvalid == floodvalid:
 			continue
 		floodnum += 1
-		FloodArea_r (area, floodnum)
-
-"""
-	int		i;
-	carea_t	*area;
-	int		floodnum;
-
-	// all current floods are now invalid
-	floodvalid++;
-	floodnum = 0;
-
-	// area 0 is not used
-	for (i=1 ; i<numareas ; i++)
-	{
-		area = &map_areas[i];
-		if (area->floodvalid == floodvalid)
-			continue;		// already flooded into
-		floodnum++;
-		FloodArea_r (area, floodnum);
-	}
-	"""
-
-"""
-void	CM_SetAreaPortalState (int portalnum, qboolean open)
-{
-	if (portalnum > numareaportals)
-		common.Com_Error (q_shared.ERR_DROP, "areaportal > numareaportals");
-
-	portalopen[portalnum] = open;
-	FloodAreaConnections ();
-}
-
-qboolean	CM_AreasConnected (int area1, int area2)
-{
-	if (map_noareas->value)
-		return true;
-
-	if (area1 > numareas || area2 > numareas)
-		common.Com_Error (q_shared.ERR_DROP, "area > numareas");
-
-	if (map_areas[area1].floodnum == map_areas[area2].floodnum)
-		return true;
-	return false;
-}
+		FloodArea_r(area, floodnum)
 
 
-/*
-=================
-CM_WriteAreaBits
+def CM_SetAreaPortalState(portalnum, open_):
+	if portalnum > numareaportals:
+		common.Com_Error(q_shared.ERR_DROP, "areaportal > numareaportals")
 
-Writes a length byte followed by a bit vector of all the areas
-that area in the same flood as the area parameter
-
-This is used by the client refreshes to cull visibility
-=================
-*/
-int CM_WriteAreaBits (byte *buffer, int area)
-{
-	int		i;
-	int		floodnum;
-	int		bytes;
-
-	bytes = (numareas+7)>>3;
-
-	if (map_noareas->value)
-	{	// for debugging, send everything
-		memset (buffer, 255, bytes);
-	}
-	else
-	{
-		memset (buffer, 0, bytes);
-
-		floodnum = map_areas[area].floodnum;
-		for (i=0 ; i<numareas ; i++)
-		{
-			if (map_areas[i].floodnum == floodnum || !area)
-				buffer[i>>3] |= 1<<(i&7);
-		}
-	}
-
-	return bytes;
-}
+	portalopen[portalnum] = bool(open_)
+	FloodAreaConnections()
 
 
-/*
-===================
-CM_WritePortalState
+def CM_AreasConnected(area1, area2):
+	if map_noareas is not None and map_noareas.value:
+		return True
 
-Writes the portal state to a savegame file
-===================
-*/
-void	CM_WritePortalState (FILE *f)
-{
-	fwrite (portalopen, sizeof(portalopen), 1, f);
-}
+	if area1 > numareas or area2 > numareas:
+		common.Com_Error(q_shared.ERR_DROP, "area > numareas")
 
-/*
-===================
-CM_ReadPortalState
+	return map_areas[area1].floodnum == map_areas[area2].floodnum
 
-Reads the portal state from a savegame file
-and recalculates the area connections
-===================
-*/
-void	CM_ReadPortalState (FILE *f)
-{
-	FS_Read (portalopen, sizeof(portalopen), f);
-	FloodAreaConnections ();
-}
 
-/*
-=============
-CM_HeadnodeVisible
+def CM_WriteAreaBits(buffer, area):
+	bytes_count = (numareas + 7) >> 3
+	if len(buffer) < bytes_count:
+		raise ValueError("buffer too small")
 
-Returns true if any leaf under headnode has a cluster that
-is potentially visible
-=============
-*/
-qboolean CM_HeadnodeVisible (int nodenum, byte *visbits)
-{
-	int		leafnum;
-	int		cluster;
-	cnode_t	*node;
+	if map_noareas is not None and map_noareas.value:
+		for i in range(bytes_count):
+			buffer[i] = 0xff
+	else:
+		for i in range(bytes_count):
+			buffer[i] = 0
 
-	if (nodenum < 0)
-	{
-		leafnum = -1-nodenum;
-		cluster = map_leafs[leafnum].cluster;
-		if (cluster == -1)
-			return false;
-		if (visbits[cluster>>3] & (1<<(cluster&7)))
-			return true;
-		return false;
-	}
+		floodnum = map_areas[area].floodnum
+		for i in range(numareas):
+			if map_areas[i].floodnum == floodnum or not area:
+				buffer[i >> 3] |= 1 << (i & 7)
 
-	node = &map_nodes[nodenum];
-	if (CM_HeadnodeVisible(node->children[0], visbits))
-		return true;
-	return CM_HeadnodeVisible(node->children[1], visbits);
-}
-"""
+	return bytes_count
+
+
+def CM_WritePortalState(f):
+	if f is None:
+		return
+	f.write(bytes(1 if x else 0 for x in portalopen))
+
+
+def CM_ReadPortalState(f):
+	if f is None:
+		return
+
+	data = files.FS_Read(len(portalopen), f)
+	if len(data) != len(portalopen):
+		common.Com_Error(q_shared.ERR_DROP, "CM_ReadPortalState: short read")
+	for i, value in enumerate(data):
+		portalopen[i] = bool(value)
+	FloodAreaConnections()
+
+
+def CM_HeadnodeVisible(nodenum, visbits):
+	if nodenum < 0:
+		leafnum = -1 - nodenum
+		if leafnum >= numleafs:
+			return False
+		cluster = map_leafs[leafnum].cluster
+		if cluster == -1:
+			return False
+		return bool(visbits[cluster >> 3] & (1 << (cluster & 7)))
+
+	node = map_nodes[nodenum]
+	if CM_HeadnodeVisible(node.children[0], visbits):
+		return True
+	return CM_HeadnodeVisible(node.children[1], visbits)
+DIST_EPSILON = 0.03125
+trace_start = np.zeros((3,), dtype=np.float32)
+trace_end = np.zeros((3,), dtype=np.float32)
+trace_mins = np.zeros((3,), dtype=np.float32)
+trace_maxs = np.zeros((3,), dtype=np.float32)
+trace_extents = np.zeros((3,), dtype=np.float32)
+
+trace_trace = q_shared.trace_t()
+trace_contents = 0
+trace_ispoint = False
+
+def _copy_plane(dst, src):
+    dst.normal[:] = src.normal
+    dst.dist = src.dist
+    dst.type = src.type
+    dst.signbits = src.signbits
+    dst.pad[0] = src.pad[0]
+    dst.pad[1] = src.pad[1]
+
+def CM_ClipBoxToBrush(mins, maxs, p1, p2, trace, brush):
+    global c_brush_traces
+
+    if not brush.numsides:
+        return
+
+    c_brush_traces += 1
+    enterfrac = -1.0
+    leavefrac = 1.0
+    clipplane = None
+    getout = False
+    startout = False
+    leadside = None
+    ofs = [0.0, 0.0, 0.0]
+
+    for i in range(brush.numsides):
+        side = map_brushsides[brush.firstbrushside + i]
+        plane = side.plane
+
+        if not trace_ispoint:
+            for j in range(3):
+                ofs[j] = maxs[j] if plane.normal[j] < 0 else mins[j]
+            dist = q_shared.DotProduct(ofs, plane.normal)
+            dist = plane.dist - dist
+        else:
+            dist = plane.dist
+
+        d1 = q_shared.DotProduct(p1, plane.normal) - dist
+        d2 = q_shared.DotProduct(p2, plane.normal) - dist
+
+        if d2 > 0:
+            getout = True
+        if d1 > 0:
+            startout = True
+
+        if d1 > 0 and d2 >= d1:
+            return
+        if d1 <= 0 and d2 <= 0:
+            continue
+
+        if d1 > d2:
+            f = (d1 - DIST_EPSILON) / (d1 - d2)
+            if f > enterfrac:
+                enterfrac = f
+                clipplane = plane
+                leadside = side
+        else:
+            f = (d1 + DIST_EPSILON) / (d1 - d2)
+            if f < leavefrac:
+                leavefrac = f
+
+    if not startout:
+        trace.startsolid = True
+        if not getout:
+            trace.allsolid = True
+        return
+
+    if enterfrac < leavefrac and enterfrac > -1 and enterfrac < trace.fraction:
+        frac = 0.0 if enterfrac < 0 else enterfrac
+        trace.fraction = frac
+        if clipplane is not None:
+            _copy_plane(trace.plane, clipplane)
+        if leadside and leadside.surface:
+            trace.surface = leadside.surface.c
+        trace.contents = brush.contents
+
+def CM_TestBoxInBrush(mins, maxs, p1, trace, brush):
+    if not brush.numsides:
+        return
+
+    ofs = [0.0, 0.0, 0.0]
+    for i in range(brush.numsides):
+        side = map_brushsides[brush.firstbrushside + i]
+        plane = side.plane
+        for j in range(3):
+            ofs[j] = maxs[j] if plane.normal[j] < 0 else mins[j]
+        dist = q_shared.DotProduct(ofs, plane.normal)
+        dist = plane.dist - dist
+
+        d1 = q_shared.DotProduct(p1, plane.normal) - dist
+        if d1 > 0:
+            return
+
+    trace.startsolid = True
+    trace.allsolid = True
+    trace.fraction = 0.0
+    trace.contents = brush.contents
+
+def CM_TraceToLeaf(leafnum):
+    leaf = map_leafs[leafnum]
+    if not (leaf.contents & trace_contents):
+        return
+
+    for k in range(leaf.numleafbrushes):
+        brushnum = map_leafbrushes[leaf.firstleafbrush + k]
+        brush = map_brushes[brushnum]
+        if brush.checkcount == checkcount:
+            continue
+        brush.checkcount = checkcount
+
+        if not (brush.contents & trace_contents):
+            continue
+        CM_ClipBoxToBrush(trace_mins, trace_maxs, trace_start, trace_end, trace_trace, brush)
+        if trace_trace.fraction == 0:
+            return
+
+def CM_TestInLeaf(leafnum):
+    leaf = map_leafs[leafnum]
+    if not (leaf.contents & trace_contents):
+        return
+
+    for k in range(leaf.numleafbrushes):
+        brushnum = map_leafbrushes[leaf.firstleafbrush + k]
+        brush = map_brushes[brushnum]
+        if brush.checkcount == checkcount:
+            continue
+        brush.checkcount = checkcount
+
+        if not (brush.contents & trace_contents):
+            continue
+        CM_TestBoxInBrush(trace_mins, trace_maxs, trace_start, trace_trace, brush)
+        if trace_trace.fraction == 0:
+            return
+
+def CM_RecursiveHullCheck(num, p1f, p2f, p1, p2):
+    if trace_trace.fraction <= p1f:
+        return
+
+    if num < 0:
+        CM_TraceToLeaf(-1 - num)
+        return
+
+    node = map_nodes[num]
+    plane = node.plane
+
+    if plane.type < 3:
+        t1 = p1[plane.type] - plane.dist
+        t2 = p2[plane.type] - plane.dist
+        offset = trace_extents[plane.type]
+    else:
+        t1 = q_shared.DotProduct(plane.normal, p1) - plane.dist
+        t2 = q_shared.DotProduct(plane.normal, p2) - plane.dist
+        if trace_ispoint:
+            offset = 0.0
+        else:
+            offset = (
+                abs(trace_extents[0] * plane.normal[0])
+                + abs(trace_extents[1] * plane.normal[1])
+                + abs(trace_extents[2] * plane.normal[2])
+            )
+
+    if t1 >= offset and t2 >= offset:
+        CM_RecursiveHullCheck(node.children[0], p1f, p2f, p1, p2)
+        return
+    if t1 < -offset and t2 < -offset:
+        CM_RecursiveHullCheck(node.children[1], p1f, p2f, p1, p2)
+        return
+
+    if t1 < t2:
+        idist = 1.0 / (t1 - t2)
+        side = 1
+        frac2 = (t1 + offset + DIST_EPSILON) * idist
+        frac = (t1 - offset + DIST_EPSILON) * idist
+    elif t1 > t2:
+        idist = 1.0 / (t1 - t2)
+        side = 0
+        frac2 = (t1 - offset - DIST_EPSILON) * idist
+        frac = (t1 + offset + DIST_EPSILON) * idist
+    else:
+        side = 0
+        frac = 1.0
+        frac2 = 0.0
+
+    frac = max(0.0, min(1.0, frac))
+    midf = p1f + (p2f - p1f) * frac
+    mid = np.zeros((3,), dtype=np.float32)
+    for i in range(3):
+        mid[i] = p1[i] + frac * (p2[i] - p1[i])
+
+    CM_RecursiveHullCheck(node.children[side], p1f, midf, p1, mid)
+
+    frac2 = max(0.0, min(1.0, frac2))
+    midf = p1f + (p2f - p1f) * frac2
+    for i in range(3):
+        mid[i] = p1[i] + frac2 * (p2[i] - p1[i])
+
+    CM_RecursiveHullCheck(node.children[side ^ 1], midf, p2f, mid, p2)
+
+def CM_BoxTrace(start, end, mins, maxs, headnode, brushmask):
+    global checkcount, c_traces, trace_contents, trace_ispoint
+
+    checkcount += 1
+    c_traces += 1
+
+    trace_trace.allsolid = False
+    trace_trace.startsolid = False
+    trace_trace.fraction = 1.0
+    trace_trace.contents = 0
+    trace_trace.surface = nullsurface.c
+    q_shared.VectorClear(trace_trace.plane.normal)
+    trace_trace.plane.dist = 0.0
+    trace_trace.plane.type = 0
+    trace_trace.plane.signbits = 0
+    trace_trace.plane.pad[0] = 0
+    trace_trace.plane.pad[1] = 0
+    trace_trace.endpos[:] = 0.0
+
+    if not numnodes:
+        return trace_trace
+
+    trace_contents = brushmask
+    q_shared.VectorCopy(start, trace_start)
+    q_shared.VectorCopy(end, trace_end)
+    q_shared.VectorCopy(mins, trace_mins)
+    q_shared.VectorCopy(maxs, trace_maxs)
+
+    if start[0] == end[0] and start[1] == end[1] and start[2] == end[2]:
+        leafs = [0] * 1024
+        topnode = [0]
+        c1 = np.zeros((3,), dtype=np.float32)
+        c2 = np.zeros((3,), dtype=np.float32)
+        q_shared.VectorAdd(start, mins, c1)
+        q_shared.VectorAdd(start, maxs, c2)
+        for i in range(3):
+            c1[i] -= 1
+            c2[i] += 1
+        numleafs = CM_BoxLeafnums_headnode(c1, c2, leafs, 1024, headnode, topnode)
+        for i in range(numleafs):
+            CM_TestInLeaf(leafs[i])
+            if trace_trace.allsolid:
+                break
+        q_shared.VectorCopy(start, trace_trace.endpos)
+        return trace_trace
+
+    if (mins[0] == 0 and mins[1] == 0 and mins[2] == 0
+            and maxs[0] == 0 and maxs[1] == 0 and maxs[2] == 0):
+        trace_ispoint = True
+        q_shared.VectorClear(trace_extents)
+    else:
+        trace_ispoint = False
+        trace_extents[0] = -mins[0] if -mins[0] > maxs[0] else maxs[0]
+        trace_extents[1] = -mins[1] if -mins[1] > maxs[1] else maxs[1]
+        trace_extents[2] = -mins[2] if -mins[2] > maxs[2] else maxs[2]
+
+    CM_RecursiveHullCheck(headnode, 0.0, 1.0, start, end)
+
+    if trace_trace.fraction == 1.0:
+        q_shared.VectorCopy(end, trace_trace.endpos)
+    else:
+        for i in range(3):
+            trace_trace.endpos[i] = start[i] + trace_trace.fraction * (end[i] - start[i])
+
+    return trace_trace
+
+def CM_TransformedBoxTrace(start, end, mins, maxs, headnode, brushmask, origin, angles):
+    start_l = np.zeros((3,), dtype=np.float32)
+    end_l = np.zeros((3,), dtype=np.float32)
+    q_shared.VectorSubtract(start, origin, start_l)
+    q_shared.VectorSubtract(end, origin, end_l)
+
+    rotated = headnode != box_headnode and (angles[0] or angles[1] or angles[2])
+
+    forward = np.zeros((3,), dtype=np.float32)
+    right = np.zeros((3,), dtype=np.float32)
+    up = np.zeros((3,), dtype=np.float32)
+    temp = np.zeros((3,), dtype=np.float32)
+    neg_angles = np.zeros((3,), dtype=np.float32)
+
+    if rotated:
+        q_shared.AngleVectors(angles, forward, right, up)
+
+        q_shared.VectorCopy(start_l, temp)
+        start_l[0] = q_shared.DotProduct(temp, forward)
+        start_l[1] = -q_shared.DotProduct(temp, right)
+        start_l[2] = q_shared.DotProduct(temp, up)
+
+        q_shared.VectorCopy(end_l, temp)
+        end_l[0] = q_shared.DotProduct(temp, forward)
+        end_l[1] = -q_shared.DotProduct(temp, right)
+        end_l[2] = q_shared.DotProduct(temp, up)
+
+    trace = CM_BoxTrace(start_l, end_l, mins, maxs, headnode, brushmask)
+
+    if rotated and trace.fraction != 1.0:
+        q_shared.VectorNegate(angles, neg_angles)
+        q_shared.AngleVectors(neg_angles, forward, right, up)
+
+        q_shared.VectorCopy(trace.plane.normal, temp)
+        trace.plane.normal[0] = q_shared.DotProduct(temp, forward)
+        trace.plane.normal[1] = -q_shared.DotProduct(temp, right)
+        trace.plane.normal[2] = q_shared.DotProduct(temp, up)
+
+    for i in range(3):
+        trace.endpos[i] = start[i] + trace.fraction * (end[i] - start[i])
+
+    return trace

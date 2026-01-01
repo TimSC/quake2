@@ -10,6 +10,7 @@ the ref_gl renderer and pygame based cross platform compatibility.
 - Port logic incrementally: leave original C in triple-quoted blocks and
   translate the active logic directly below/around it.
 - Favor structural fidelity over idiomatic Python so diffs are easy to follow.
+- Low level audio code is mostly working, so probably doesn't need modification.
 
 ## Style Conventions (Observed)
 - Keep the original copyright header at the top of each ported file.
@@ -36,6 +37,9 @@ the ref_gl renderer and pygame based cross platform compatibility.
 3. Paste the original C block (or keep existing block) in triple-quoted text.
 4. Translate function-by-function, keeping names, order, and globals intact.
 5. Use minimal Python features and avoid "cleanup" refactors.
+6. Once the python function is ported, don't retain the original C function.
+7. Commented out C code in python functions usually requires porting.
+8. Don't enable or uncomment code that was disabled or commented out in the quake2-original C code.
 
 ## Dependencies
 - Runtime dependencies are listed in `requirements.txt` and used throughout
