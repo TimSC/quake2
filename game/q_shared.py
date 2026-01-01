@@ -689,8 +689,10 @@ class usercmd_t(object):
 	def reset(self):
 		self.msec = 0 #byte	
 		self.buttons = 0 #byte	
-		self.angles = 0, 0, 0 #short	[3]
-		self.forwardmove, self.sidemove, self.upmove = 0, 0, 0 #short	
+		self.angles = [0, 0, 0] #short	[3]
+		self.forwardmove = 0 #short
+		self.sidemove = 0 #short	
+		self.upmove = 0 #short	
 		self.impulse = 0 #byte, remove?
 		self.lightlevel = 0 #byte, light level the player is standing on
 

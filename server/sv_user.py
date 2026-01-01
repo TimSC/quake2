@@ -589,77 +589,24 @@ def SV_ExecuteClientMessage (cl): #client_t *
 
 		elif c == qcommon.clc_ops_e.clc_move:
 
-
 			if move_issued:
 				return		# someone is trying to cheat...
 
 			move_issued = True
 			checksumIndex = net_chan.net_message.readcount
 			checksum = common.MSG_ReadByte (net_chan.net_message)
-			lastframe = common.MSG_ReadLong (net_chan.net_message)
-			"""
-			if (lastframe != cl->lastframe) {
-				cl->lastframe = lastframe;
-				if (cl->lastframe > 0) {
-					cl->frame_latency[cl->lastframe&(LATENCY_COUNTS-1)] = 
-						svs.realtime - cl->frames[cl->lastframe & UPDATE_MASK].senttime;
-				}
-			}
+			common.MSG_ReadLong (net_chan.net_message)
 
-			memset (&nullcmd, 0, sizeof(nullcmd));
-			MSG_ReadDeltaUsercmd (&net_message, &nullcmd, &oldest);
-			MSG_ReadDeltaUsercmd (&net_message, &oldest, &oldcmd);
-			MSG_ReadDeltaUsercmd (&net_message, &oldcmd, &newcmd);
+			nullcmd = q_shared.usercmd_t()
+			oldest = q_shared.usercmd_t()
+			oldcmd = q_shared.usercmd_t()
+			newcmd = q_shared.usercmd_t()
 
-			if ( cl->state != cs_spawned )
-			{
-				cl->lastframe = -1;
-				break;
-			}
+			common.MSG_ReadDeltaUsercmd (net_chan.net_message, nullcmd, oldest)
+			common.MSG_ReadDeltaUsercmd (net_chan.net_message, oldest, oldcmd)
+			common.MSG_ReadDeltaUsercmd (net_chan.net_message, oldcmd, newcmd)
 
-			// if the checksum fails, ignore the rest of the packet
-			calculatedChecksum = COM_BlockSequenceCRCByte (
-				net_message.data + checksumIndex + 1,
-				net_message.readcount - checksumIndex - 1,
-				cl->netchan.incoming_sequence);
-
-			if (calculatedChecksum != checksum)
-			{
-				common.Com_DPrintf ("Failed command checksum for %s (%d != %d)/%d\n", 
-					cl->name, calculatedChecksum, checksum, 
-					cl->netchan.incoming_sequence);
-				return;
-			}"""
-
-			"""
-			if (!sv_paused->value)
-			{
-				net_drop = cl->netchan.dropped;
-				if (net_drop < 20)
-				{
-
-//if (net_drop > 2)
-
-//	common.Com_Printf ("drop %i\n", net_drop);
-					while (net_drop > 2)
-					{
-						SV_ClientThink (cl, &cl->lastcmd);
-
-						net_drop--;
-					}
-					if (net_drop > 1)
-						SV_ClientThink (cl, &oldest);
-
-					if (net_drop > 0)
-						SV_ClientThink (cl, &oldcmd);
-
-				}
-				SV_ClientThink (cl, &newcmd);
-			}
-
-			cl->lastcmd = newcmd;
-			break;
-			"""
+			break
 
 		elif c == qcommon.clc_ops_e.clc_stringcmd:	
 

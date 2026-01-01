@@ -28,6 +28,7 @@ the ref_gl renderer and pygame based cross platform compatibility.
   `qcommon/qfiles.py`.
 - Logging/errors flow through `qcommon/common.py` (e.g., `Com_Printf`,
   `Com_Error`) rather than `print` or exceptions.
+- Vectors can be expressed as numpy arrays
 
 ## Practical Workflow
 1. Locate the original C file in `quake2-original/`.

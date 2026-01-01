@@ -55,167 +55,124 @@ typedef struct
 	vec3_t	angles;
 	qboolean present;
 } projectile_t;
+"""
+MAX_PROJECTILES = 64
 
-#define	MAX_PROJECTILES	64
-projectile_t	cl_projectiles[MAX_PROJECTILES];
 
-void CL_ClearProjectiles (void)
-{
-	int i;
+class projectile_t(object):
 
-	for (i = 0; i < MAX_PROJECTILES; i++) {
-//		if (cl_projectiles[i].present)
-//			Com_DPrintf("PROJ: %d CLEARED\n", cl_projectiles[i].num);
-		cl_projectiles[i].present = false;
-	}
-}
+	def __init__(self):
+		self.modelindex = 0
+		self.num = 0
+		self.effects = 0
+		self.origin = np.zeros(3, dtype=np.float32)
+		self.oldorigin = np.zeros(3, dtype=np.float32)
+		self.angles = np.zeros(3, dtype=np.float32)
+		self.present = False
 
-/*
+
+cl_projectiles = [projectile_t() for _ in range(MAX_PROJECTILES)]
+
+
+def CL_ClearProjectiles():
+	for proj in cl_projectiles:
+		proj.present = False
+
+"""
 =====================
 CL_ParseProjectiles
 
 Flechettes are passed as efficient temporary entities
 =====================
-*/
-void CL_ParseProjectiles (void)
-{
-	int		i, c, j;
-	byte	bits[8];
-	byte	b;
-	projectile_t	pr;
-	int lastempty = -1;
-	qboolean old = false;
-
-	c = MSG_ReadByte (&net_chan.net_message);
-	for (i=0 ; i<c ; i++)
-	{
-		bits[0] = MSG_ReadByte (&net_chan.net_message);
-		bits[1] = MSG_ReadByte (&net_chan.net_message);
-		bits[2] = MSG_ReadByte (&net_chan.net_message);
-		bits[3] = MSG_ReadByte (&net_chan.net_message);
-		bits[4] = MSG_ReadByte (&net_chan.net_message);
-		pr.origin[0] = ( ( bits[0] + ((bits[1]&15)<<8) ) <<1) - 4096;
-		pr.origin[1] = ( ( (bits[1]>>4) + (bits[2]<<4) ) <<1) - 4096;
-		pr.origin[2] = ( ( bits[3] + ((bits[4]&15)<<8) ) <<1) - 4096;
-		q_shared.VectorCopy(pr.origin, pr.oldorigin);
-
-		if (bits[4] & 64)
-			pr.effects = EF_BLASTER;
-		else
-			pr.effects = 0;
-
-		if (bits[4] & 128) {
-			old = true;
-			bits[0] = MSG_ReadByte (&net_chan.net_message);
-			bits[1] = MSG_ReadByte (&net_chan.net_message);
-			bits[2] = MSG_ReadByte (&net_chan.net_message);
-			bits[3] = MSG_ReadByte (&net_chan.net_message);
-			bits[4] = MSG_ReadByte (&net_chan.net_message);
-			pr.oldorigin[0] = ( ( bits[0] + ((bits[1]&15)<<8) ) <<1) - 4096;
-			pr.oldorigin[1] = ( ( (bits[1]>>4) + (bits[2]<<4) ) <<1) - 4096;
-			pr.oldorigin[2] = ( ( bits[3] + ((bits[4]&15)<<8) ) <<1) - 4096;
-		}
-
-		bits[0] = MSG_ReadByte (&net_chan.net_message);
-		bits[1] = MSG_ReadByte (&net_chan.net_message);
-		bits[2] = MSG_ReadByte (&net_chan.net_message);
-
-		pr.angles[0] = 360*bits[0]/256;
-		pr.angles[1] = 360*bits[1]/256;
-		pr.modelindex = bits[2];
-
-		b = MSG_ReadByte (&net_chan.net_message);
-		pr.num = (b & 0x7f);
-		if (b & 128) // extra entity number byte
-			pr.num |= (MSG_ReadByte (&net_chan.net_message) << 7);
-
-		pr.present = true;
-
-		// find if this projectile already exists from previous frame 
-		for (j = 0; j < MAX_PROJECTILES; j++) {
-			if (cl_projectiles[j].modelindex) {
-				if (cl_projectiles[j].num == pr.num) {
-					// already present, set up oldorigin for interpolation
-					if (!old)
-						q_shared.VectorCopy(cl_projectiles[j].origin, pr.oldorigin);
-					cl_projectiles[j] = pr;
-					break;
-				}
-			} else
-				lastempty = j;
-		}
-
-		// not present previous frame, add it
-		if (j == MAX_PROJECTILES) {
-			if (lastempty != -1) {
-				cl_projectiles[lastempty] = pr;
-			}
-		}
-	}
-}
-
-/*
-=============
-CL_LinkProjectiles
-
-=============
-*/
-void CL_AddProjectiles (void)
-{
-	int		i, j;
-	projectile_t	*pr;
-	entity_t		ent;
-
-	memset (&ent, 0, sizeof(ent));
-
-	for (i=0, pr=cl_projectiles ; i < MAX_PROJECTILES ; i++, pr++)
-	{
-		// grab an entity to fill in
-		if (pr.modelindex < 1)
-			continue;
-		if (!pr.present) {
-			pr.modelindex = 0;
-			continue; // not present this frame (it was in the previous frame)
-		}
-
-		ent.model = cl_main.cl.model_draw[pr.modelindex];
-
-		// interpolate origin
-		for (j=0 ; j<3 ; j++)
-		{
-			ent.origin[j] = ent.oldorigin[j] = pr.oldorigin[j] + cl_main.cl.lerpfrac * 
-				(pr.origin[j] - pr.oldorigin[j]);
-
-		}
-
-		if (pr.effects & EF_BLASTER)
-			CL_BlasterTrail (pr.oldorigin, ent.origin);
-		V_AddLight (pr.origin, 200, 1, 1, 0);
-
-		q_shared.VectorCopy (pr.angles, ent.angles);
-		V_AddEntity (&ent);
-	}
-}
-#endif
-
-/*
-=================
-CL_ParseEntityBits
-
-Returns the entity number and the header bits
-=================
 """
+def CL_ParseProjectiles():
+	count = common.MSG_ReadByte(net_chan.net_message)
+	for _ in range(count):
+		bits = [common.MSG_ReadByte(net_chan.net_message) for _ in range(5)]
+
+		pr_proj = projectile_t()
+		pr_proj.origin[0] = ((bits[0] + ((bits[1] & 15) << 8)) << 1) - 4096
+		pr_proj.origin[1] = (((bits[1] >> 4) + (bits[2] << 4)) << 1) - 4096
+		pr_proj.origin[2] = ((bits[3] + ((bits[4] & 15) << 8)) << 1) - 4096
+		q_shared.VectorCopy(pr_proj.origin, pr_proj.oldorigin)
+
+		if bits[4] & q_shared.EF_BLASTER:
+			pr_proj.effects = q_shared.EF_BLASTER
+		else:
+			pr_proj.effects = 0
+
+		old = False
+		if bits[4] & 128:
+			old = True
+			bits = [common.MSG_ReadByte(net_chan.net_message) for _ in range(5)]
+			pr_proj.oldorigin[0] = ((bits[0] + ((bits[1] & 15) << 8)) << 1) - 4096
+			pr_proj.oldorigin[1] = (((bits[1] >> 4) + (bits[2] << 4)) << 1) - 4096
+			pr_proj.oldorigin[2] = ((bits[3] + ((bits[4] & 15) << 8)) << 1) - 4096
+
+		bits = [common.MSG_ReadByte(net_chan.net_message) for _ in range(3)]
+
+		pr_proj.angles[0] = 360.0 * bits[0] / 256.0
+		pr_proj.angles[1] = 360.0 * bits[1] / 256.0
+		pr_proj.modelindex = bits[2]
+
+		b = common.MSG_ReadByte(net_chan.net_message)
+		pr_proj.num = (b & 0x7f)
+		if b & 128:
+			pr_proj.num |= common.MSG_ReadByte(net_chan.net_message) << 7
+
+		pr_proj.present = True
+
+		lastempty = -1
+		for j in range(MAX_PROJECTILES):
+			slot = cl_projectiles[j]
+			if slot.modelindex:
+				if slot.num == pr_proj.num:
+					if not old:
+						q_shared.VectorCopy(slot.origin, pr_proj.oldorigin)
+					cl_projectiles[j] = pr_proj
+					break
+			else:
+				lastempty = j
+		else:
+			j = MAX_PROJECTILES
+
+		if j == MAX_PROJECTILES and lastempty != -1:
+			cl_projectiles[lastempty] = pr_proj
+
+
+def CL_AddProjectiles():
+	ent = ref.entity_t()
+	for pr in cl_projectiles:
+		if pr.modelindex < 1:
+			pr.present = False
+			continue
+		if not pr.present:
+			pr.modelindex = 0
+			continue
+
+		ent.model = cl_main.cl.model_draw[pr.modelindex]
+		for i in range(3):
+			ent.origin[i] = ent.oldorigin[i] = (
+				pr.oldorigin[i] + cl_main.cl.lerpfrac * (pr.origin[i] - pr.oldorigin[i])
+			)
+		if pr.effects & q_shared.EF_BLASTER and hasattr(cl_fx, "CL_BlasterTrail"):
+			cl_fx.CL_BlasterTrail(pr.oldorigin, ent.origin)
+			cl_view.V_AddLight(ent.origin, 200, 1, 1, 0)
+		if pr.effects & q_shared.EF_BLASTER and not hasattr(cl_fx, "CL_BlasterTrail"):
+			cl_view.V_AddLight(ent.origin, 200, 1, 1, 0)
+
+		q_shared.VectorCopy(pr.angles, ent.angles)
+		cl_view.V_AddEntity(ent)
+
 bitcounts = [] #int[32], just for protocol profilingf
 for i in range(32):
 	bitcounts.append(0)
 
 def CL_ParseEntityBits (): # (unsigned *bits)
 
-	"""
-	unsigned	b, total;
-	int			i;
-	int			number;
-	"""
+	# unsigned	b, total;
+	# int			i;
+	# int			number;
 
 	total = common.MSG_ReadByte (net_chan.net_message)
 	if total & qcommon.U_MOREBITS1:
@@ -247,13 +204,11 @@ def CL_ParseEntityBits (): # (unsigned *bits)
 	return number, total
 
 
-"""
-==================
-CL_ParseDelta
-
-Can go from either a baseline or a previous packet_entity
-==================
-"""
+	# ==================
+	# CL_ParseDelta
+	#
+	# Can go from either a baseline or a previous packet_entity
+	# ==================
 def CL_ParseDelta (fromEnt, toEnt, number, bits): #entity_state_t *from, entity_state_t *to, int number, int bits
 
 	# set everything to the state we are delta'ing from
@@ -327,20 +282,16 @@ def CL_ParseDelta (fromEnt, toEnt, number, bits): #entity_state_t *from, entity_
 		toEnt.solid = common.MSG_ReadShort (net_chan.net_message)
 
 
-"""
-==================
-CL_DeltaEntity
-
-Parses deltas from the given base and adds the resulting entity
-to the current frame
-==================
-"""
+	# ==================
+	# CL_DeltaEntity
+	#
+	# Parses deltas from the given base and adds the resulting entity
+	# to the current frame
+	# ==================
 def CL_DeltaEntity (frame, newnum, old, bits): #frame_t *, int, entity_state_t *, int
 
-	"""
-	centity_t	*ent;
-	entity_state_t	*state;
-	"""
+		# centity_t	*ent;
+		# entity_state_t	*state;
 
 	ent = cl_main.cl_entities[newnum]
 
@@ -390,22 +341,18 @@ def CL_DeltaEntity (frame, newnum, old, bits): #frame_t *, int, entity_state_t *
 	ent.current = copy.copy(state)
 
 
-"""
-==================
-CL_ParsePacketEntities
-
-An svc_packetentities has just been parsed, deal with the
-rest of the data stream.
-==================
-"""
+	# ==================
+	# CL_ParsePacketEntities
+	#
+	# An svc_packetentities has just been parsed, deal with the
+	# rest of the data stream.
+	# ==================
 def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 
-	"""
-	int			newnum;
-	int			bits;
-	entity_state_t	*oldstate;
-	int			oldindex, oldnum;
-	"""
+	# int			newnum;
+	# int			bits;
+	# entity_state_t	*oldstate;
+	# int			oldindex, oldnum;
 
 	newframe.parse_entities = cl_main.cl.parse_entities
 	newframe.num_entities = 0
@@ -523,19 +470,15 @@ def CL_ParsePacketEntities (oldframe, newframe): #frame_t *, frame_t *
 
 
 
-"""
-===================
-CL_ParsePlayerstate
-===================
-"""
+# ===================
+# CL_ParsePlayerstate
+# ===================
 def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 
-	"""
-	int			flags;
-	player_state_t	*state;
-	int			i;
-	int			statbits;
-	"""
+	# int			flags;
+	# player_state_t	*state;
+	# int			i;
+	# int			statbits;
 
 	state = newframe.playerstate
 
@@ -553,20 +496,20 @@ def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 	if flags & qcommon.PS_M_TYPE:
 		state.pmove.pm_type = common.MSG_ReadByte (net_chan.net_message)
 
-	
+
 	if flags & qcommon.PS_M_ORIGIN:
-	
+
 		state.pmove.origin[0] = common.MSG_ReadShort (net_chan.net_message)
 		state.pmove.origin[1] = common.MSG_ReadShort (net_chan.net_message)
 		state.pmove.origin[2] = common.MSG_ReadShort (net_chan.net_message)
-	
-	
+
+
 	if flags & qcommon.PS_M_VELOCITY:
-	
+
 		state.pmove.velocity[0] = common.MSG_ReadShort (net_chan.net_message)
 		state.pmove.velocity[1] = common.MSG_ReadShort (net_chan.net_message)
 		state.pmove.velocity[2] = common.MSG_ReadShort (net_chan.net_message)
-	
+
 
 	if flags & qcommon.PS_M_TIME:
 		state.pmove.pm_time = common.MSG_ReadByte (net_chan.net_message)
@@ -578,11 +521,11 @@ def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 		state.pmove.gravity = common.MSG_ReadShort (net_chan.net_message)
 
 	if flags & qcommon.PS_M_DELTA_ANGLES:
-	
+
 		state.pmove.delta_angles[0] = common.MSG_ReadShort (net_chan.net_message)
 		state.pmove.delta_angles[1] = common.MSG_ReadShort (net_chan.net_message)
 		state.pmove.delta_angles[2] = common.MSG_ReadShort (net_chan.net_message)
-	
+
 
 	if cl_main.cl.attractloop:
 		state.pmove.pm_type = q_shared.pmtype_t.PM_FREEZE		# demo playback
@@ -591,33 +534,33 @@ def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 	# parse the rest of the player_state_t
 	#
 	if flags & qcommon.PS_VIEWOFFSET:
-	
+
 		state.viewoffset[0] = common.MSG_ReadChar (net_chan.net_message) * 0.25
 		state.viewoffset[1] = common.MSG_ReadChar (net_chan.net_message) * 0.25
 		state.viewoffset[2] = common.MSG_ReadChar (net_chan.net_message) * 0.25
-	
+
 
 	if flags & qcommon.PS_VIEWANGLES:
-	
+
 		state.viewangles[0] = common.MSG_ReadAngle16 (net_chan.net_message)
 		state.viewangles[1] = common.MSG_ReadAngle16 (net_chan.net_message)
 		state.viewangles[2] = common.MSG_ReadAngle16 (net_chan.net_message)
-	
+
 
 	if flags & qcommon.PS_KICKANGLES:
-	
+
 		state.kick_angles[0] = common.MSG_ReadChar (net_chan.net_message) * 0.25
 		state.kick_angles[1] = common.MSG_ReadChar (net_chan.net_message) * 0.25
 		state.kick_angles[2] = common.MSG_ReadChar (net_chan.net_message) * 0.25
-	
+
 
 	if flags & qcommon.PS_WEAPONINDEX:
-	
+
 		state.gunindex = common.MSG_ReadByte (net_chan.net_message)
-	
+
 
 	if flags & qcommon.PS_WEAPONFRAME:
-	
+
 		state.gunframe = common.MSG_ReadByte (net_chan.net_message)
 		state.gunoffset[0] = common.MSG_ReadChar (net_chan.net_message)*0.25
 		state.gunoffset[1] = common.MSG_ReadChar (net_chan.net_message)*0.25
@@ -625,15 +568,15 @@ def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 		state.gunangles[0] = common.MSG_ReadChar (net_chan.net_message)*0.25
 		state.gunangles[1] = common.MSG_ReadChar (net_chan.net_message)*0.25
 		state.gunangles[2] = common.MSG_ReadChar (net_chan.net_message)*0.25
-	
+
 
 	if flags & qcommon.PS_BLEND:
-	
+
 		state.blend[0] = common.MSG_ReadByte (net_chan.net_message)/255.0
 		state.blend[1] = common.MSG_ReadByte (net_chan.net_message)/255.0
 		state.blend[2] = common.MSG_ReadByte (net_chan.net_message)/255.0
 		state.blend[3] = common.MSG_ReadByte (net_chan.net_message)/255.0
-	
+
 
 	if flags & qcommon.PS_FOV:
 		state.fov = common.MSG_ReadByte (net_chan.net_message)
@@ -649,38 +592,20 @@ def CL_ParsePlayerstate (oldframe, newframe): #frame_t *, frame_t *
 
 
 
-"""
-==================
-CL_FireEntityEvents
-
-==================
-"""
-def CL_FireEntityEvents (frame): #frame_t *
-
-	print ("CL_FireEntityEvents")
-	"""
-	entity_state_t		*s1;
-	int					pnum, num;
-
-	for (pnum = 0 ; pnum<frame.num_entities ; pnum++)
-	{
-		num = (frame.parse_entities + pnum)&(client.MAX_PARSE_ENTITIES-1);
-		s1 = &cl_main.cl_parse_entities[num];
-		if (s1.event)
-			CL_EntityEvent (s1);
-
-		// EF_TELEPORTER acts like an event, but is not cleared each frame
-		if (s1.effects & EF_TELEPORTER)
-			CL_TeleporterParticles (s1);
-	}
-}
+def CL_FireEntityEvents (frame):
+	for pnum in range(frame.num_entities):
+		num = (frame.parse_entities + pnum) & (client.MAX_PARSE_ENTITIES - 1)
+		s1 = cl_main.cl_parse_entities[num]
+		if s1.event and hasattr(cl_fx, "CL_EntityEvent"):
+			cl_fx.CL_EntityEvent(s1)
+		if s1.effects & q_shared.EF_TELEPORTER and hasattr(cl_fx, "CL_TeleporterParticles"):
+			cl_fx.CL_TeleporterParticles(s1)
 
 
-/*
-================
-CL_ParseFrame
-================
-"""
+#================
+#CL_ParseFrame
+#================
+
 def CL_ParseFrame ():
 
 	"""
@@ -760,11 +685,7 @@ def CL_ParseFrame ():
 	if cmd != qcommon.svc_ops_e.svc_packetentities.value:
 		common.Com_Error (q_shared.ERR_DROP, "CL_ParseFrame: not packetentities")
 	CL_ParsePacketEntities (old, cl_main.cl.frame)
-
-#if 0
-#	if (cmd == svc_packetentities2)
-#		CL_ParseProjectiles()
-#endif
+	CL_ParseProjectiles ()
 
 	# save the frame off in the backup array for later delta comparisons
 	cl_main.cl.frames[cl_main.cl.frame.serverframe & qcommon.UPDATE_MASK] = copy.copy(cl_main.cl.frame)
@@ -798,7 +719,7 @@ def CL_ParseFrame ():
 INTERPOLATE BETWEEN FRAMES TO GET RENDERING PARMS
 
 ==========================================================================
-*/
+
 
 struct model_s *S_RegisterSexedModel (entity_state_t *ent, char *base)
 {
@@ -1751,6 +1672,7 @@ def CL_AddEntities ():
 		cl_main.cl.lerpfrac = 1.0
 
 	CL_CalcViewValues()
+	CL_AddProjectiles ()
 
 	add_packet = globals().get("CL_AddPacketEntities")
 	if callable(add_packet):

@@ -779,7 +779,7 @@ def MSG_ReadShort (msg_read): #sizebuf_t *
 	if msg_read.readcount+2 > msg_read.cursize:
 		c = -1
 	else:		
-		c = struct.unpack_from("<H", msg_read.data, msg_read.readcount)[0]
+		c = struct.unpack_from("<h", msg_read.data, msg_read.readcount)[0]
 	
 	msg_read.readcount += 2
 	
@@ -923,46 +923,49 @@ def MSG_ReadAngle16 (msg_read)->float: #(sizebuf_t *)
 
 	return q_shared.SHORT2ANGLE(MSG_ReadShort(msg_read))
 
-"""
-void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move)
-{
-	int bits;
 
-	memcpy (move, from, sizeof(*move));
+def _copy_usercmd (dst, src):
+	dst.msec = src.msec
+	dst.buttons = src.buttons
+	dst.angles[0] = src.angles[0]
+	dst.angles[1] = src.angles[1]
+	dst.angles[2] = src.angles[2]
+	dst.forwardmove = src.forwardmove
+	dst.sidemove = src.sidemove
+	dst.upmove = src.upmove
+	dst.impulse = src.impulse
+	dst.lightlevel = src.lightlevel
 
-	bits = MSG_ReadByte (msg_read);
-		
-# read current angles
-	if (bits & CM_ANGLE1)
-		move->angles[0] = MSG_ReadShort (msg_read);
-	if (bits & CM_ANGLE2)
-		move->angles[1] = MSG_ReadShort (msg_read);
-	if (bits & CM_ANGLE3)
-		move->angles[2] = MSG_ReadShort (msg_read);
-		
-# read movement
-	if (bits & CM_FORWARD)
-		move->forwardmove = MSG_ReadShort (msg_read);
-	if (bits & CM_SIDE)
-		move->sidemove = MSG_ReadShort (msg_read);
-	if (bits & CM_UP)
-		move->upmove = MSG_ReadShort (msg_read);
-	
-# read buttons
-	if (bits & CM_BUTTONS)
-		move->buttons = MSG_ReadByte (msg_read);
 
-	if (bits & CM_IMPULSE)
-		move->impulse = MSG_ReadByte (msg_read);
+def MSG_ReadDeltaUsercmd (msg_read: qcommon.sizebuf_t, from_cmd, move):
 
-# read time to run command
-	move->msec = MSG_ReadByte (msg_read);
+	_copy_usercmd(move, from_cmd)
 
-	// read the light level
-	move->lightlevel = MSG_ReadByte (msg_read);
-}
+	bits = MSG_ReadByte (msg_read)
 
-"""
+	if bits & qcommon.CM_ANGLE1:
+		move.angles[0] = MSG_ReadShort (msg_read)
+	if bits & qcommon.CM_ANGLE2:
+		move.angles[1] = MSG_ReadShort (msg_read)
+	if bits & qcommon.CM_ANGLE3:
+		move.angles[2] = MSG_ReadShort (msg_read)
+
+	if bits & qcommon.CM_FORWARD:
+		move.forwardmove = MSG_ReadShort (msg_read)
+	if bits & qcommon.CM_SIDE:
+		move.sidemove = MSG_ReadShort (msg_read)
+	if bits & qcommon.CM_UP:
+		move.upmove = MSG_ReadShort (msg_read)
+
+	if bits & qcommon.CM_BUTTONS:
+		move.buttons = MSG_ReadByte (msg_read)
+
+	if bits & qcommon.CM_IMPULSE:
+		move.impulse = MSG_ReadByte (msg_read)
+
+	move.msec = MSG_ReadByte (msg_read)
+	move.lightlevel = MSG_ReadByte (msg_read)
+
 def MSG_ReadData (msg_read, length: int): #sizebuf_t *, void *, int
 
 	data = bytearray(length)

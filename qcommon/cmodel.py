@@ -134,7 +134,7 @@ numclusters: int = 1
 
 nullsurface = q_shared.mapsurface_t()
 
-floodvalid: int = None
+floodvalid = 0
 
 portalopen = [] #qboolean[MAX_MAP_AREAPORTALS];
 for i in range(qfiles.MAX_MAP_AREAPORTALS):
@@ -1756,10 +1756,40 @@ FloodAreaConnections
 
 ====================
 """
-def	FloodAreaConnections ():
+def FloodArea_r (area: carea_t, floodnum: int):
+	if area.floodvalid == floodvalid:
+		if area.floodnum == floodnum:
+			return
+		common.Com_Error (q_shared.ERR_DROP, "FloodArea_r: reflooded")
 
-	pass
+	area.floodnum = floodnum
+	area.floodvalid = floodvalid
+
+	first_portal = area.firstareaportal if area.firstareaportal is not None else 0
+	num_portals = area.numareaportals if area.numareaportals is not None else 0
+	for i in range(num_portals):
+		portal = map_areaportals[first_portal + i]
+		if portalopen[portal.portalnum]:
+			FloodArea_r (map_areas[portal.otherarea], floodnum)
+
+
+def FloodAreaConnections ():
 	"""
+	Recursively flood areas connected through open portals.
+	"""
+	global floodvalid
+
+	floodvalid += 1
+	floodnum = 0
+
+	for i in range(1, numareas):
+		area = map_areas[i]
+		if area.floodvalid == floodvalid:
+			continue
+		floodnum += 1
+		FloodArea_r (area, floodnum)
+
+"""
 	int		i;
 	carea_t	*area;
 	int		floodnum;

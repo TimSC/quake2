@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
 import struct
+from linux import q_shlinux
 from server import sv_init, sv_main, sv_user
 from qcommon import qcommon, net_chan, cmodel, common
 from game import q_shared
@@ -533,7 +534,7 @@ def SV_SendClientMessages ():
 		
 			c.netchan.message.data = None
 			c.datagram = None
-			SV_BroadcastPrintf (PRINT_HIGH, "{} overflowed\n".format(c.name))
+			SV_BroadcastPrintf (q_shared.PRINT_HIGH, "{} overflowed\n".format(c.name))
 			sv_main.SV_DropClient (c)
 		
 		if (sv_init.sv.state == sv_init.server_state_t.ss_cinematic 
@@ -553,7 +554,7 @@ def SV_SendClientMessages ():
 		else:
 		
 			# just update reliableif needed
-			if c.netchan.message.data is not None or curtime - c.netchan.last_sent > 1000:
-				net_chan.Netchan_Transmit (c.netchan, 0, None)
+			if c.netchan.message.data is not None or q_shlinux.curtime - c.netchan.last_sent > 1000:
+				net_chan.Netchan_Transmit (c.netchan, b"")
 		
 	
